@@ -460,7 +460,16 @@
             transition: width 0.05s;
         }
 
-        /* Debug Panel */
+        /* Mini FFT Spectrum */
+        #mini-spectrum {
+            width: 100%;
+            height: 32px;
+            margin-top: 6px;
+            border-radius: 2px;
+            background: #111;
+        }
+
+        /* Debug Panel — hidden by default, toggle with 'D' key */
         #debug-panel {
             position: absolute;
             bottom: 16px;
@@ -475,7 +484,9 @@
             line-height: 1.6;
             min-width: 320px;
             pointer-events: none;
+            display: none;
         }
+        #debug-panel.visible { display: block; }
         #debug-panel .label { color: #888; }
         #debug-panel .val { color: #0f0; }
         #debug-panel .warn { color: #f80; }
@@ -623,6 +634,7 @@
                 <div class="audio-meter" id="audio-meter">
                     <div class="audio-meter-fill" id="audio-meter-fill"></div>
                 </div>
+                <canvas id="mini-spectrum" width="260" height="32"></canvas>
             </div>
 
             <!-- Audio Sync -->
@@ -813,6 +825,9 @@ let smoothBass = 0, smoothMid = 0, smoothTreble = 0, smoothOverall = 0, smoothBa
 // Auto-gain: track rolling max per band for normalization
 let autoGainMax = { band: 0.01, bass: 0.01, mid: 0.01, treble: 0.01 };
 const AUTO_GAIN_DECAY = 0.998; // slow decay so max adapts over time
+
+// Debug panel visibility (toggle with 'D' key)
+let debugVisible = false;
 
 // Beat detection state
 let beatHistory = [];
@@ -1235,7 +1250,57 @@ function draw() {
     }
 
     if (!showCursor) noCursor(); else cursor();
-    renderDebug();
+    renderMiniSpectrum();
+    if (debugVisible) renderDebug();
+}
+
+function renderMiniSpectrum() {
+    let canvas = document.getElementById('mini-spectrum');
+    if (!canvas || !audioAnalyser || !frequencyData) return;
+    let ctx = canvas.getContext('2d');
+    let w = canvas.width;
+    let h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    audioAnalyser.getByteFrequencyData(frequencyData);
+    const binCount = frequencyData.length;
+    const sampleRate = audioContext ? audioContext.sampleRate : 44100;
+    const nyquist = sampleRate / 2;
+
+    // Draw 64 bars logarithmically spaced across frequency range
+    const numBars = 64;
+    const minFreq = 20;
+    const maxFreq = nyquist;
+    const logMin = Math.log10(minFreq);
+    const logMax = Math.log10(maxFreq);
+    const barW = w / numBars;
+
+    // Determine which bins fall in the selected freq range for highlighting
+    const selLowBin = Math.floor(freqLow / nyquist * binCount);
+    const selHighBin = Math.floor(freqHigh / nyquist * binCount);
+
+    for (let i = 0; i < numBars; i++) {
+        let freqStart = Math.pow(10, logMin + (logMax - logMin) * (i / numBars));
+        let freqEnd = Math.pow(10, logMin + (logMax - logMin) * ((i + 1) / numBars));
+        let binStart = Math.floor(freqStart / nyquist * binCount);
+        let binEnd = Math.floor(freqEnd / nyquist * binCount);
+        binStart = Math.max(0, Math.min(binStart, binCount - 1));
+        binEnd = Math.max(binStart + 1, Math.min(binEnd, binCount));
+
+        let sum = 0;
+        for (let j = binStart; j < binEnd; j++) sum += frequencyData[j];
+        let avg = sum / ((binEnd - binStart) * 255);
+        let barH = avg * h;
+
+        // Highlight bars within selected freq range
+        let inRange = binStart >= selLowBin && binEnd <= selHighBin;
+        if (inRange) {
+            ctx.fillStyle = beatIntensity > 0.3 ? '#fff' : '#e5e5e5';
+        } else {
+            ctx.fillStyle = '#444';
+        }
+        ctx.fillRect(i * barW, h - barH, barW - 1, barH);
+    }
 }
 
 function renderDebug() {
@@ -1639,7 +1704,9 @@ function saveRecording() {
     const url = URL.createObjectURL(lastRecordedBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `blob-tracking-${Date.now()}.webm`;
+    let d = new Date();
+    let ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+    a.download = `blob-tracking-${ts}.webm`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -1663,10 +1730,56 @@ function keyPressed() {
         return false;
     }
 
-    if (key === 'z' || key === 'Z' || key === '1') { currentMode = 1; changed = true; } 
-    if (key === 'x' || key === 'X' || key === '2') { currentMode = 2; changed = true; } 
+    if (key === 'z' || key === 'Z' || key === '1') { currentMode = 1; changed = true; }
+    if (key === 'x' || key === 'X' || key === '2') { currentMode = 2; changed = true; }
     if (key === '0') { currentMode = 0; changed = true; }
     if (key === 'l' || key === 'L') { showLines = !showLines; changed = true; }
+
+    // T — toggle audio sync on/off
+    if (key === 't' || key === 'T') {
+        audioSync = !audioSync;
+        if (audioSync) {
+            audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 5: paramValues[5], 6: paramValues[6] };
+        }
+        changed = true;
+    }
+
+    // G — toggle debug panel
+    if (key === 'g' || key === 'G') {
+        debugVisible = !debugVisible;
+        let dp = document.getElementById('debug-panel');
+        if (dp) dp.classList.toggle('visible', debugVisible);
+        return false;
+    }
+
+    // F — cycle freq presets: KICK → BASS → VOCAL → HATS → FULL
+    if (key === 'f' || key === 'F') {
+        const presetOrder = ['kick', 'bass', 'vocal', 'hats', 'full'];
+        const presetValues = {
+            kick: { low: 20, high: 120 }, bass: { low: 60, high: 300 },
+            vocal: { low: 800, high: 4000 }, hats: { low: 5000, high: 16000 },
+            full: { low: 20, high: 20000 }
+        };
+        // Find current preset
+        let curIdx = presetOrder.findIndex(p => {
+            let pv = presetValues[p];
+            return freqLow === pv.low && freqHigh === pv.high;
+        });
+        let nextIdx = (curIdx + 1) % presetOrder.length;
+        let next = presetValues[presetOrder[nextIdx]];
+        freqLow = next.low; freqHigh = next.high;
+        ui.freqLowSlider.value = freqLow; ui.freqLowInput.value = freqLow;
+        ui.freqHighSlider.value = freqHigh; ui.freqHighInput.value = freqHigh;
+        changed = true;
+    }
+
+    // Q — cycle sync targets: MIX → QTY → SIZE → COLOR → FLASH
+    if (key === 'q' || key === 'Q') {
+        const targets = ['all', 'qty', 'blob', 'curve', 'flash'];
+        let curIdx = targets.indexOf(audioSyncTarget);
+        audioSyncTarget = targets[(curIdx + 1) % targets.length];
+        changed = true;
+    }
 
     if(changed) syncUI();
 }
