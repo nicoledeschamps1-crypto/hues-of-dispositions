@@ -491,6 +491,40 @@
         #debug-panel .val { color: #0f0; }
         #debug-panel .warn { color: #f80; }
         #debug-panel .off { color: #f44; }
+        #mode-buttons {
+            flex-wrap: wrap;
+            row-gap: 1px;
+        }
+        #mode-buttons .selector-btn {
+            flex: 1 0 calc(14.28% - 1px);
+        }
+        #viz-buttons {
+            flex-wrap: wrap;
+            row-gap: 1px;
+        }
+        #viz-buttons .selector-btn {
+            flex: 1 0 calc(20% - 1px);
+        }
+        .text-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #2a2a2a;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 10px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            outline: none;
+            letter-spacing: 0.5px;
+        }
+        .text-input:focus {
+            border-color: var(--text-muted);
+        }
+        .text-input::placeholder {
+            color: #444;
+            text-transform: uppercase;
+        }
         .debug-bar {
             display: inline-block;
             height: 8px;
@@ -549,6 +583,14 @@
                     <button class="selector-btn" data-value="3">MOT</button>
                     <button class="selector-btn" data-value="4">SKIN</button>
                     <button class="selector-btn" data-value="5">CUST</button>
+                    <button class="selector-btn" data-value="6">BRI</button>
+                    <button class="selector-btn" data-value="7">DARK</button>
+                    <button class="selector-btn" data-value="8">EDGE</button>
+                    <button class="selector-btn" data-value="9">CHRM</button>
+                    <button class="selector-btn" data-value="10">WARM</button>
+                    <button class="selector-btn" data-value="11">COOL</button>
+                    <button class="selector-btn" data-value="12">FLKR</button>
+                    <button class="selector-btn" data-value="13">INV</button>
                 </div>
             </div>
 
@@ -565,10 +607,25 @@
                     <button class="selector-btn active" data-value="1">RGB</button>
                     <button class="selector-btn" data-value="2">SAT</button>
                     <button class="selector-btn" data-value="3">TXT</button>
+                    <button class="selector-btn" data-value="8">TAG</button>
+                    <button class="selector-btn" data-value="4">HUE</button>
+                    <button class="selector-btn" data-value="5">HEX</button>
+                    <button class="selector-btn" data-value="6">BRI</button>
+                    <button class="selector-btn" data-value="9">PLT</button>
+                    <button class="selector-btn" data-value="7">NONE</button>
                 </div>
             </div>
 
-            
+            <div class="control-group" id="product-info-group">
+                <label>Product Info</label>
+                <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
+                <input type="text" class="text-input" id="product-name" placeholder="Product Name">
+                <input type="text" class="text-input" id="product-material" placeholder="Material">
+                <input type="text" class="text-input" id="product-price" placeholder="Price">
+                <input type="text" class="text-input" id="product-size" placeholder="Size">
+            </div>
+
+
             <div class="control-group" id="group-0">
                 <label>Quantity <input type="number" class="value-input" id="val-0" value="15"></label>
                 <div class="slider-wrapper">
@@ -625,7 +682,14 @@
                 </div>
             </div>
 
-            
+            <div class="control-group" id="group-bgdim">
+                <label>Background Dim <input type="number" class="value-input" id="val-bgdim" value="0"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-bgdim" min="0" max="100" value="0" step="1">
+                </div>
+            </div>
+
+
             <!-- Audio Upload -->
             <div class="control-group">
                 <label>Audio</label>
@@ -739,6 +803,10 @@
                     <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                     Save
                 </button>
+                <button id="btn-photo" class="action-btn">
+                    <svg viewBox="0 0 24 24"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
+                    Photo
+                </button>
             </div>
 
 
@@ -786,6 +854,10 @@ let lastX = 0;
 let lastTrackTime = 0;
 let prevGridPixels = {};
 let customHue = 195;
+let flickerScores = {};
+let p5Canvas = null;
+let bgDim = 0;
+let productInfo = { brand: '', name: '', material: '', price: '', size: '' };
 let textTypeIndex = 1;
 
 let videoX, videoY, videoW, videoH;
@@ -807,6 +879,7 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
 let lastRecordedBlob = null;
+let lastRecordedExt = 'webm';
 
 // Audio base values (snapshot of params when sync turns on)
 let audioBaseValues = {};
@@ -840,6 +913,9 @@ const ui = {
     autogainButtons: document.querySelectorAll('#autogain-buttons .selector-btn'),
     customColorGroup: document.getElementById('custom-color-group'),
     customColorPicker: document.getElementById('custom-color-picker'),
+    btnPhoto: document.getElementById('btn-photo'),
+    bgDimSlider: document.getElementById('slider-bgdim'),
+    bgDimInput: document.getElementById('val-bgdim'),
     freqLowSlider: document.getElementById('slider-8'),
     freqLowInput: document.getElementById('val-8'),
     freqHighSlider: document.getElementById('slider-9'),
@@ -905,6 +981,7 @@ function generateSpecialCode() {
 
 function setup() {
     let canvas = createCanvas(windowWidth, windowHeight);
+    p5Canvas = canvas.elt;
     canvas.elt.addEventListener('contextmenu', (e) => e.preventDefault()); 
     background(0);
     textFont('Helvetica Neue');
@@ -955,7 +1032,8 @@ function setupUIListeners() {
         btn.addEventListener('click', (e) => {
             currentMode = parseInt(e.target.dataset.value);
             if (currentMode === 3) prevGridPixels = {};
-            ui.customColorGroup.style.display = (currentMode === 5) ? '' : 'none';
+            if (currentMode === 12) flickerScores = {};
+            ui.customColorGroup.style.display = (currentMode === 5 || currentMode === 13) ? '' : 'none';
             updateButtonStates();
         });
     });
@@ -1124,6 +1202,27 @@ function setupUIListeners() {
     ui.btnRestart.addEventListener('click', restartVideo);
     ui.btnRecord.addEventListener('click', toggleRecording);
     ui.btnSave.addEventListener('click', saveRecording);
+    ui.btnPhoto.addEventListener('click', saveScreenshot);
+
+    // Background dim slider
+    ui.bgDimSlider.addEventListener('input', (e) => {
+        bgDim = parseInt(e.target.value);
+        ui.bgDimInput.value = bgDim;
+    });
+    ui.bgDimInput.addEventListener('change', (e) => {
+        bgDim = constrain(parseInt(e.target.value) || 0, 0, 100);
+        ui.bgDimSlider.value = bgDim;
+        e.target.value = bgDim;
+        e.target.blur();
+    });
+    ui.bgDimInput.addEventListener('keydown', (e) => { e.stopPropagation(); });
+
+    // Product info fields
+    ['brand', 'name', 'material', 'price', 'size'].forEach(field => {
+        let el = document.getElementById('product-' + field);
+        el.addEventListener('input', (e) => { productInfo[field] = e.target.value; });
+        el.addEventListener('keydown', (e) => { e.stopPropagation(); });
+    });
 
     ui.toggleBtn.addEventListener('click', () => {
         ui.uiControls.classList.toggle('collapsed');
@@ -1314,6 +1413,16 @@ function draw() {
         videoH = Math.min(videoH, dispH);
 
         image(videoEl, videoX, videoY, videoW, videoH);
+
+        // Background dim overlay
+        if (bgDim > 0) {
+            push();
+            noStroke();
+            fill(0, bgDim * 2.55);
+            rectMode(CORNER);
+            rect(0, 0, width, height);
+            pop();
+        }
 
         let timeInterval = map(paramValues[5], 0, 100, 0, 1000);
         if (millis() - lastTrackTime >= timeInterval) {
@@ -1543,10 +1652,78 @@ function trackPoints() {
                 if (hueDist <= spectrum && sVal > 15 && bVal > 15) validColor = true;
             }
 
+            // BRIGHT: track brightest pixels
+            else if (currentMode === 6) {
+                let briThresh = map(spectrum, 0, 70, 95, 40);
+                if (bVal > briThresh) validColor = true;
+            }
+
+            // DARK: track darkest pixels
+            else if (currentMode === 7) {
+                let darkThresh = map(spectrum, 0, 70, 5, 50);
+                if (bVal < darkThresh && bVal > 0) validColor = true;
+            }
+
+            // EDGE: gradient magnitude between neighboring pixels
+            else if (currentMode === 8) {
+                if (x + 1 < w && y + 1 < h) {
+                    let idxR = ((x + 1) + y * w) * 4;
+                    let idxB = (x + (y + 1) * w) * 4;
+                    let gx = Math.abs(r - videoEl.pixels[idxR]) + Math.abs(g - videoEl.pixels[idxR+1]) + Math.abs(b - videoEl.pixels[idxR+2]);
+                    let gy = Math.abs(r - videoEl.pixels[idxB]) + Math.abs(g - videoEl.pixels[idxB+1]) + Math.abs(b - videoEl.pixels[idxB+2]);
+                    let gradient = (gx + gy) / 6;
+                    let edgeThresh = map(spectrum, 0, 70, 80, 10);
+                    if (gradient > edgeThresh) validColor = true;
+                }
+            }
+
+            // CHROMA: track most saturated pixels
+            else if (currentMode === 9) {
+                let satThresh = map(spectrum, 0, 70, 80, 20);
+                if (sVal > satThresh && bVal > 15) validColor = true;
+            }
+
+            // WARM: reds, oranges, yellows (hue 0-60° + 300-360°)
+            else if (currentMode === 10) {
+                let warmTol = map(spectrum, 0, 70, 0, 30);
+                if ((hVal <= 60 + warmTol || hVal >= 300 - warmTol) && sVal > 15 && bVal > 15) validColor = true;
+            }
+
+            // COOL: blues, greens, purples (hue 150-270°)
+            else if (currentMode === 11) {
+                let coolTol = map(spectrum, 0, 70, 0, 40);
+                if (hVal >= 150 - coolTol && hVal <= 270 + coolTol && sVal > 15 && bVal > 15) validColor = true;
+            }
+
+            // FLICKER: pixels that change rapidly over multiple frames
+            else if (currentMode === 12) {
+                let key = x + ',' + y;
+                newGridPixels[key] = { r: r, g: g, b: b };
+                let prev = prevGridPixels[key];
+                if (prev) {
+                    let dist = Math.sqrt((r - prev.r) ** 2 + (g - prev.g) ** 2 + (b - prev.b) ** 2);
+                    if (dist > 25) {
+                        flickerScores[key] = Math.min((flickerScores[key] || 0) + 0.35, 1.0);
+                    } else {
+                        flickerScores[key] = (flickerScores[key] || 0) * 0.7;
+                    }
+                }
+                let flickThresh = map(spectrum, 0, 70, 0.3, 0.8);
+                if ((flickerScores[key] || 0) > flickThresh) validColor = true;
+            }
+
+            // INVERT: complement of custom hue
+            else if (currentMode === 13) {
+                let invertHue = (customHue + 180) % 360;
+                let hueDist = abs(hVal - invertHue);
+                if (hueDist > 180) hueDist = 360 - hueDist;
+                if (hueDist <= spectrum && sVal > 15 && bVal > 15) validColor = true;
+            }
+
             if (validColor) candidates.push(new CandidatePoint(x, y, c));
 
-            // Always store current pixels for motion mode (so switching mid-session works)
-            if (currentMode !== 3) {
+            // Always store current pixels for motion/flicker modes (so switching mid-session works)
+            if (currentMode !== 3 && currentMode !== 12) {
                 let key = x + ',' + y;
                 newGridPixels[key] = { r: r, g: g, b: b };
             }
@@ -1615,6 +1792,54 @@ function drawPointInfo(p) {
             break;
         case 2: text(`st: ${saturation(p.cor).toFixed(0)}%`, offsetX, offsetY); break;
         case 3: text(p.dynamicWord, offsetX, offsetY); break;
+        case 4:
+            let h = hue(p.cor);
+            text(`hue: ${h.toFixed(0)}°`, offsetX, offsetY);
+            break;
+        case 5:
+            let rr = red(p.cor), gg = green(p.cor), bb = blue(p.cor);
+            let hex = '#' + [rr, gg, bb].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+            text(hex, offsetX, offsetY);
+            break;
+        case 6:
+            text(`bri: ${brightness(p.cor).toFixed(0)}%`, offsetX, offsetY);
+            break;
+        case 7: break; // NONE — no text overlay
+        case 8: // TAG — product label
+            push();
+            let tagY = offsetY - 4;
+            textSize(8);
+            textStyle(BOLD);
+            fill(255, 200);
+            if (productInfo.brand) { text(productInfo.brand.toUpperCase(), offsetX, tagY); tagY += 11; }
+            textStyle(NORMAL);
+            textSize(10);
+            if (productInfo.name) { text(productInfo.name, offsetX, tagY); tagY += 12; }
+            textSize(8);
+            fill(200, 160);
+            let tagDetails = [productInfo.material, productInfo.size].filter(Boolean).join(' · ');
+            if (tagDetails) { text(tagDetails, offsetX, tagY); tagY += 11; }
+            fill(255, 220);
+            textStyle(BOLD);
+            if (productInfo.price) { text(productInfo.price, offsetX, tagY); }
+            textStyle(NORMAL);
+            textSize(11);
+            pop();
+            break;
+        case 9: // PLT — color paint chip
+            push();
+            let chipSize = 26;
+            fill(p.cor); noStroke(); rectMode(CORNER);
+            rect(offsetX, p.posicao.y - chipSize/2, chipSize, chipSize);
+            noFill(); stroke(255, 100); strokeWeight(0.5);
+            rect(offsetX, p.posicao.y - chipSize/2, chipSize, chipSize);
+            let pr = red(p.cor), pg = green(p.cor), pb = blue(p.cor);
+            let pHex = '#' + [pr, pg, pb].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+            noStroke(); fill(255, 160); textSize(8);
+            text(pHex, offsetX, p.posicao.y + chipSize/2 + 10);
+            textSize(11);
+            pop();
+            break;
     }
 }
 
@@ -1794,7 +2019,7 @@ function toggleRecording() {
 
 function startRecording() {
     initAudioContext();
-    const canvas = document.querySelector('canvas');
+    const canvas = p5Canvas;
     const canvasStream = canvas.captureStream(30);
 
     // Mix in audio if available
@@ -1809,11 +2034,16 @@ function startRecording() {
     }
 
     recordedChunks = [];
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-            ? 'video/webm;codecs=vp8,opus'
-            : 'video/webm';
+    // Prefer MP4 (Chrome 120+, Safari), fall back to WebM
+    const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,opus')
+        ? 'video/mp4;codecs=avc1,opus'
+        : MediaRecorder.isTypeSupported('video/mp4')
+            ? 'video/mp4'
+            : MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+                ? 'video/webm;codecs=vp9,opus'
+                : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+                    ? 'video/webm;codecs=vp8,opus'
+                    : 'video/webm';
 
     mediaRecorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 5000000 });
 
@@ -1823,6 +2053,7 @@ function startRecording() {
 
     mediaRecorder.onstop = () => {
         lastRecordedBlob = new Blob(recordedChunks, { type: mimeType });
+        lastRecordedExt = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
         recordedChunks = [];
         ui.btnSave.style.borderColor = '#e5e5e5';
     };
@@ -1854,9 +2085,23 @@ function saveRecording() {
     a.href = url;
     let d = new Date();
     let ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
-    a.download = `blob-tracking-${ts}.webm`;
+    a.download = `blob-tracking-${ts}.${lastRecordedExt || 'webm'}`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+function saveScreenshot() {
+    if (!p5Canvas) return;
+    p5Canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        let d = new Date();
+        let ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+        a.download = `blob-tracking-${ts}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, 'image/png');
 }
 
 function keyPressed() {
@@ -1884,6 +2129,10 @@ function keyPressed() {
     if (key === '3') { currentMode = 3; prevGridPixels = {}; ui.customColorGroup.style.display = 'none'; changed = true; }
     if (key === '4') { currentMode = 4; ui.customColorGroup.style.display = 'none'; changed = true; }
     if (key === '5') { currentMode = 5; ui.customColorGroup.style.display = ''; changed = true; }
+    if (key === '6') { currentMode = 6; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '7') { currentMode = 7; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '8') { currentMode = 8; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '9') { currentMode = 9; ui.customColorGroup.style.display = 'none'; changed = true; }
     if (key === 'l' || key === 'L') { showLines = !showLines; changed = true; }
 
     // T — toggle audio sync on/off
