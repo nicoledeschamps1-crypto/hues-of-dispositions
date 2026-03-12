@@ -824,7 +824,8 @@ let smoothBass = 0, smoothMid = 0, smoothTreble = 0, smoothOverall = 0, smoothBa
 
 // Auto-gain: track rolling max per band for normalization
 let autoGainMax = { band: 0.01, bass: 0.01, mid: 0.01, treble: 0.01 };
-const AUTO_GAIN_DECAY = 0.998; // slow decay so max adapts over time
+const AUTO_GAIN_DECAY = 0.993; // faster decay so silence is recognized quicker
+const AUTO_GAIN_FLOOR = 0.05; // never normalize below this raw energy — prevents noise amplification
 
 // Debug panel visibility (toggle with 'D' key)
 let debugVisible = false;
@@ -994,6 +995,10 @@ function setupUIListeners() {
             ui.freqLowInput.value = freqLow;
             ui.freqHighSlider.value = freqHigh;
             ui.freqHighInput.value = freqHigh;
+            // Reset band auto-gain so stale max from previous range doesn't linger
+            autoGainMax.band = AUTO_GAIN_FLOOR;
+            smoothBand = 0;
+            beatHistory = [];
             updateButtonStates();
         });
     });
@@ -1571,10 +1576,12 @@ function getAudioEnergy() {
     let overall = (bass + mid + treble) / 3;
 
     // Auto-gain: update rolling max, then normalize
-    autoGainMax.band = Math.max(autoGainMax.band * AUTO_GAIN_DECAY, band);
-    autoGainMax.bass = Math.max(autoGainMax.bass * AUTO_GAIN_DECAY, bass);
-    autoGainMax.mid = Math.max(autoGainMax.mid * AUTO_GAIN_DECAY, mid);
-    autoGainMax.treble = Math.max(autoGainMax.treble * AUTO_GAIN_DECAY, treble);
+    // Floor prevents noise amplification — if raw energy is below the floor,
+    // the max won't shrink below the floor, so noise stays near 0 after normalization
+    autoGainMax.band = Math.max(autoGainMax.band * AUTO_GAIN_DECAY, band, AUTO_GAIN_FLOOR);
+    autoGainMax.bass = Math.max(autoGainMax.bass * AUTO_GAIN_DECAY, bass, AUTO_GAIN_FLOOR);
+    autoGainMax.mid = Math.max(autoGainMax.mid * AUTO_GAIN_DECAY, mid, AUTO_GAIN_FLOOR);
+    autoGainMax.treble = Math.max(autoGainMax.treble * AUTO_GAIN_DECAY, treble, AUTO_GAIN_FLOOR);
 
     band = band / autoGainMax.band;
     bass = bass / autoGainMax.bass;
@@ -1770,6 +1777,7 @@ function keyPressed() {
         freqLow = next.low; freqHigh = next.high;
         ui.freqLowSlider.value = freqLow; ui.freqLowInput.value = freqLow;
         ui.freqHighSlider.value = freqHigh; ui.freqHighInput.value = freqHigh;
+        autoGainMax.band = AUTO_GAIN_FLOOR; smoothBand = 0; beatHistory = [];
         changed = true;
     }
 
