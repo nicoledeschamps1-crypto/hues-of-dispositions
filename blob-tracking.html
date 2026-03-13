@@ -45,11 +45,10 @@
             z-index: 1;
         }
 
-        /* Minimalist UI Container */
-        #ui-container {
+        /* Panel Base (shared by left + right) */
+        .panel {
             position: absolute;
             top: 24px;
-            left: 24px;
             width: 280px;
             padding: 20px;
             background: var(--panel-bg);
@@ -61,22 +60,24 @@
             gap: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             transition: all 0.3s ease;
-            max-height: 85vh;
+            max-height: 90vh;
             overflow-y: auto;
         }
+        #left-panel { left: 24px; }
+        #right-panel { right: 24px; }
 
         /* Custom Scrollbar */
-        #ui-container::-webkit-scrollbar {
+        .panel::-webkit-scrollbar {
             width: 4px;
         }
-        #ui-container::-webkit-scrollbar-track {
+        .panel::-webkit-scrollbar-track {
             background: transparent;
         }
-        #ui-container::-webkit-scrollbar-thumb {
+        .panel::-webkit-scrollbar-thumb {
             background: #333;
             border-radius: 2px;
         }
-        #ui-container::-webkit-scrollbar-thumb:hover {
+        .panel::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
 
@@ -123,13 +124,13 @@
         }
 
         /* Collapsible Container */
-        #ui-controls {
+        #ui-controls, #ui-controls-right {
             display: flex;
             flex-direction: column;
             gap: 14px;
         }
 
-        #ui-controls.collapsed {
+        #ui-controls.collapsed, #ui-controls-right.collapsed {
             display: none;
         }
 
@@ -356,7 +357,7 @@
 
 
         /* Toggle Button (Collapse) */
-        #toggle-btn {
+        .toggle-chevron {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -365,14 +366,37 @@
             transition: opacity 0.2s;
             padding: 4px;
         }
-        #toggle-btn:hover { opacity: 0.8; }
-        #toggle-btn svg {
+        .toggle-chevron:hover { opacity: 0.8; }
+        .toggle-chevron svg {
             width: 10px;
             height: 10px;
             fill: var(--text-muted);
             transition: transform 0.3s ease;
         }
-        #toggle-btn.rotated svg { transform: rotate(180deg); }
+        .toggle-chevron.rotated svg { transform: rotate(180deg); }
+
+        /* Effects buttons */
+        #fx-buttons {
+            flex-wrap: wrap;
+            row-gap: 1px;
+        }
+        #fx-buttons .selector-btn {
+            flex: 1 0 calc(33.33% - 1px);
+        }
+        #palette-preset-buttons .selector-btn {
+            flex: 1 0 calc(25% - 1px);
+        }
+        #fx-layer-buttons .selector-btn {
+            flex: 1;
+        }
+        /* FX param groups — shown when parent effect is active */
+        .fx-param-group {
+            display: none;
+            padding: 4px 8px 8px;
+            border-left: 2px solid rgba(255,255,255,0.08);
+            margin-left: 4px;
+        }
+        .fx-param-group.visible { display: block; }
 
         /* Playback Buttons */
         .playback-row {
@@ -532,17 +556,294 @@
             vertical-align: middle;
             margin-left: 4px;
         }
+
+        /* ═══ TIMELINE ═══ */
+        #timeline-container {
+            position: fixed;
+            bottom: 260px;
+            left: 320px;
+            right: 320px;
+            height: 70px;
+            background: rgba(12, 12, 12, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.05);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            padding: 6px 12px;
+            gap: 4px;
+            transition: opacity 0.3s;
+        }
+        #timeline-container.hidden { display: none; }
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .timeline-controls .action-btn {
+            padding: 4px 8px;
+            flex: 0;
+            min-width: 36px;
+        }
+        #timeline-time {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-family: 'Roboto Mono', monospace;
+            margin-left: auto;
+        }
+        #timeline-track {
+            position: relative;
+            flex: 1;
+            background: #1a1a1a;
+            border-radius: 3px;
+            cursor: pointer;
+            overflow: hidden;
+            min-height: 30px;
+        }
+        #timeline-playhead {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 2px;
+            background: #fff;
+            z-index: 5;
+            pointer-events: none;
+            box-shadow: 0 0 4px rgba(255,255,255,0.5);
+        }
+        .timeline-segment {
+            position: absolute;
+            height: 10px;
+            border-radius: 2px;
+            font-size: 7px;
+            font-weight: 700;
+            color: rgba(0,0,0,0.7);
+            text-transform: uppercase;
+            line-height: 10px;
+            padding: 0 3px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+            min-width: 8px;
+        }
+        .timeline-segment:hover { opacity: 0.85; }
+        .timeline-segment.selected {
+            outline: 1px solid #fff;
+            outline-offset: 1px;
+            z-index: 4;
+        }
+        .timeline-segment .seg-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+        }
+        .timeline-segment .seg-handle-left { left: 0; }
+        .timeline-segment .seg-handle-right { right: 0; }
+
+        /* ═══ BOTTOM DOCK ═══ */
+        #bottom-dock {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            max-height: 260px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+
+        /* Tab bar */
+        #dock-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #222;
+            flex-shrink: 0;
+        }
+        .dock-tab {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            border-bottom: 2px solid transparent;
+        }
+        .dock-tab:hover { color: var(--text-main); }
+        .dock-tab.active {
+            color: var(--text-main);
+            border-bottom-color: var(--text-main);
+        }
+
+        /* Tab content */
+        .tab-panel {
+            display: none;
+            padding: 10px 16px;
+            overflow-y: auto;
+            max-height: 200px;
+        }
+        .tab-panel.active { display: block; }
+        .tab-panel::-webkit-scrollbar { width: 4px; }
+        .tab-panel::-webkit-scrollbar-track { background: transparent; }
+        .tab-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* Category strips */
+        .fx-category {
+            margin-bottom: 8px;
+        }
+        .cat-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cat-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .fx-strip {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        /* Effect cards in strips */
+        .fx-card {
+            background: var(--panel-bg);
+            border: 1px solid #2a2a2a;
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            padding: 7px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-family: inherit;
+            border-radius: 3px;
+        }
+        .fx-card:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.05);
+        }
+        .fx-card.active-color {
+            background: rgba(108, 92, 231, 0.2);
+            border-color: #6C5CE7;
+            color: #c4b8ff;
+        }
+        .fx-card.active-distortion {
+            background: rgba(0, 184, 148, 0.2);
+            border-color: #00B894;
+            color: #7dffd4;
+        }
+        .fx-card.active-pattern {
+            background: rgba(253, 203, 110, 0.2);
+            border-color: #FDCB6E;
+            color: #fff0c0;
+        }
+        .fx-card.active-overlay {
+            background: rgba(225, 112, 85, 0.2);
+            border-color: #E17055;
+            color: #ffb8a8;
+        }
+
+        /* Param drawer */
+        #param-drawer {
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            border-top: 1px solid transparent;
+            padding: 0 16px;
+        }
+        #param-drawer.open {
+            max-height: 250px;
+            padding: 10px 16px;
+            border-top-color: #222;
+            overflow-y: auto;
+        }
+        #drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        #drawer-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-main);
+        }
+        #drawer-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 6px;
+            font-family: inherit;
+        }
+        #drawer-close:hover { color: var(--text-main); }
+        #drawer-params .control-group { margin-bottom: 4px; }
+        #drawer-params .selector-row { margin-bottom: 6px; }
+
+        /* Mode toggle in effects tab */
+        .mode-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #222;
+        }
+        .mode-toggle-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .mode-toggle-row .selector-row { flex: 0; }
+        .mode-toggle-row .selector-btn { padding: 5px 12px; }
+
+        /* Audio tab layout */
+        #tab-audio .control-group { margin-bottom: 6px; }
+        #tab-audio #audio-input-container { margin-bottom: 8px; }
+
+        /* Export tab layout */
+        #tab-export .playback-row { margin-top: 0; }
     </style>
 </head>
 <body>
 
     <div id="debug-panel"></div>
 
-    <div id="ui-container">
+    <!-- LEFT PANEL -->
+    <div id="left-panel" class="panel">
         <div class="header-section">
             <div class="title-row">
                 <h1>Browser Blob Tracking</h1>
-                <div id="toggle-btn" title="Toggle Controls">
+                <div id="toggle-btn" class="toggle-chevron" title="Toggle Controls">
                     <svg viewBox="0 0 24 24">
                         <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
                     </svg>
@@ -553,9 +854,9 @@
                 | Free source code on <a href="https://www.patreon.com/pbltrr" target="_blank">Patreon</a>
             </div>
         </div>
-        
+
         <div id="ui-controls">
-            
+
             <div class="source-row">
                 <div id="file-input-container" onclick="document.getElementById('videoUpload').click()">
                     <div class="upload-label">
@@ -572,8 +873,8 @@
                     CAM
                 </button>
             </div>
-            
-            
+
+
             <div class="control-group">
                 <label>Tracking Mode</label>
                 <div class="selector-row" id="mode-buttons">
@@ -599,7 +900,7 @@
                 <input type="color" id="custom-color-picker" value="#00b7eb" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
             </div>
 
-            
+
             <div class="control-group" id="group-viz">
                 <label>Visualization</label>
                 <div class="selector-row" id="viz-buttons">
@@ -617,75 +918,12 @@
                 </div>
             </div>
 
-            <div class="control-group" id="product-info-group">
-                <label>Product Info</label>
-                <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
-                <input type="text" class="text-input" id="product-name" placeholder="Product Name">
-                <input type="text" class="text-input" id="product-material" placeholder="Material">
-                <input type="text" class="text-input" id="product-price" placeholder="Price">
-                <input type="text" class="text-input" id="product-size" placeholder="Size">
-            </div>
-
-
-            <div class="control-group" id="group-0">
-                <label>Quantity <input type="number" class="value-input" id="val-0" value="15"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-0" min="0" max="100" value="15" step="1">
-                </div>
-            </div>
-
-            
-            <div class="control-group" id="group-1">
-                <label>Spectrum <input type="number" class="value-input" id="val-1" value="30"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-1" min="0" max="100" value="30" step="0.1">
-                </div>
-            </div>
-
-            
-            <div class="control-group" id="group-5">
-                <label>Rate (ms) <input type="number" class="value-input" id="val-5" value="4"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-5" min="0" max="100" value="4" step="1">
-                </div>
-            </div>
-
-            
-            <div class="control-group" id="group-6">
-                <label>Blob Var <input type="number" class="value-input" id="val-6" value="40"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-6" min="0" max="100" value="40" step="1">
-                </div>
-            </div>
-
-            <div class="control-group" id="group-4">
-                <label>Blob Size <input type="number" class="value-input" id="val-4" value="20"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-4" min="0" max="100" value="20" step="1">
-                </div>
-            </div>
-
-             <div class="control-group">
-                <label>Lines</label>
-                <div class="selector-row" id="line-buttons">
-                    <button class="selector-btn active" data-value="off">OFF</button>
-                    <button class="selector-btn" data-value="on">ON</button>
-                </div>
-            </div>
-
-            
-            <div class="control-group" id="group-2">
-                <label>Opacity <input type="number" class="value-input" id="val-2" value="40"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-2" min="0" max="100" value="40" step="1">
-                </div>
-            </div>
-
-            
-            <div class="control-group" id="group-3">
-                <label>Curvature <input type="number" class="value-input" id="val-3" value="3"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-3" min="0" max="100" value="3" step="0.1">
+            <!-- FX Layer toggle (effects moved to bottom dock) -->
+            <div class="control-group" id="group-fxlayer">
+                <label>FX Layer</label>
+                <div class="selector-row" id="fx-layer-buttons">
+                    <button class="selector-btn active" data-value="video">VIDEO</button>
+                    <button class="selector-btn" data-value="all">ALL</button>
                 </div>
             </div>
 
@@ -696,8 +934,187 @@
                 </div>
             </div>
 
+            <div class="playback-row">
+                <button id="btn-play" class="action-btn">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button id="btn-restart" class="action-btn">
+                    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    Restart
+                </button>
+            </div>
 
-            <!-- Audio Upload -->
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div id="right-panel" class="panel">
+        <div class="header-section">
+            <div class="title-row">
+                <h1>Parameters</h1>
+                <div id="toggle-btn-right" class="toggle-chevron" title="Toggle Controls">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div id="ui-controls-right">
+
+            <div class="control-group" id="group-0">
+                <label>Quantity <input type="number" class="value-input" id="val-0" value="15"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-0" min="0" max="100" value="15" step="1">
+                </div>
+            </div>
+
+            <div class="control-group" id="group-1">
+                <label>Spectrum <input type="number" class="value-input" id="val-1" value="30"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-1" min="0" max="100" value="30" step="0.1">
+                </div>
+            </div>
+
+            <div class="control-group" id="group-4">
+                <label>Blob Size <input type="number" class="value-input" id="val-4" value="20"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-4" min="0" max="100" value="20" step="1">
+                </div>
+            </div>
+
+            <div class="control-group" id="group-5">
+                <label>Rate (ms) <input type="number" class="value-input" id="val-5" value="4"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-5" min="0" max="100" value="4" step="1">
+                </div>
+            </div>
+
+            <div class="control-group" id="group-6">
+                <label>Blob Var <input type="number" class="value-input" id="val-6" value="40"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-6" min="0" max="100" value="40" step="1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Lines</label>
+                <div class="selector-row" id="line-buttons">
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                    <button class="selector-btn" data-value="on">ON</button>
+                </div>
+            </div>
+
+            <div class="control-group" id="group-2">
+                <label>Opacity <input type="number" class="value-input" id="val-2" value="40"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-2" min="0" max="100" value="40" step="1">
+                </div>
+            </div>
+
+            <div class="control-group" id="group-3">
+                <label>Curvature <input type="number" class="value-input" id="val-3" value="3"></label>
+                <div class="slider-wrapper">
+                    <input type="range" id="slider-3" min="0" max="100" value="3" step="0.1">
+                </div>
+            </div>
+
+            <div class="control-group" id="product-info-group">
+                <label>Product Info</label>
+                <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
+                <input type="text" class="text-input" id="product-name" placeholder="Product Name">
+                <input type="text" class="text-input" id="product-material" placeholder="Material">
+                <input type="text" class="text-input" id="product-price" placeholder="Price">
+                <input type="text" class="text-input" id="product-size" placeholder="Size">
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div id="timeline-container" class="hidden">
+        <div class="timeline-controls">
+            <button id="tl-btn-play" class="action-btn" title="Play/Pause">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button id="tl-btn-restart" class="action-btn" title="Restart">
+                <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            </button>
+            <span id="timeline-time">0:00 / 0:00</span>
+            <button id="tl-btn-record" class="action-btn" title="Record">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+            </button>
+        </div>
+        <div id="timeline-track">
+            <div id="timeline-playhead"></div>
+        </div>
+    </div>
+
+    <!-- BOTTOM DOCK -->
+    <div id="bottom-dock">
+        <div id="dock-tabs">
+            <button class="dock-tab active" data-tab="effects">Effects</button>
+            <button class="dock-tab" data-tab="audio">Audio</button>
+            <button class="dock-tab" data-tab="export">Export</button>
+        </div>
+
+        <!-- Effects Tab -->
+        <div class="tab-panel active" id="tab-effects">
+            <div class="mode-toggle-row">
+                <span class="mode-toggle-label">Mode</span>
+                <div class="selector-row" id="fx-mode-buttons">
+                    <button class="selector-btn active" data-value="global">GLOBAL</button>
+                    <button class="selector-btn" data-value="timeline">TIMELINE</button>
+                </div>
+            </div>
+
+            <div class="fx-category">
+                <div class="cat-label"><span class="cat-dot" style="background:#6C5CE7"></span> Color</div>
+                <div class="fx-strip" id="fx-strip-color">
+                    <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
+                    <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
+                    <button class="fx-card" data-effect="palette" data-cat="color">PALTTE</button>
+                    <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
+                </div>
+            </div>
+            <div class="fx-category">
+                <div class="cat-label"><span class="cat-dot" style="background:#00B894"></span> Distortion</div>
+                <div class="fx-strip" id="fx-strip-distortion">
+                    <button class="fx-card" data-effect="chroma" data-cat="distortion">CHROMA</button>
+                    <button class="fx-card" data-effect="curve" data-cat="distortion">CURVE</button>
+                    <button class="fx-card" data-effect="wave" data-cat="distortion">WAVE</button>
+                    <button class="fx-card" data-effect="jitter" data-cat="distortion">JITTER</button>
+                    <button class="fx-card" data-effect="mblur" data-cat="distortion">MBLUR</button>
+                </div>
+            </div>
+            <div class="fx-category">
+                <div class="cat-label"><span class="cat-dot" style="background:#FDCB6E"></span> Pattern</div>
+                <div class="fx-strip" id="fx-strip-pattern">
+                    <button class="fx-card" data-effect="bloom" data-cat="pattern">BLOOM</button>
+                    <button class="fx-card" data-effect="dither" data-cat="pattern">DITHER</button>
+                    <button class="fx-card" data-effect="atkinson" data-cat="pattern">ATKNSN</button>
+                    <button class="fx-card" data-effect="halftone" data-cat="pattern">HALF</button>
+                    <button class="fx-card" data-effect="pxsort" data-cat="pattern">PXSORT</button>
+                    <button class="fx-card" data-effect="pixel" data-cat="pattern">PIXEL</button>
+                </div>
+            </div>
+            <div class="fx-category">
+                <div class="cat-label"><span class="cat-dot" style="background:#E17055"></span> Overlay</div>
+                <div class="fx-strip" id="fx-strip-overlay">
+                    <button class="fx-card" data-effect="ascii" data-cat="overlay">ASCII</button>
+                    <button class="fx-card" data-effect="glitch" data-cat="overlay">GLITCH</button>
+                    <button class="fx-card" data-effect="noise" data-cat="overlay">NOISE</button>
+                    <button class="fx-card" data-effect="grain" data-cat="overlay">GRAIN</button>
+                    <button class="fx-card" data-effect="dots" data-cat="overlay">DOTS</button>
+                    <button class="fx-card" data-effect="grid" data-cat="overlay">GRID</button>
+                    <button class="fx-card" data-effect="scanlines" data-cat="overlay">SCAN</button>
+                    <button class="fx-card" data-effect="vignette" data-cat="overlay">VGNTE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio Tab -->
+        <div class="tab-panel" id="tab-audio">
             <div class="control-group">
                 <label>Audio</label>
                 <div id="audio-input-container" onclick="document.getElementById('audioUpload').click()">
@@ -715,8 +1132,6 @@
                 </div>
                 <canvas id="mini-spectrum" width="260" height="32"></canvas>
             </div>
-
-            <!-- Audio Sync -->
             <div class="control-group">
                 <label>Audio Sync</label>
                 <div class="selector-row" id="sync-buttons">
@@ -724,7 +1139,6 @@
                     <button class="selector-btn" data-value="on">ON</button>
                 </div>
             </div>
-
             <div class="control-group">
                 <label>Freq Range</label>
                 <div class="selector-row" id="freq-preset-buttons">
@@ -735,42 +1149,36 @@
                     <button class="selector-btn active" data-value="full">FULL</button>
                 </div>
             </div>
-
             <div class="control-group" id="group-8">
                 <label>Freq Low (Hz) <input type="number" class="value-input" id="val-8" value="20"></label>
                 <div class="slider-wrapper">
                     <input type="range" id="slider-8" min="20" max="20000" value="20" step="1">
                 </div>
             </div>
-
             <div class="control-group" id="group-9">
                 <label>Freq High (Hz) <input type="number" class="value-input" id="val-9" value="20000"></label>
                 <div class="slider-wrapper">
                     <input type="range" id="slider-9" min="20" max="20000" value="20000" step="1">
                 </div>
             </div>
-
             <div class="control-group" id="group-7">
                 <label>Sensitivity <input type="number" class="value-input" id="val-7" value="50"></label>
                 <div class="slider-wrapper">
                     <input type="range" id="slider-7" min="0" max="100" value="50" step="1">
                 </div>
             </div>
-
             <div class="control-group" id="group-10">
                 <label>Threshold <input type="number" class="value-input" id="val-10" value="10"></label>
                 <div class="slider-wrapper">
                     <input type="range" id="slider-10" min="0" max="100" value="10" step="1">
                 </div>
             </div>
-
             <div class="control-group" id="group-11">
                 <label>Release <input type="number" class="value-input" id="val-11" value="40"></label>
                 <div class="slider-wrapper">
                     <input type="range" id="slider-11" min="0" max="100" value="40" step="1">
                 </div>
             </div>
-
             <div class="control-group">
                 <label>Auto-Gain</label>
                 <div class="selector-row" id="autogain-buttons">
@@ -778,7 +1186,6 @@
                     <button class="selector-btn" data-value="on">ON</button>
                 </div>
             </div>
-
             <div class="control-group">
                 <label>Sync Target</label>
                 <div class="selector-row" id="sync-target-buttons">
@@ -789,18 +1196,10 @@
                     <button class="selector-btn" data-value="flash">FLASH</button>
                 </div>
             </div>
+        </div>
 
-            <div class="playback-row">
-                <button id="btn-play" class="action-btn">
-                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-                <button id="btn-restart" class="action-btn">
-                    <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-                    Restart
-                </button>
-            </div>
-
-            <!-- Record & Save -->
+        <!-- Export Tab -->
+        <div class="tab-panel" id="tab-export">
             <div class="playback-row">
                 <button id="btn-record" class="action-btn">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
@@ -810,16 +1209,243 @@
                     <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                     Save
                 </button>
-                <button id="btn-photo" class="action-btn">
-                    <svg viewBox="0 0 24 24"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
-                    Photo
-                </button>
             </div>
-
-
+            <button id="btn-photo" class="action-btn" style="width:100%;margin-top:8px">
+                <svg viewBox="0 0 24 24"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
+                Photo
+            </button>
         </div>
 
+        <!-- Param Drawer (slides up when effect selected) -->
+        <div id="param-drawer">
+            <div id="drawer-header">
+                <span id="drawer-title"></span>
+                <button id="drawer-close">&times;</button>
+            </div>
+            <div id="drawer-params"></div>
+        </div>
+    </div>
 
+    <!-- Hidden FX param templates (moved from left panel, used by drawer) -->
+    <div id="fx-param-templates" style="display:none">
+        <div class="fx-param-group" id="fx-params-ascii">
+            <label>Cell Size <input type="number" class="value-input" id="val-ascii-cell" value="10"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-ascii-cell" min="4" max="24" value="10" step="1">
+            </div>
+            <label>ASCII Color</label>
+            <div class="selector-row" id="ascii-color-buttons">
+                <button class="selector-btn active" data-value="mono">MONO</button>
+                <button class="selector-btn" data-value="color">COLOR</button>
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-chroma">
+            <label>Offset <input type="number" class="value-input" id="val-chroma-offset" value="5"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-chroma-offset" min="1" max="25" value="5" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-atkinson">
+            <label>Atkinson Color</label>
+            <div class="selector-row" id="atkinson-color-buttons">
+                <button class="selector-btn active" data-value="bw">B&W</button>
+                <button class="selector-btn" data-value="color">COLOR</button>
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-scanlines">
+            <label>Intensity <input type="number" class="value-input" id="val-scan-intensity" value="50"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-scan-intensity" min="5" max="100" value="50" step="1">
+            </div>
+            <label>Line Count <input type="number" class="value-input" id="val-scan-count" value="300"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-scan-count" min="50" max="800" value="300" step="10">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-vignette">
+            <label>Intensity <input type="number" class="value-input" id="val-vig-intensity" value="50"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-vig-intensity" min="5" max="100" value="50" step="1">
+            </div>
+            <label>Radius <input type="number" class="value-input" id="val-vig-radius" value="70"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-vig-radius" min="20" max="100" value="70" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-grain">
+            <label>Intensity <input type="number" class="value-input" id="val-grain-intensity" value="35"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-grain-intensity" min="5" max="100" value="35" step="1">
+            </div>
+            <label>Size <input type="number" class="value-input" id="val-grain-size" value="15"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-grain-size" min="5" max="40" value="15" step="1">
+            </div>
+            <label>Grain Color</label>
+            <div class="selector-row" id="grain-color-buttons">
+                <button class="selector-btn active" data-value="mono">MONO</button>
+                <button class="selector-btn" data-value="color">COLOR</button>
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-bloom">
+            <label>Intensity <input type="number" class="value-input" id="val-bloom-intensity" value="40"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-bloom-intensity" min="5" max="100" value="40" step="1">
+            </div>
+            <label>Radius <input type="number" class="value-input" id="val-bloom-radius" value="50"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-bloom-radius" min="10" max="100" value="50" step="1">
+            </div>
+            <label>Threshold <input type="number" class="value-input" id="val-bloom-thresh" value="50"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-bloom-thresh" min="0" max="100" value="50" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-tint">
+            <label>Tint Preset</label>
+            <div class="selector-row" id="tint-preset-buttons">
+                <button class="selector-btn active" data-value="green">GREEN</button>
+                <button class="selector-btn" data-value="amber">AMBER</button>
+                <button class="selector-btn" data-value="cyan">CYAN</button>
+                <button class="selector-btn" data-value="blue">BLUE</button>
+            </div>
+            <label>Intensity <input type="number" class="value-input" id="val-tint-intensity" value="70"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-tint-intensity" min="5" max="100" value="70" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-sepia">
+            <label>Intensity <input type="number" class="value-input" id="val-sepia-intensity" value="70"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-sepia-intensity" min="5" max="100" value="70" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-pixel">
+            <label>Pixel Size <input type="number" class="value-input" id="val-pixel-size" value="8"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-pixel-size" min="2" max="50" value="8" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-wave">
+            <label>Amplitude <input type="number" class="value-input" id="val-wave-amp" value="20"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-wave-amp" min="1" max="100" value="20" step="1">
+            </div>
+            <label>Frequency <input type="number" class="value-input" id="val-wave-freq" value="5"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-wave-freq" min="1" max="20" value="5" step="1">
+            </div>
+            <label>Speed <input type="number" class="value-input" id="val-wave-speed" value="2"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-wave-speed" min="0" max="5" value="2" step="0.1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-glitch">
+            <label>Intensity <input type="number" class="value-input" id="val-glitch-intensity" value="30"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-glitch-intensity" min="5" max="100" value="30" step="1">
+            </div>
+            <label>Frequency <input type="number" class="value-input" id="val-glitch-freq" value="20"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-glitch-freq" min="1" max="100" value="20" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-jitter">
+            <label>Intensity <input type="number" class="value-input" id="val-jitter-intensity" value="20"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-jitter-intensity" min="1" max="100" value="20" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-noise">
+            <label>Intensity <input type="number" class="value-input" id="val-noise-intensity" value="25"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-noise-intensity" min="5" max="100" value="25" step="1">
+            </div>
+            <label>Scale <input type="number" class="value-input" id="val-noise-scale" value="1"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-noise-scale" min="1" max="10" value="1" step="1">
+            </div>
+            <label>Noise Color</label>
+            <div class="selector-row" id="noise-color-buttons">
+                <button class="selector-btn active" data-value="mono">MONO</button>
+                <button class="selector-btn" data-value="color">COLOR</button>
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-curve">
+            <label>Intensity <input type="number" class="value-input" id="val-curve-intensity" value="30"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-curve-intensity" min="5" max="100" value="30" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-bricon">
+            <label>Brightness <input type="number" class="value-input" id="val-bri" value="0"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-bri" min="-100" max="100" value="0" step="1">
+            </div>
+            <label>Contrast <input type="number" class="value-input" id="val-con" value="100"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-con" min="0" max="200" value="100" step="1">
+            </div>
+            <label>Saturation <input type="number" class="value-input" id="val-sat" value="100"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-sat" min="0" max="200" value="100" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-grid">
+            <label>Scale <input type="number" class="value-input" id="val-grid-scale" value="20"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-grid-scale" min="5" max="50" value="20" step="1">
+            </div>
+            <label>Line Width <input type="number" class="value-input" id="val-grid-width" value="1"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-grid-width" min="1" max="5" value="1" step="0.5">
+            </div>
+            <label>Opacity <input type="number" class="value-input" id="val-grid-opacity" value="30"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-grid-opacity" min="5" max="100" value="30" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-dots">
+            <label>Angle <input type="number" class="value-input" id="val-dots-angle" value="45"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-dots-angle" min="0" max="360" value="45" step="1">
+            </div>
+            <label>Scale <input type="number" class="value-input" id="val-dots-scale" value="6"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-dots-scale" min="2" max="20" value="6" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-mblur">
+            <label>Intensity <input type="number" class="value-input" id="val-mblur-intensity" value="30"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-mblur-intensity" min="5" max="100" value="30" step="1">
+            </div>
+            <label>Angle <input type="number" class="value-input" id="val-mblur-angle" value="0"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-mblur-angle" min="0" max="360" value="0" step="1">
+            </div>
+        </div>
+        <div class="fx-param-group" id="fx-params-palette">
+            <label>Palette</label>
+            <div class="selector-row" id="palette-preset-buttons" style="flex-wrap:wrap;row-gap:1px;">
+                <button class="selector-btn active" data-value="noir">NOIR</button>
+                <button class="selector-btn" data-value="terminal">TERM</button>
+                <button class="selector-btn" data-value="gameboy">GMBOY</button>
+                <button class="selector-btn" data-value="synthwave">SYNTH</button>
+                <button class="selector-btn" data-value="cyberpunk">CYBER</button>
+                <button class="selector-btn" data-value="amber">AMBER</button>
+                <button class="selector-btn" data-value="arctic">ARTIC</button>
+                <button class="selector-btn" data-value="rose">ROSE</button>
+                <button class="selector-btn" data-value="neon">NEON</button>
+                <button class="selector-btn" data-value="forest">FORST</button>
+                <button class="selector-btn" data-value="sunset">SUNST</button>
+                <button class="selector-btn" data-value="ocean">OCEAN</button>
+            </div>
+            <label>Intensity <input type="number" class="value-input" id="val-palette-intensity" value="80"></label>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-palette-intensity" min="5" max="100" value="80" step="1">
+            </div>
+        </div>
     </div>
 
 <script>
@@ -866,8 +1492,98 @@ let p5Canvas = null;
 let bgDim = 0;
 let productInfo = { brand: '', name: '', material: '', price: '', size: '' };
 let activeVizModes = new Set([1]);
+let activeEffects = new Set();
+let fxLayerAll = false;
+let asciiCellSize = 10;
+let asciiColorMode = 'mono';
+let chromaOffset = 5;
+let atkinsonColorMode = 'bw';
+let scanIntensity = 50;
+let scanCount = 300;
+let vigIntensity = 50;
+let vigRadius = 70;
+let grainIntensity = 35;
+let grainSize = 15;
+let grainColorMode = 'mono';
+let bloomIntensity = 40;
+let bloomRadius = 50;
+let bloomThreshold = 50;
+let tintPreset = 'green';
+let tintIntensity = 70;
+let sepiaIntensity = 70;
+let pixelSize = 8;
+let waveAmp = 20;
+let waveFreq = 5;
+let waveSpeed = 2;
+let glitchIntensity = 30;
+let glitchFreq = 20;
+let jitterIntensity = 20;
+let noiseIntensity = 25;
+let noiseScale = 1;
+let noiseColorMode = 'mono';
+let curveIntensity = 30;
+let briValue = 0;
+let conValue = 100;
+let satValue = 100;
+let gridScale = 20;
+let gridWidth = 1;
+let gridOpacity = 30;
+let dotsAngle = 45;
+let dotsScale = 6;
+let mblurIntensity = 30;
+let mblurAngle = 0;
+let palettePreset = 'noir';
+let paletteIntensity = 80;
 
 let videoX, videoY, videoW, videoH;
+
+// Timeline state
+let timelineSegments = [];
+let isTimelineMode = false;
+let videoDuration = 0;
+let selectedSegment = null;
+let selectedDrawerEffect = null;
+let tlDragging = false;
+
+const FX_CATEGORIES = {
+    sepia:'color', tint:'color', palette:'color', bricon:'color',
+    chroma:'distortion', curve:'distortion', wave:'distortion', jitter:'distortion', mblur:'distortion',
+    bloom:'pattern', dither:'pattern', atkinson:'pattern', halftone:'pattern', pxsort:'pattern', pixel:'pattern',
+    ascii:'overlay', glitch:'overlay', noise:'overlay', grain:'overlay', dots:'overlay', grid:'overlay', scanlines:'overlay', vignette:'overlay'
+};
+const FX_CAT_COLORS = { color:'#6C5CE7', distortion:'#00B894', pattern:'#FDCB6E', overlay:'#E17055' };
+const FX_PARAM_MAP = {
+    sepia: [{v:'sepiaIntensity',g:()=>sepiaIntensity,s:v=>sepiaIntensity=v}],
+    tint: [{v:'tintPreset',g:()=>tintPreset,s:v=>tintPreset=v},{v:'tintIntensity',g:()=>tintIntensity,s:v=>tintIntensity=v}],
+    palette: [{v:'palettePreset',g:()=>palettePreset,s:v=>palettePreset=v},{v:'paletteIntensity',g:()=>paletteIntensity,s:v=>paletteIntensity=v}],
+    bricon: [{v:'briValue',g:()=>briValue,s:v=>briValue=v},{v:'conValue',g:()=>conValue,s:v=>conValue=v},{v:'satValue',g:()=>satValue,s:v=>satValue=v}],
+    chroma: [{v:'chromaOffset',g:()=>chromaOffset,s:v=>chromaOffset=v}],
+    curve: [{v:'curveIntensity',g:()=>curveIntensity,s:v=>curveIntensity=v}],
+    wave: [{v:'waveAmp',g:()=>waveAmp,s:v=>waveAmp=v},{v:'waveFreq',g:()=>waveFreq,s:v=>waveFreq=v},{v:'waveSpeed',g:()=>waveSpeed,s:v=>waveSpeed=v}],
+    jitter: [{v:'jitterIntensity',g:()=>jitterIntensity,s:v=>jitterIntensity=v}],
+    mblur: [{v:'mblurIntensity',g:()=>mblurIntensity,s:v=>mblurIntensity=v},{v:'mblurAngle',g:()=>mblurAngle,s:v=>mblurAngle=v}],
+    bloom: [{v:'bloomIntensity',g:()=>bloomIntensity,s:v=>bloomIntensity=v},{v:'bloomRadius',g:()=>bloomRadius,s:v=>bloomRadius=v},{v:'bloomThreshold',g:()=>bloomThreshold,s:v=>bloomThreshold=v}],
+    dither: [],
+    atkinson: [{v:'atkinsonColorMode',g:()=>atkinsonColorMode,s:v=>atkinsonColorMode=v}],
+    halftone: [],
+    pxsort: [],
+    pixel: [{v:'pixelSize',g:()=>pixelSize,s:v=>pixelSize=v}],
+    ascii: [{v:'asciiCellSize',g:()=>asciiCellSize,s:v=>asciiCellSize=v},{v:'asciiColorMode',g:()=>asciiColorMode,s:v=>asciiColorMode=v}],
+    glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v}],
+    noise: [{v:'noiseIntensity',g:()=>noiseIntensity,s:v=>noiseIntensity=v},{v:'noiseScale',g:()=>noiseScale,s:v=>noiseScale=v},{v:'noiseColorMode',g:()=>noiseColorMode,s:v=>noiseColorMode=v}],
+    grain: [{v:'grainIntensity',g:()=>grainIntensity,s:v=>grainIntensity=v},{v:'grainSize',g:()=>grainSize,s:v=>grainSize=v},{v:'grainColorMode',g:()=>grainColorMode,s:v=>grainColorMode=v}],
+    dots: [{v:'dotsAngle',g:()=>dotsAngle,s:v=>dotsAngle=v},{v:'dotsScale',g:()=>dotsScale,s:v=>dotsScale=v}],
+    grid: [{v:'gridScale',g:()=>gridScale,s:v=>gridScale=v},{v:'gridWidth',g:()=>gridWidth,s:v=>gridWidth=v},{v:'gridOpacity',g:()=>gridOpacity,s:v=>gridOpacity=v}],
+    scanlines: [{v:'scanIntensity',g:()=>scanIntensity,s:v=>scanIntensity=v},{v:'scanCount',g:()=>scanCount,s:v=>scanCount=v}],
+    vignette: [{v:'vigIntensity',g:()=>vigIntensity,s:v=>vigIntensity=v},{v:'vigRadius',g:()=>vigRadius,s:v=>vigRadius=v}]
+};
+const EFFECT_FN_MAP = {
+    sepia:()=>applySepia(), tint:()=>applyTint(), palette:()=>applyPalette(), bricon:()=>applyBriCon(),
+    chroma:()=>applyChromatic(), curve:()=>applyCurve(), wave:()=>applyWave(), jitter:()=>applyJitter(), mblur:()=>applyMblur(),
+    bloom:()=>applyBloom(), dither:()=>applyDithering(), atkinson:()=>applyAtkinson(), halftone:()=>applyHalftone(), pxsort:()=>applyPixelSort(), pixel:()=>applyPixelate(),
+    ascii:()=>applyASCII(), glitch:()=>applyGlitch(), noise:()=>applyNoise(), grain:()=>applyGrain(), dots:()=>applyDots(), grid:()=>applyGrid(), scanlines:()=>applyScanlines(), vignette:()=>applyVignette()
+};
+let nextSegId = 1;
 
 // Audio state
 let audioContext = null;
@@ -903,7 +1619,9 @@ const ui = {
     webcamBtn: document.getElementById('webcam-btn'),
     fileName: document.getElementById('file-name'),
     toggleBtn: document.getElementById('toggle-btn'),
+    toggleBtnRight: document.getElementById('toggle-btn-right'),
     uiControls: document.getElementById('ui-controls'),
+    uiControlsRight: document.getElementById('ui-controls-right'),
     btnPlay: document.getElementById('btn-play'),
     btnRestart: document.getElementById('btn-restart'),
     btnRecord: document.getElementById('btn-record'),
@@ -913,6 +1631,8 @@ const ui = {
     audioMeterFill: document.getElementById('audio-meter-fill'),
     modeButtons: document.querySelectorAll('#mode-buttons .selector-btn'),
     vizButtons: document.querySelectorAll('#viz-buttons .selector-btn'),
+    fxCards: document.querySelectorAll('.fx-card'),
+    fxLayerButtons: document.querySelectorAll('#fx-layer-buttons .selector-btn'),
     lineButtons: document.querySelectorAll('#line-buttons .selector-btn'),
     syncButtons: document.querySelectorAll('#sync-buttons .selector-btn'),
     syncTargetButtons: document.querySelectorAll('#sync-target-buttons .selector-btn'),
@@ -927,6 +1647,21 @@ const ui = {
     freqLowInput: document.getElementById('val-8'),
     freqHighSlider: document.getElementById('slider-9'),
     freqHighInput: document.getElementById('val-9'),
+    // Timeline
+    tlContainer: document.getElementById('timeline-container'),
+    tlTrack: document.getElementById('timeline-track'),
+    tlPlayhead: document.getElementById('timeline-playhead'),
+    tlTime: document.getElementById('timeline-time'),
+    tlBtnPlay: document.getElementById('tl-btn-play'),
+    tlBtnRestart: document.getElementById('tl-btn-restart'),
+    tlBtnRecord: document.getElementById('tl-btn-record'),
+    // Bottom dock
+    dockTabs: document.querySelectorAll('.dock-tab'),
+    fxModeButtons: document.querySelectorAll('#fx-mode-buttons .selector-btn'),
+    paramDrawer: document.getElementById('param-drawer'),
+    drawerTitle: document.getElementById('drawer-title'),
+    drawerParams: document.getElementById('drawer-params'),
+    drawerClose: document.getElementById('drawer-close'),
     sliders: {},
     inputs: {},
     groups: {}
@@ -1243,6 +1978,207 @@ function setupUIListeners() {
         ui.toggleBtn.classList.toggle('rotated');
     });
 
+    // Right panel toggle
+    ui.toggleBtnRight.addEventListener('click', () => {
+        ui.uiControlsRight.classList.toggle('collapsed');
+        ui.toggleBtnRight.classList.toggle('rotated');
+    });
+
+    // Effect cards (bottom dock — multi-select)
+    ui.fxCards.forEach(card => {
+        card.addEventListener('click', (e) => {
+            let effectName = e.currentTarget.dataset.effect;
+            if (isTimelineMode && videoLoaded && !usingWebcam) {
+                addTimelineSegment(effectName);
+            } else {
+                if (activeEffects.has(effectName)) {
+                    activeEffects.delete(effectName);
+                    if (selectedDrawerEffect === effectName) closeParamDrawer();
+                } else {
+                    activeEffects.add(effectName);
+                }
+                openParamDrawer(effectName);
+            }
+            updateEffectCardStates();
+        });
+    });
+
+    // Dock tab switching
+    ui.dockTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            ui.dockTabs.forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        });
+    });
+
+    // FX mode toggle (GLOBAL / TIMELINE)
+    ui.fxModeButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            isTimelineMode = (e.target.dataset.value === 'timeline');
+            ui.fxModeButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Param drawer close
+    ui.drawerClose.addEventListener('click', closeParamDrawer);
+
+    // Timeline controls
+    ui.tlBtnPlay.addEventListener('click', togglePlay);
+    ui.tlBtnRestart.addEventListener('click', restartVideo);
+    ui.tlBtnRecord.addEventListener('click', toggleRecording);
+
+    // Timeline scrubbing
+    ui.tlTrack.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('timeline-segment') || e.target.classList.contains('seg-handle')) return;
+        tlDragging = true;
+        seekToTimelinePosition(e.clientX);
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (tlDragging) seekToTimelinePosition(e.clientX);
+    });
+    document.addEventListener('mouseup', () => { tlDragging = false; });
+
+    // FX Layer toggle
+    ui.fxLayerButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            fxLayerAll = (e.target.dataset.value === 'all');
+            updateButtonStates();
+        });
+    });
+
+    // ASCII params
+    let asciiCellSlider = document.getElementById('slider-ascii-cell');
+    let asciiCellInput = document.getElementById('val-ascii-cell');
+    asciiCellSlider.addEventListener('input', (e) => {
+        asciiCellSize = parseInt(e.target.value);
+        asciiCellInput.value = asciiCellSize;
+    });
+    asciiCellInput.addEventListener('change', (e) => {
+        asciiCellSize = Math.max(4, Math.min(24, parseInt(e.target.value) || 10));
+        asciiCellSlider.value = asciiCellSize;
+        e.target.value = asciiCellSize;
+        e.target.blur();
+    });
+    asciiCellInput.addEventListener('keydown', (e) => { e.stopPropagation(); });
+
+    document.querySelectorAll('#ascii-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            asciiColorMode = e.target.dataset.value;
+            document.querySelectorAll('#ascii-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Chroma params
+    let chromaSlider = document.getElementById('slider-chroma-offset');
+    let chromaInput = document.getElementById('val-chroma-offset');
+    chromaSlider.addEventListener('input', (e) => {
+        chromaOffset = parseInt(e.target.value);
+        chromaInput.value = chromaOffset;
+    });
+    chromaInput.addEventListener('change', (e) => {
+        chromaOffset = Math.max(1, Math.min(25, parseInt(e.target.value) || 5));
+        chromaSlider.value = chromaOffset;
+        e.target.value = chromaOffset;
+        e.target.blur();
+    });
+    chromaInput.addEventListener('keydown', (e) => { e.stopPropagation(); });
+
+    // Atkinson color mode
+    document.querySelectorAll('#atkinson-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            atkinsonColorMode = e.target.dataset.value;
+            document.querySelectorAll('#atkinson-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // --- High-impact FX params ---
+    function wireSlider(sliderId, inputId, setter) {
+        let sl = document.getElementById(sliderId);
+        let inp = document.getElementById(inputId);
+        sl.addEventListener('input', (e) => { let v = parseFloat(e.target.value); setter(v); inp.value = v; });
+        inp.addEventListener('change', (e) => {
+            let v = parseFloat(e.target.value) || 0;
+            v = Math.max(parseFloat(sl.min), Math.min(parseFloat(sl.max), v));
+            setter(v); sl.value = v; e.target.value = v; e.target.blur();
+        });
+        inp.addEventListener('keydown', (e) => { e.stopPropagation(); });
+    }
+
+    wireSlider('slider-scan-intensity', 'val-scan-intensity', v => scanIntensity = v);
+    wireSlider('slider-scan-count', 'val-scan-count', v => scanCount = v);
+    wireSlider('slider-vig-intensity', 'val-vig-intensity', v => vigIntensity = v);
+    wireSlider('slider-vig-radius', 'val-vig-radius', v => vigRadius = v);
+    wireSlider('slider-grain-intensity', 'val-grain-intensity', v => grainIntensity = v);
+    wireSlider('slider-grain-size', 'val-grain-size', v => grainSize = v);
+    wireSlider('slider-bloom-intensity', 'val-bloom-intensity', v => bloomIntensity = v);
+    wireSlider('slider-bloom-radius', 'val-bloom-radius', v => bloomRadius = v);
+    wireSlider('slider-bloom-thresh', 'val-bloom-thresh', v => bloomThreshold = v);
+    wireSlider('slider-tint-intensity', 'val-tint-intensity', v => tintIntensity = v);
+    wireSlider('slider-sepia-intensity', 'val-sepia-intensity', v => sepiaIntensity = v);
+
+    // Grain color mode
+    document.querySelectorAll('#grain-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            grainColorMode = e.target.dataset.value;
+            document.querySelectorAll('#grain-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Tint preset
+    document.querySelectorAll('#tint-preset-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            tintPreset = e.target.dataset.value;
+            document.querySelectorAll('#tint-preset-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    wireSlider('slider-pixel-size', 'val-pixel-size', v => pixelSize = v);
+    wireSlider('slider-wave-amp', 'val-wave-amp', v => waveAmp = v);
+    wireSlider('slider-wave-freq', 'val-wave-freq', v => waveFreq = v);
+    wireSlider('slider-wave-speed', 'val-wave-speed', v => waveSpeed = v);
+    wireSlider('slider-glitch-intensity', 'val-glitch-intensity', v => glitchIntensity = v);
+    wireSlider('slider-glitch-freq', 'val-glitch-freq', v => glitchFreq = v);
+    wireSlider('slider-jitter-intensity', 'val-jitter-intensity', v => jitterIntensity = v);
+    wireSlider('slider-noise-intensity', 'val-noise-intensity', v => noiseIntensity = v);
+    wireSlider('slider-noise-scale', 'val-noise-scale', v => noiseScale = v);
+    wireSlider('slider-curve-intensity', 'val-curve-intensity', v => curveIntensity = v);
+    wireSlider('slider-bri', 'val-bri', v => briValue = v);
+    wireSlider('slider-con', 'val-con', v => conValue = v);
+    wireSlider('slider-sat', 'val-sat', v => satValue = v);
+    wireSlider('slider-grid-scale', 'val-grid-scale', v => gridScale = v);
+    wireSlider('slider-grid-width', 'val-grid-width', v => gridWidth = v);
+    wireSlider('slider-grid-opacity', 'val-grid-opacity', v => gridOpacity = v);
+    wireSlider('slider-dots-angle', 'val-dots-angle', v => dotsAngle = v);
+    wireSlider('slider-dots-scale', 'val-dots-scale', v => dotsScale = v);
+    wireSlider('slider-mblur-intensity', 'val-mblur-intensity', v => mblurIntensity = v);
+    wireSlider('slider-mblur-angle', 'val-mblur-angle', v => mblurAngle = v);
+    wireSlider('slider-palette-intensity', 'val-palette-intensity', v => paletteIntensity = v);
+
+    // Noise color mode
+    document.querySelectorAll('#noise-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            noiseColorMode = e.target.dataset.value;
+            document.querySelectorAll('#noise-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Palette preset
+    document.querySelectorAll('#palette-preset-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            palettePreset = e.target.dataset.value;
+            document.querySelectorAll('#palette-preset-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
 }
 
 function updateButtonStates() {
@@ -1296,18 +2232,323 @@ function updateButtonStates() {
         if (autoGainEnabled === isOn) btn.classList.add('active');
         else btn.classList.remove('active');
     });
+
+    // Effect cards
+    updateEffectCardStates();
+
+    // FX Layer toggle
+    ui.fxLayerButtons.forEach(btn => {
+        let isAll = btn.dataset.value === 'all';
+        if (fxLayerAll === isAll) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+}
+
+function updateFxParamVisibility() {
+    const map = {
+        ascii: 'fx-params-ascii', chroma: 'fx-params-chroma', atkinson: 'fx-params-atkinson',
+        scanlines: 'fx-params-scanlines', vignette: 'fx-params-vignette', grain: 'fx-params-grain',
+        bloom: 'fx-params-bloom', tint: 'fx-params-tint', sepia: 'fx-params-sepia',
+        pixel: 'fx-params-pixel', wave: 'fx-params-wave', glitch: 'fx-params-glitch',
+        jitter: 'fx-params-jitter', noise: 'fx-params-noise', curve: 'fx-params-curve',
+        bricon: 'fx-params-bricon', grid: 'fx-params-grid', dots: 'fx-params-dots',
+        mblur: 'fx-params-mblur', palette: 'fx-params-palette'
+    };
+    for (let [fx, id] of Object.entries(map)) {
+        let el = document.getElementById(id);
+        if (el) el.classList.toggle('visible', activeEffects.has(fx));
+    }
+}
+
+// ─── Effect Card States ───
+function updateEffectCardStates() {
+    ui.fxCards.forEach(card => {
+        let name = card.dataset.effect;
+        let cat = card.dataset.cat;
+        card.classList.remove('active-color', 'active-distortion', 'active-pattern', 'active-overlay');
+        if (activeEffects.has(name)) {
+            card.classList.add('active-' + cat);
+        }
+    });
+}
+
+// ─── Param Drawer ───
+function openParamDrawer(effectName) {
+    let paramGroup = document.getElementById('fx-params-' + effectName);
+    if (!paramGroup) { closeParamDrawer(); return; }
+    selectedDrawerEffect = effectName;
+    ui.drawerTitle.textContent = effectName.toUpperCase();
+    ui.drawerParams.innerHTML = '';
+    // Clone param group content into drawer
+    let clone = paramGroup.cloneNode(true);
+    clone.style.display = 'block';
+    clone.classList.add('visible');
+    ui.drawerParams.appendChild(clone);
+    ui.paramDrawer.classList.add('open');
+    // Re-wire cloned sliders
+    rewireDrawerSliders(clone, effectName);
+}
+
+function closeParamDrawer() {
+    ui.paramDrawer.classList.remove('open');
+    selectedDrawerEffect = null;
+}
+
+function rewireDrawerSliders(container, effectName) {
+    // Re-wire all range inputs inside the cloned drawer content
+    container.querySelectorAll('input[type="range"]').forEach(sl => {
+        let origId = sl.id;
+        let origSlider = document.querySelector('#fx-param-templates #' + origId);
+        if (origSlider) sl.value = origSlider.value;
+        sl.addEventListener('input', () => {
+            // Sync to the original hidden slider and trigger its logic
+            if (origSlider) {
+                origSlider.value = sl.value;
+                origSlider.dispatchEvent(new Event('input'));
+            }
+        });
+    });
+    container.querySelectorAll('input[type="number"]').forEach(inp => {
+        let origId = inp.id;
+        let origInput = document.querySelector('#fx-param-templates #' + origId);
+        if (origInput) inp.value = origInput.value;
+        inp.addEventListener('change', (e) => {
+            if (origInput) {
+                origInput.value = e.target.value;
+                origInput.dispatchEvent(new Event('change'));
+                // Sync the range slider too
+                let sl = container.querySelector('input[type="range"][id="' + origId.replace('val-', 'slider-') + '"]');
+                if (sl) sl.value = e.target.value;
+            }
+        });
+        inp.addEventListener('keydown', (e) => { e.stopPropagation(); });
+    });
+    container.querySelectorAll('.selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            let origBtnContainer = document.querySelector('#fx-param-templates #' + e.target.parentElement.id);
+            if (origBtnContainer) {
+                let origBtn = origBtnContainer.querySelector(`[data-value="${e.target.dataset.value}"]`);
+                if (origBtn) origBtn.click();
+            }
+            e.target.parentElement.querySelectorAll('.selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+}
+
+// ─── Timeline ───
+function seekToTimelinePosition(clientX) {
+    if (!videoDuration || !videoEl) return;
+    let rect = ui.tlTrack.getBoundingClientRect();
+    let ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    let seekTime = ratio * videoDuration;
+    videoEl.time(seekTime);
+    if (audioElement && audioLoaded) audioElement.currentTime = seekTime;
+}
+
+function updateTimelinePlayhead() {
+    if (!ui.tlPlayhead || !videoDuration) return;
+    let currentTime = videoEl.time();
+    let ratio = currentTime / videoDuration;
+    ui.tlPlayhead.style.left = (ratio * 100) + '%';
+    ui.tlTime.textContent = formatTime(currentTime) + ' / ' + formatTime(videoDuration);
+}
+
+function formatTime(s) {
+    let m = Math.floor(s / 60);
+    let sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+}
+
+function showTimeline() {
+    ui.tlContainer.classList.remove('hidden');
+}
+function hideTimeline() {
+    ui.tlContainer.classList.add('hidden');
+}
+
+// ─── Timeline Segments ───
+function captureEffectParams(effectName) {
+    let params = {};
+    let map = FX_PARAM_MAP[effectName];
+    if (map) map.forEach(p => { params[p.v] = p.g(); });
+    return params;
+}
+
+function restoreEffectParams(effectName, params) {
+    let map = FX_PARAM_MAP[effectName];
+    if (map) map.forEach(p => { if (params[p.v] !== undefined) p.s(params[p.v]); });
+}
+
+function addTimelineSegment(effectName) {
+    if (!videoDuration) return;
+    let currentTime = videoEl ? videoEl.time() : 0;
+    let endTime = Math.min(currentTime + 5, videoDuration);
+    let seg = {
+        id: nextSegId++,
+        effect: effectName,
+        startTime: currentTime,
+        endTime: endTime,
+        params: captureEffectParams(effectName),
+        lane: 0,
+        color: FX_CAT_COLORS[FX_CATEGORIES[effectName]] || '#888'
+    };
+    timelineSegments.push(seg);
+    assignLanes();
+    renderTimelineSegments();
+}
+
+function assignLanes() {
+    timelineSegments.sort((a, b) => a.startTime - b.startTime);
+    let lanes = [];
+    for (let seg of timelineSegments) {
+        let placed = false;
+        for (let i = 0; i < lanes.length; i++) {
+            if (seg.startTime >= lanes[i]) {
+                seg.lane = i;
+                lanes[i] = seg.endTime;
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) {
+            seg.lane = lanes.length;
+            lanes.push(seg.endTime);
+        }
+    }
+}
+
+function renderTimelineSegments() {
+    ui.tlTrack.querySelectorAll('.timeline-segment').forEach(el => el.remove());
+    if (!videoDuration) return;
+    for (let seg of timelineSegments) {
+        let el = document.createElement('div');
+        el.className = 'timeline-segment';
+        el.dataset.id = seg.id;
+        let left = (seg.startTime / videoDuration) * 100;
+        let w = ((seg.endTime - seg.startTime) / videoDuration) * 100;
+        el.style.left = left + '%';
+        el.style.width = Math.max(w, 0.5) + '%';
+        el.style.top = (seg.lane * 12 + 2) + 'px';
+        el.style.background = seg.color;
+        el.textContent = seg.effect.toUpperCase().slice(0, 6);
+        if (selectedSegment && selectedSegment.id === seg.id) el.classList.add('selected');
+        // Left/right resize handles
+        let hl = document.createElement('div');
+        hl.className = 'seg-handle seg-handle-left';
+        let hr = document.createElement('div');
+        hr.className = 'seg-handle seg-handle-right';
+        el.appendChild(hl);
+        el.appendChild(hr);
+        // Click to select
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedSegment = seg;
+            openParamDrawer(seg.effect);
+            renderTimelineSegments();
+        });
+        // Double-click to delete
+        el.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            timelineSegments = timelineSegments.filter(s => s.id !== seg.id);
+            if (selectedSegment && selectedSegment.id === seg.id) selectedSegment = null;
+            assignLanes();
+            renderTimelineSegments();
+        });
+        // Drag to move
+        setupSegmentDrag(el, seg);
+        ui.tlTrack.appendChild(el);
+    }
+}
+
+function setupSegmentDrag(el, seg) {
+    let dragType = null; // 'move', 'left', 'right'
+    let startX, origStart, origEnd;
+
+    el.querySelector('.seg-handle-left').addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        dragType = 'left';
+        startX = e.clientX;
+        origStart = seg.startTime;
+        origEnd = seg.endTime;
+        startDrag();
+    });
+    el.querySelector('.seg-handle-right').addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        dragType = 'right';
+        startX = e.clientX;
+        origStart = seg.startTime;
+        origEnd = seg.endTime;
+        startDrag();
+    });
+    el.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('seg-handle')) return;
+        e.stopPropagation();
+        dragType = 'move';
+        startX = e.clientX;
+        origStart = seg.startTime;
+        origEnd = seg.endTime;
+        startDrag();
+    });
+
+    function startDrag() {
+        function onMove(e) {
+            let rect = ui.tlTrack.getBoundingClientRect();
+            let dx = (e.clientX - startX) / rect.width * videoDuration;
+            if (dragType === 'move') {
+                let dur = origEnd - origStart;
+                let newStart = Math.max(0, Math.min(origStart + dx, videoDuration - dur));
+                seg.startTime = newStart;
+                seg.endTime = newStart + dur;
+            } else if (dragType === 'left') {
+                seg.startTime = Math.max(0, Math.min(origStart + dx, seg.endTime - 0.1));
+            } else if (dragType === 'right') {
+                seg.endTime = Math.max(seg.startTime + 0.1, Math.min(origEnd + dx, videoDuration));
+            }
+            assignLanes();
+            renderTimelineSegments();
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }
+}
+
+// ─── Timeline Effect Application ───
+function applyTimelineEffects() {
+    if (timelineSegments.length === 0) return;
+    let currentTime = videoEl.time();
+    let active = timelineSegments.filter(s => currentTime >= s.startTime && currentTime <= s.endTime);
+    if (active.length === 0) return;
+    // Sort by pipeline order
+    const catOrder = ['color', 'distortion', 'pattern', 'overlay'];
+    active.sort((a, b) => catOrder.indexOf(FX_CATEGORIES[a.effect]) - catOrder.indexOf(FX_CATEGORIES[b.effect]));
+    for (let seg of active) {
+        let saved = captureEffectParams(seg.effect);
+        restoreEffectParams(seg.effect, seg.params);
+        let fn = EFFECT_FN_MAP[seg.effect];
+        if (fn) fn();
+        restoreEffectParams(seg.effect, saved);
+    }
 }
 
 function togglePlay() {
     if (videoEl && videoLoaded) {
         videoPlaying = !videoPlaying;
+        let pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        let playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
         if (videoPlaying) {
              videoEl.loop();
-             ui.btnPlay.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+             ui.btnPlay.innerHTML = pauseIcon;
+             ui.tlBtnPlay.innerHTML = pauseIcon;
              if (audioElement && audioLoaded) { audioElement.play(); audioPlaying = true; }
         } else {
              videoEl.pause();
-             ui.btnPlay.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+             ui.btnPlay.innerHTML = playIcon;
+             ui.tlBtnPlay.innerHTML = playIcon;
              if (audioElement && audioLoaded) { audioElement.pause(); audioPlaying = false; }
         }
     }
@@ -1351,6 +2592,8 @@ function startWebcam() {
     if (videoEl) { videoEl.stop(); videoEl.remove(); videoEl = null; }
     usingWebcam = true;
     videoLoaded = false;
+    videoDuration = 0;
+    hideTimeline();
     ui.webcamBtn.classList.add('active');
     ui.fileName.innerText = 'webcam active';
     currentMode = 1;
@@ -1360,7 +2603,9 @@ function startWebcam() {
         videoLoaded = true;
         videoPlaying = true;
         updateButtonStates();
-        ui.btnPlay.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        let pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+        ui.btnPlay.innerHTML = pauseIcon;
+        ui.tlBtnPlay.innerHTML = pauseIcon;
     });
 }
 
@@ -1377,7 +2622,9 @@ function stopWebcam() {
     videoPlaying = false;
     ui.webcamBtn.classList.remove('active');
     ui.fileName.innerText = 'mp4 or mov';
-    ui.btnPlay.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+    let playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+    ui.btnPlay.innerHTML = playIcon;
+    ui.tlBtnPlay.innerHTML = playIcon;
 }
 
 function handleFile(event) {
@@ -1393,9 +2640,904 @@ function handleFile(event) {
             videoLoaded = true; videoPlaying = true;
             currentMode = 1;
             updateButtonStates();
-            ui.btnPlay.innerHTML = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            let pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            ui.btnPlay.innerHTML = pauseIcon;
+            ui.tlBtnPlay.innerHTML = pauseIcon;
+            // Capture duration for timeline
+            videoEl.elt.addEventListener('loadedmetadata', () => {
+                videoDuration = videoEl.elt.duration;
+                showTimeline();
+                renderTimelineSegments();
+            });
+            // Fallback if metadata already loaded
+            if (videoEl.elt.duration) {
+                videoDuration = videoEl.elt.duration;
+                showTimeline();
+            }
         });
     }
+}
+
+// ─── Visual Effects ───
+
+function applyActiveEffects() {
+    if (activeEffects.size === 0) return;
+    // Color adjustments
+    if (activeEffects.has('sepia')) applySepia();
+    if (activeEffects.has('tint')) applyTint();
+    if (activeEffects.has('palette')) applyPalette();
+    if (activeEffects.has('bricon')) applyBriCon();
+    // Pixel distortion
+    if (activeEffects.has('chroma')) applyChromatic();
+    if (activeEffects.has('curve')) applyCurve();
+    if (activeEffects.has('wave')) applyWave();
+    if (activeEffects.has('jitter')) applyJitter();
+    if (activeEffects.has('mblur')) applyMblur();
+    // Pattern effects
+    if (activeEffects.has('bloom')) applyBloom();
+    if (activeEffects.has('dither')) applyDithering();
+    if (activeEffects.has('atkinson')) applyAtkinson();
+    if (activeEffects.has('halftone')) applyHalftone();
+    if (activeEffects.has('pxsort')) applyPixelSort();
+    if (activeEffects.has('pixel')) applyPixelate();
+    // Overlays
+    if (activeEffects.has('ascii')) applyASCII();
+    if (activeEffects.has('glitch')) applyGlitch();
+    if (activeEffects.has('noise')) applyNoise();
+    if (activeEffects.has('grain')) applyGrain();
+    if (activeEffects.has('dots')) applyDots();
+    if (activeEffects.has('grid')) applyGrid();
+    if (activeEffects.has('scanlines')) applyScanlines();
+    if (activeEffects.has('vignette')) applyVignette();
+}
+
+function applyDithering() {
+    loadPixels();
+    const bayerMatrix = [
+        [ 0, 8, 2, 10],
+        [12, 4, 14,  6],
+        [ 3, 11, 1,  9],
+        [15, 7, 13,  5]
+    ];
+    let d = pixelDensity();
+    let totalW = width * d;
+    let totalH = height * d;
+    for (let y = 0; y < totalH; y++) {
+        for (let x = 0; x < totalW; x++) {
+            let idx = (x + y * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            let threshold = (bayerMatrix[y % 4][x % 4] / 16) * 255;
+            let val = gray > threshold ? 255 : 0;
+            pixels[idx] = val;
+            pixels[idx+1] = val;
+            pixels[idx+2] = val;
+        }
+    }
+    updatePixels();
+}
+
+function applyHalftone() {
+    let dotSpacing = 6;
+    let d = pixelDensity();
+    loadPixels();
+    let dots = [];
+    for (let y = Math.floor(videoY); y < videoY + videoH; y += dotSpacing) {
+        for (let x = Math.floor(videoX); x < videoX + videoW; x += dotSpacing) {
+            let px = Math.floor(x * d);
+            let py = Math.floor(y * d);
+            let idx = (px + py * width * d) * 4;
+            let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+            let bri = 0.299 * r + 0.587 * g + 0.114 * b;
+            dots.push({ x, y, bri });
+        }
+    }
+    updatePixels();
+    push();
+    noStroke();
+    fill(255, 220);
+    rectMode(CORNER);
+    rect(videoX, videoY, videoW, videoH);
+    fill(0);
+    let maxR = dotSpacing * 0.48;
+    for (let dot of dots) {
+        let r = map(dot.bri, 0, 255, maxR, 0);
+        if (r > 0.3) ellipse(dot.x, dot.y, r * 2, r * 2);
+    }
+    pop();
+}
+
+function applyPixelSort() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    loadPixels();
+    let startX = Math.floor(videoX * d);
+    let endX = Math.floor((videoX + videoW) * d);
+    let startY = Math.floor(videoY * d);
+    let endY = Math.floor((videoY + videoH) * d);
+    for (let y = startY; y < endY; y += 2) {
+        let run = [];
+        let runStartPositions = [];
+        for (let x = startX; x <= endX; x++) {
+            let idx = (x + y * totalW) * 4;
+            let bri = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+            if (bri > 30 && bri < 220 && x < endX) {
+                run.push({ r: pixels[idx], g: pixels[idx+1], b: pixels[idx+2], bri });
+                runStartPositions.push(x);
+            } else {
+                if (run.length > 3) {
+                    run.sort((a, b) => a.bri - b.bri);
+                    for (let i = 0; i < run.length; i++) {
+                        let idx2 = (runStartPositions[i] + y * totalW) * 4;
+                        pixels[idx2] = run[i].r;
+                        pixels[idx2+1] = run[i].g;
+                        pixels[idx2+2] = run[i].b;
+                    }
+                }
+                run = [];
+                runStartPositions = [];
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyASCII() {
+    const chars = ' .,:;+*?%S#@';
+    let d = pixelDensity();
+    let totalW = width * d;
+    let cellD = asciiCellSize * d;
+    loadPixels();
+    let cells = [];
+    let sx = Math.floor(videoX * d);
+    let sy = Math.floor(videoY * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    for (let cy = sy; cy < ey; cy += cellD) {
+        for (let cx = sx; cx < ex; cx += cellD) {
+            let mx = Math.min(cx + Math.floor(cellD / 2), totalW - 1);
+            let my = Math.min(cy + Math.floor(cellD / 2), totalW * (height * d) - 1);
+            let idx = (mx + my * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
+            let bri = 0.299 * r + 0.587 * g + 0.114 * b;
+            cells.push({ x: cx / d, y: cy / d, r, g, b, bri });
+        }
+    }
+    updatePixels();
+    push();
+    noStroke();
+    fill(0);
+    rectMode(CORNER);
+    rect(videoX, videoY, videoW, videoH);
+    textFont('Courier New');
+    textSize(asciiCellSize * 1.2);
+    textAlign(LEFT, TOP);
+    for (let cell of cells) {
+        let ci = Math.floor(cell.bri / 255 * (chars.length - 0.01));
+        ci = Math.max(0, Math.min(ci, chars.length - 1));
+        if (asciiColorMode === 'color') {
+            fill(cell.r, cell.g, cell.b);
+        } else {
+            fill(cell.bri);
+        }
+        text(chars[ci], cell.x, cell.y);
+    }
+    pop();
+}
+
+function applyChromatic() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let totalH = height * d;
+    let offset = chromaOffset * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    // Copy only the video region rows for performance
+    for (let y = sy; y < ey; y++) {
+        let rowStart = (sx + y * totalW) * 4;
+        let rowEnd = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(rowStart, rowEnd), rowStart);
+    }
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            // Red: sample from right
+            let rx = Math.min(x + offset, ex - 1);
+            let rIdx = (rx + y * totalW) * 4;
+            pixels[idx] = original[rIdx];
+            // Green: keep
+            pixels[idx + 1] = original[idx + 1];
+            // Blue: sample from left
+            let bx = Math.max(x - offset, sx);
+            let bIdx = (bx + y * totalW) * 4;
+            pixels[idx + 2] = original[bIdx + 2];
+        }
+    }
+    updatePixels();
+}
+
+function applyAtkinson() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    let regionW = ex - sx;
+    let regionH = ey - sy;
+    loadPixels();
+
+    if (atkinsonColorMode === 'bw') {
+        let gray = new Float32Array(regionW * regionH);
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
+                gray[rx + ry * regionW] = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+            }
+        }
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let i = rx + ry * regionW;
+                let old = gray[i];
+                let nv = old > 128 ? 255 : 0;
+                gray[i] = nv;
+                let err = (old - nv) / 8;
+                if (rx + 1 < regionW) gray[i + 1] += err;
+                if (rx + 2 < regionW) gray[i + 2] += err;
+                if (ry + 1 < regionH) {
+                    if (rx - 1 >= 0) gray[i + regionW - 1] += err;
+                    gray[i + regionW] += err;
+                    if (rx + 1 < regionW) gray[i + regionW + 1] += err;
+                }
+                if (ry + 2 < regionH) gray[i + regionW * 2] += err;
+            }
+        }
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
+                let val = Math.max(0, Math.min(255, Math.round(gray[rx + ry * regionW])));
+                pixels[idx] = val;
+                pixels[idx + 1] = val;
+                pixels[idx + 2] = val;
+            }
+        }
+    } else {
+        // Color mode: dither each channel independently
+        let rCh = new Float32Array(regionW * regionH);
+        let gCh = new Float32Array(regionW * regionH);
+        let bCh = new Float32Array(regionW * regionH);
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
+                rCh[rx + ry * regionW] = pixels[idx];
+                gCh[rx + ry * regionW] = pixels[idx + 1];
+                bCh[rx + ry * regionW] = pixels[idx + 2];
+            }
+        }
+        [rCh, gCh, bCh].forEach(ch => {
+            for (let ry = 0; ry < regionH; ry++) {
+                for (let rx = 0; rx < regionW; rx++) {
+                    let i = rx + ry * regionW;
+                    let old = ch[i];
+                    let nv = old > 128 ? 255 : 0;
+                    ch[i] = nv;
+                    let err = (old - nv) / 8;
+                    if (rx + 1 < regionW) ch[i + 1] += err;
+                    if (rx + 2 < regionW) ch[i + 2] += err;
+                    if (ry + 1 < regionH) {
+                        if (rx - 1 >= 0) ch[i + regionW - 1] += err;
+                        ch[i + regionW] += err;
+                        if (rx + 1 < regionW) ch[i + regionW + 1] += err;
+                    }
+                    if (ry + 2 < regionH) ch[i + regionW * 2] += err;
+                }
+            }
+        });
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
+                let i = rx + ry * regionW;
+                pixels[idx] = Math.max(0, Math.min(255, Math.round(rCh[i])));
+                pixels[idx + 1] = Math.max(0, Math.min(255, Math.round(gCh[i])));
+                pixels[idx + 2] = Math.max(0, Math.min(255, Math.round(bCh[i])));
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyScanlines() {
+    let intensity = scanIntensity / 100;
+    let lineSpacing = Math.max(1, Math.round(videoH / scanCount));
+    push();
+    stroke(0, intensity * 255);
+    strokeWeight(1);
+    for (let y = Math.floor(videoY); y < videoY + videoH; y += lineSpacing) {
+        line(videoX, y, videoX + videoW, y);
+    }
+    pop();
+}
+
+function applyVignette() {
+    let intensity = vigIntensity / 100;
+    let radius = vigRadius / 100;
+    let cx = videoX + videoW / 2;
+    let cy = videoY + videoH / 2;
+    let maxDim = Math.max(videoW, videoH);
+    push();
+    noStroke();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(videoX, videoY, videoW, videoH);
+    drawingContext.clip();
+    let grad = drawingContext.createRadialGradient(cx, cy, maxDim * radius * 0.4, cx, cy, maxDim * 0.65);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, `rgba(0,0,0,${intensity})`);
+    drawingContext.fillStyle = grad;
+    drawingContext.fillRect(videoX, videoY, videoW, videoH);
+    drawingContext.restore();
+    pop();
+}
+
+function applyGrain() {
+    let intensity = grainIntensity / 100;
+    let sz = Math.max(1, Math.round(grainSize / 10));
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    let amp = intensity * 80;
+    for (let y = sy; y < ey; y += sz) {
+        for (let x = sx; x < ex; x += sz) {
+            let noise = (Math.random() - 0.5) * amp;
+            let nr = 0, ng = 0, nb = 0;
+            if (grainColorMode === 'color') {
+                nr = (Math.random() - 0.5) * amp;
+                ng = (Math.random() - 0.5) * amp;
+                nb = (Math.random() - 0.5) * amp;
+            } else {
+                nr = ng = nb = noise;
+            }
+            for (let dy = 0; dy < sz && (y + dy) < ey; dy++) {
+                for (let dx = 0; dx < sz && (x + dx) < ex; dx++) {
+                    let idx = ((x + dx) + (y + dy) * totalW) * 4;
+                    pixels[idx] = Math.max(0, Math.min(255, pixels[idx] + nr));
+                    pixels[idx + 1] = Math.max(0, Math.min(255, pixels[idx + 1] + ng));
+                    pixels[idx + 2] = Math.max(0, Math.min(255, pixels[idx + 2] + nb));
+                }
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyBloom() {
+    let intensity = bloomIntensity / 100;
+    let rad = Math.max(1, Math.round(bloomRadius / 10));
+    let thresh = bloomThreshold / 100 * 255;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    // Extract bright pixels into a separate buffer
+    let regionW = ex - sx;
+    let regionH = ey - sy;
+    let bright = new Float32Array(regionW * regionH * 3);
+    for (let y = 0; y < regionH; y++) {
+        for (let x = 0; x < regionW; x++) {
+            let idx = ((sx + x) + (sy + y) * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
+            let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            let bi = (x + y * regionW) * 3;
+            if (lum > thresh) {
+                bright[bi] = r; bright[bi + 1] = g; bright[bi + 2] = b;
+            }
+        }
+    }
+    // Simple box blur on bright pixels (horizontal + vertical)
+    let tmp = new Float32Array(bright.length);
+    // Horizontal pass
+    for (let y = 0; y < regionH; y++) {
+        for (let x = 0; x < regionW; x++) {
+            let sr = 0, sg = 0, sb = 0, cnt = 0;
+            for (let k = -rad; k <= rad; k++) {
+                let nx = x + k;
+                if (nx >= 0 && nx < regionW) {
+                    let bi = (nx + y * regionW) * 3;
+                    sr += bright[bi]; sg += bright[bi + 1]; sb += bright[bi + 2]; cnt++;
+                }
+            }
+            let bi = (x + y * regionW) * 3;
+            tmp[bi] = sr / cnt; tmp[bi + 1] = sg / cnt; tmp[bi + 2] = sb / cnt;
+        }
+    }
+    // Vertical pass
+    for (let y = 0; y < regionH; y++) {
+        for (let x = 0; x < regionW; x++) {
+            let sr = 0, sg = 0, sb = 0, cnt = 0;
+            for (let k = -rad; k <= rad; k++) {
+                let ny = y + k;
+                if (ny >= 0 && ny < regionH) {
+                    let bi = (x + ny * regionW) * 3;
+                    sr += tmp[bi]; sg += tmp[bi + 1]; sb += tmp[bi + 2]; cnt++;
+                }
+            }
+            let bi = (x + y * regionW) * 3;
+            bright[bi] = sr / cnt; bright[bi + 1] = sg / cnt; bright[bi + 2] = sb / cnt;
+        }
+    }
+    // Additive blend back
+    for (let y = 0; y < regionH; y++) {
+        for (let x = 0; x < regionW; x++) {
+            let idx = ((sx + x) + (sy + y) * totalW) * 4;
+            let bi = (x + y * regionW) * 3;
+            pixels[idx] = Math.min(255, pixels[idx] + bright[bi] * intensity);
+            pixels[idx + 1] = Math.min(255, pixels[idx + 1] + bright[bi + 1] * intensity);
+            pixels[idx + 2] = Math.min(255, pixels[idx + 2] + bright[bi + 2] * intensity);
+        }
+    }
+    updatePixels();
+}
+
+function applyTint() {
+    let intensity = tintIntensity / 100;
+    let tints = {
+        green: [0, 255, 0], amber: [255, 191, 0],
+        cyan: [0, 255, 255], blue: [0, 100, 255]
+    };
+    let tc = tints[tintPreset] || tints.green;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let lum = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+            let lumN = lum / 255;
+            pixels[idx] = Math.round(pixels[idx] * (1 - intensity) + tc[0] * lumN * intensity);
+            pixels[idx + 1] = Math.round(pixels[idx + 1] * (1 - intensity) + tc[1] * lumN * intensity);
+            pixels[idx + 2] = Math.round(pixels[idx + 2] * (1 - intensity) + tc[2] * lumN * intensity);
+        }
+    }
+    updatePixels();
+}
+
+function applySepia() {
+    let intensity = sepiaIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
+            let sr = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189);
+            let sg = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
+            let sb = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
+            pixels[idx] = Math.round(r * (1 - intensity) + sr * intensity);
+            pixels[idx + 1] = Math.round(g * (1 - intensity) + sg * intensity);
+            pixels[idx + 2] = Math.round(b * (1 - intensity) + sb * intensity);
+        }
+    }
+    updatePixels();
+}
+
+function applyPixelate() {
+    let sz = Math.max(2, pixelSize);
+    let d = pixelDensity();
+    let totalW = width * d;
+    let szD = sz * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    for (let y = sy; y < ey; y += szD) {
+        for (let x = sx; x < ex; x += szD) {
+            let sr = 0, sg = 0, sb = 0, cnt = 0;
+            for (let dy = 0; dy < szD && (y + dy) < ey; dy++) {
+                for (let dx = 0; dx < szD && (x + dx) < ex; dx++) {
+                    let idx = ((x + dx) + (y + dy) * totalW) * 4;
+                    sr += pixels[idx]; sg += pixels[idx+1]; sb += pixels[idx+2]; cnt++;
+                }
+            }
+            sr = Math.round(sr/cnt); sg = Math.round(sg/cnt); sb = Math.round(sb/cnt);
+            for (let dy = 0; dy < szD && (y + dy) < ey; dy++) {
+                for (let dx = 0; dx < szD && (x + dx) < ex; dx++) {
+                    let idx = ((x + dx) + (y + dy) * totalW) * 4;
+                    pixels[idx] = sr; pixels[idx+1] = sg; pixels[idx+2] = sb;
+                }
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyWave() {
+    let amp = waveAmp * 0.5;
+    let freq = waveFreq;
+    let spd = waveSpeed;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    let t = frameCount * spd * 0.05;
+    for (let y = sy; y < ey; y++) {
+        let offset = Math.round(Math.sin((y / d) * freq * 0.05 + t) * amp * d);
+        for (let x = sx; x < ex; x++) {
+            let srcX = x + offset;
+            srcX = Math.max(sx, Math.min(ex - 1, srcX));
+            let dstIdx = (x + y * totalW) * 4;
+            let srcIdx = (srcX + y * totalW) * 4;
+            pixels[dstIdx] = original[srcIdx];
+            pixels[dstIdx+1] = original[srcIdx+1];
+            pixels[dstIdx+2] = original[srcIdx+2];
+        }
+    }
+    updatePixels();
+}
+
+function applyGlitch() {
+    let intensity = glitchIntensity / 100;
+    let freq = glitchFreq / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    let maxShift = Math.round(intensity * 30 * d);
+    for (let y = sy; y < ey; y++) {
+        if (Math.random() > freq) continue;
+        let blockH = Math.floor(Math.random() * 8 * d) + 1;
+        let rShift = Math.round((Math.random() - 0.5) * maxShift * 2);
+        let bShift = Math.round((Math.random() - 0.5) * maxShift * 2);
+        for (let dy = 0; dy < blockH && (y + dy) < ey; dy++) {
+            let row = y + dy;
+            for (let x = sx; x < ex; x++) {
+                let idx = (x + row * totalW) * 4;
+                let rSrc = Math.max(sx, Math.min(ex - 1, x + rShift));
+                let bSrc = Math.max(sx, Math.min(ex - 1, x + bShift));
+                pixels[idx] = original[(rSrc + row * totalW) * 4];
+                pixels[idx + 2] = original[(bSrc + row * totalW) * 4 + 2];
+            }
+        }
+        y += blockH;
+    }
+    updatePixels();
+}
+
+function applyJitter() {
+    let intensity = jitterIntensity / 100;
+    let maxOff = Math.round(intensity * 10);
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    let offD = maxOff * d;
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    for (let y = sy; y < ey; y += 2) {
+        for (let x = sx; x < ex; x += 2) {
+            let ox = Math.round((Math.random() - 0.5) * offD * 2);
+            let oy = Math.round((Math.random() - 0.5) * offD * 2);
+            let srcX = Math.max(sx, Math.min(ex - 1, x + ox));
+            let srcY = Math.max(sy, Math.min(ey - 1, y + oy));
+            let dstIdx = (x + y * totalW) * 4;
+            let srcIdx = (srcX + srcY * totalW) * 4;
+            pixels[dstIdx] = original[srcIdx];
+            pixels[dstIdx+1] = original[srcIdx+1];
+            pixels[dstIdx+2] = original[srcIdx+2];
+            if (x + 1 < ex) {
+                pixels[dstIdx+4] = original[srcIdx];
+                pixels[dstIdx+5] = original[srcIdx+1];
+                pixels[dstIdx+6] = original[srcIdx+2];
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyNoise() {
+    let intensity = noiseIntensity / 100;
+    let sz = Math.max(1, noiseScale);
+    let d = pixelDensity();
+    let totalW = width * d;
+    let szD = sz * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    let density = intensity * 0.3;
+    for (let y = sy; y < ey; y += szD) {
+        for (let x = sx; x < ex; x += szD) {
+            if (Math.random() > density) continue;
+            let nr, ng, nb;
+            if (noiseColorMode === 'color') {
+                nr = Math.random() * 255; ng = Math.random() * 255; nb = Math.random() * 255;
+            } else {
+                nr = ng = nb = Math.random() * 255;
+            }
+            for (let dy = 0; dy < szD && (y+dy) < ey; dy++) {
+                for (let dx = 0; dx < szD && (x+dx) < ex; dx++) {
+                    let idx = ((x+dx) + (y+dy) * totalW) * 4;
+                    pixels[idx] = nr; pixels[idx+1] = ng; pixels[idx+2] = nb;
+                }
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyCurve() {
+    let intensity = curveIntensity / 100 * 0.5;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    let cx = (sx + ex) / 2;
+    let cy = (sy + ey) / 2;
+    let hw = (ex - sx) / 2;
+    let hh = (ey - sy) / 2;
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let nx = (x - cx) / hw;
+            let ny = (y - cy) / hh;
+            let r2 = nx * nx + ny * ny;
+            let factor = 1 + r2 * intensity;
+            let srcNx = nx * factor;
+            let srcNy = ny * factor;
+            let srcX = Math.round(srcNx * hw + cx);
+            let srcY = Math.round(srcNy * hh + cy);
+            let dstIdx = (x + y * totalW) * 4;
+            if (srcX >= sx && srcX < ex && srcY >= sy && srcY < ey) {
+                let srcIdx = (srcX + srcY * totalW) * 4;
+                pixels[dstIdx] = original[srcIdx];
+                pixels[dstIdx+1] = original[srcIdx+1];
+                pixels[dstIdx+2] = original[srcIdx+2];
+            } else {
+                pixels[dstIdx] = 0; pixels[dstIdx+1] = 0; pixels[dstIdx+2] = 0;
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyBriCon() {
+    let bri = briValue * 2.55;
+    let con = conValue / 100;
+    let sat = satValue / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+            r += bri; g += bri; b += bri;
+            r = (r - 128) * con + 128;
+            g = (g - 128) * con + 128;
+            b = (b - 128) * con + 128;
+            if (sat !== 1) {
+                let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = gray + (r - gray) * sat;
+                g = gray + (g - gray) * sat;
+                b = gray + (b - gray) * sat;
+            }
+            pixels[idx] = Math.max(0, Math.min(255, Math.round(r)));
+            pixels[idx+1] = Math.max(0, Math.min(255, Math.round(g)));
+            pixels[idx+2] = Math.max(0, Math.min(255, Math.round(b)));
+        }
+    }
+    updatePixels();
+}
+
+function applyGrid() {
+    let scale = gridScale;
+    let lw = gridWidth;
+    let opacity = gridOpacity / 100 * 255;
+    push();
+    stroke(255, opacity);
+    strokeWeight(lw);
+    noFill();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(videoX, videoY, videoW, videoH);
+    drawingContext.clip();
+    for (let x = videoX; x <= videoX + videoW; x += scale) {
+        line(x, videoY, x, videoY + videoH);
+    }
+    for (let y = videoY; y <= videoY + videoH; y += scale) {
+        line(videoX, y, videoX + videoW, y);
+    }
+    drawingContext.restore();
+    pop();
+}
+
+function applyDots() {
+    let angle = dotsAngle * Math.PI / 180;
+    let sc = Math.max(2, dotsScale);
+    push();
+    noStroke();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(videoX, videoY, videoW, videoH);
+    drawingContext.clip();
+    let cxV = videoX + videoW / 2;
+    let cyV = videoY + videoH / 2;
+    let maxDim = Math.max(videoW, videoH) * 1.5;
+    let cosA = Math.cos(angle), sinA = Math.sin(angle);
+    loadPixels();
+    let d = pixelDensity();
+    let totalW = width * d;
+    fill(255, 200);
+    rectMode(CORNER);
+    rect(videoX, videoY, videoW, videoH);
+    for (let gy = -maxDim / 2; gy < maxDim / 2; gy += sc) {
+        for (let gx = -maxDim / 2; gx < maxDim / 2; gx += sc) {
+            let rx = gx * cosA - gy * sinA + cxV;
+            let ry = gx * sinA + gy * cosA + cyV;
+            if (rx < videoX - sc || rx > videoX + videoW + sc) continue;
+            if (ry < videoY - sc || ry > videoY + videoH + sc) continue;
+            let px = Math.floor(rx * d);
+            let py = Math.floor(ry * d);
+            px = Math.max(0, Math.min(totalW - 1, px));
+            py = Math.max(0, Math.min(height * d - 1, py));
+            let idx = (px + py * totalW) * 4;
+            let bri = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+            let dotR = map(bri, 0, 255, sc * 0.45, 0);
+            if (dotR > 0.3) {
+                fill(0);
+                ellipse(rx, ry, dotR * 2, dotR * 2);
+            }
+        }
+    }
+    updatePixels();
+    drawingContext.restore();
+    pop();
+}
+
+function applyMblur() {
+    let intensity = mblurIntensity / 100;
+    let angle = mblurAngle * Math.PI / 180;
+    let samples = 8;
+    let maxOff = intensity * 15;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    let dx = Math.cos(angle);
+    let dy = Math.sin(angle);
+    loadPixels();
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    for (let y = sy; y < ey; y += 2) {
+        for (let x = sx; x < ex; x += 2) {
+            let sr = 0, sg = 0, sb = 0;
+            for (let s = 0; s < samples; s++) {
+                let t = (s / (samples - 1) - 0.5) * maxOff * d;
+                let sampleX = Math.round(x + dx * t);
+                let sampleY = Math.round(y + dy * t);
+                sampleX = Math.max(sx, Math.min(ex - 1, sampleX));
+                sampleY = Math.max(sy, Math.min(ey - 1, sampleY));
+                let idx = (sampleX + sampleY * totalW) * 4;
+                sr += original[idx]; sg += original[idx+1]; sb += original[idx+2];
+            }
+            sr = Math.round(sr / samples);
+            sg = Math.round(sg / samples);
+            sb = Math.round(sb / samples);
+            for (let oy = 0; oy < 2 && (y+oy) < ey; oy++) {
+                for (let ox = 0; ox < 2 && (x+ox) < ex; ox++) {
+                    let idx = ((x+ox) + (y+oy) * totalW) * 4;
+                    pixels[idx] = sr; pixels[idx+1] = sg; pixels[idx+2] = sb;
+                }
+            }
+        }
+    }
+    updatePixels();
+}
+
+function applyPalette() {
+    const palettes = {
+        noir: [[0,0,0],[255,255,255]],
+        terminal: [[0,17,0],[0,255,0]],
+        gameboy: [[15,56,15],[48,98,48],[139,172,15],[155,188,15]],
+        synthwave: [[18,4,88],[123,44,191],[224,64,251],[255,110,199],[255,245,157]],
+        cyberpunk: [[13,2,33],[38,20,71],[107,45,92],[247,37,133],[76,201,240]],
+        amber: [[26,15,0],[61,36,0],[122,72,0],[204,122,0],[255,204,102]],
+        arctic: [[10,10,20],[26,42,74],[58,90,138],[106,154,202],[202,232,255]],
+        rose: [[42,26,26],[107,64,64],[183,110,121],[232,180,188],[255,240,245]],
+        neon: [[13,13,13],[255,7,58],[57,255,20],[0,240,255],[255,255,255]],
+        forest: [[26,46,26],[45,74,45],[74,124,74],[122,179,122],[200,230,200]],
+        sunset: [[26,20,35],[74,25,66],[179,57,81],[245,169,98],[255,244,224]],
+        ocean: [[10,26,26],[26,58,58],[42,106,90],[74,154,122],[138,218,170]]
+    };
+    let pal = palettes[palettePreset] || palettes.noir;
+    let intensity = paletteIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
+    loadPixels();
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+            let minDist = Infinity, nearest = pal[0];
+            for (let c of pal) {
+                let dr = r - c[0], dg = g - c[1], db = b - c[2];
+                let dist = dr*dr + dg*dg + db*db;
+                if (dist < minDist) { minDist = dist; nearest = c; }
+            }
+            pixels[idx] = Math.round(r * (1-intensity) + nearest[0] * intensity);
+            pixels[idx+1] = Math.round(g * (1-intensity) + nearest[1] * intensity);
+            pixels[idx+2] = Math.round(b * (1-intensity) + nearest[2] * intensity);
+        }
+    }
+    updatePixels();
 }
 
 function draw() {
@@ -1444,11 +3586,23 @@ function draw() {
             pop();
         }
 
+        // VIDEO mode: apply effects to video only (before blobs)
+        if (!fxLayerAll) {
+            if (isTimelineMode) applyTimelineEffects();
+            else applyActiveEffects();
+        }
+
         let timeInterval = map(paramValues[5], 0, 100, 0, 1000);
         if (millis() - lastTrackTime >= timeInterval) {
             trackPoints();
             lastTrackTime = millis();
         }
+
+        // Clip all blob/line drawing to the video frame
+        drawingContext.save();
+        drawingContext.beginPath();
+        drawingContext.rect(videoX, videoY, videoW, videoH);
+        drawingContext.clip();
 
         if (showLines && trackedPoints.length > 1) drawLines();
 
@@ -1473,6 +3627,17 @@ function draw() {
             }
             drawPointInfo(p);
         }
+
+        drawingContext.restore(); // end clip
+
+        // ALL mode: apply effects to everything including blobs
+        if (fxLayerAll) {
+            if (isTimelineMode) applyTimelineEffects();
+            else applyActiveEffects();
+        }
+
+        // Update timeline playhead
+        if (videoDuration > 0) updateTimelinePlayhead();
     }
     // Flash overlay on beat (FLASH sync target)
     if (audioSync && audioSyncTarget === 'flash' && beatIntensity > 0.02) {
@@ -2108,6 +4273,8 @@ function startRecording() {
     isRecording = true;
     ui.btnRecord.classList.add('recording');
     ui.btnRecord.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg> Stop`;
+    ui.tlBtnRecord.classList.add('recording');
+    ui.tlBtnRecord.innerHTML = `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>`;
 }
 
 function stopRecording() {
@@ -2117,6 +4284,8 @@ function stopRecording() {
     isRecording = false;
     ui.btnRecord.classList.remove('recording');
     ui.btnRecord.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> Record`;
+    ui.tlBtnRecord.classList.remove('recording');
+    ui.tlBtnRecord.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>`;
 }
 
 function saveRecording() {
@@ -2138,7 +4307,22 @@ function saveRecording() {
 
 function saveScreenshot() {
     if (!p5Canvas) return;
-    p5Canvas.toBlob((blob) => {
+    // Crop to just the video area (not the full screen canvas)
+    let sx = Math.round(videoX * pixelDensity());
+    let sy = Math.round(videoY * pixelDensity());
+    let sw = Math.round(videoW * pixelDensity());
+    let sh = Math.round(videoH * pixelDensity());
+    // Clamp to canvas bounds
+    sw = Math.min(sw, p5Canvas.width - sx);
+    sh = Math.min(sh, p5Canvas.height - sy);
+    if (sw <= 0 || sh <= 0) return;
+    let ctx = p5Canvas.getContext('2d');
+    let imageData = ctx.getImageData(sx, sy, sw, sh);
+    let cropCanvas = document.createElement('canvas');
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    cropCanvas.getContext('2d').putImageData(imageData, 0, 0);
+    cropCanvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -2222,6 +4406,30 @@ function keyPressed() {
         document.getElementById('val-10').value = audioThreshold;
         autoGainMax.band = AUTO_GAIN_FLOOR; smoothBand = 0; beatHistory = [];
         changed = true;
+    }
+
+    // Left/Right arrow — seek video ±5s
+    if (keyCode === LEFT_ARROW && videoLoaded && videoDuration > 0) {
+        let t = Math.max(0, videoEl.time() - 5);
+        videoEl.time(t);
+        if (audioElement && audioLoaded) audioElement.currentTime = t;
+        return false;
+    }
+    if (keyCode === RIGHT_ARROW && videoLoaded && videoDuration > 0) {
+        let t = Math.min(videoDuration, videoEl.time() + 5);
+        videoEl.time(t);
+        if (audioElement && audioLoaded) audioElement.currentTime = t;
+        return false;
+    }
+
+    // Backspace — delete selected timeline segment
+    if (keyCode === BACKSPACE && selectedSegment) {
+        timelineSegments = timelineSegments.filter(s => s.id !== selectedSegment.id);
+        selectedSegment = null;
+        assignLanes();
+        renderTimelineSegments();
+        closeParamDrawer();
+        return false;
     }
 
     // Q — cycle sync targets: MIX → QTY → SIZE → COLOR → FLASH
