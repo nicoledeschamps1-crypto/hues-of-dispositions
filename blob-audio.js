@@ -248,7 +248,7 @@ function updateMultiBandBeats() {
 }
 
 function applyAudioSync() {
-    if (!audioSync) return;
+    if (!audioSync) { pulseIntensity *= 0.85; return; }
 
     // Sync is ON but audio isn't ready/playing — hold at base values
     if (!audioLoaded || !audioPlaying) {
@@ -281,6 +281,12 @@ function applyAudioSync() {
         paramValues[1] = constrain(val * 100, 0, 100);
     }
 
+    else if (target === 'pulse') {
+        // Pulse: drive pulseIntensity from active band detector
+        let val = smoothBand * 0.3 * sens + activeBand.intensity * 1.0 * sens;
+        pulseIntensity = constrain(val, 0, 1);
+    }
+
     else if (target === 'flash') {
         // Flash is handled in draw()
     }
@@ -296,6 +302,9 @@ function applyAudioSync() {
         let colorVal = smoothMid * 0.5 * sens + snare * 0.3 * sens + hat * 0.3 * sens;
         paramValues[1] = constrain(colorVal * 100, 0, 100);
     }
+
+    // Decay pulse when not in pulse mode
+    if (target !== 'pulse') pulseIntensity *= 0.85;
 
     // Hard cutoff — only zero out if user's floor allows it
     if (syncMinQty === 0 && paramValues[0] < 2) paramValues[0] = 0;

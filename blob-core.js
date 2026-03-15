@@ -303,6 +303,9 @@ let bandDetectors = {
 const FLUX_HISTORY_SIZE = 43;
 const FLUX_SENSITIVITY = 1.5;
 
+// Pulse sync
+let pulseIntensity = 0;
+
 // Audio sync range controls
 let syncMinQty = 0;
 let syncMaxQty = 100;
@@ -328,6 +331,7 @@ class TrackedPoint {
         let offsetY = random(-maxVariation, maxVariation);
         this.width = max(2, baseWidth + offsetX);
         this.height = max(2, baseHeight + offsetY);
+        this.pulseOffset = random(0, 0.4);
         this.dynamicWord = generateSpecialCode();
     }
 }
@@ -496,14 +500,23 @@ function draw() {
         if (showLines && trackedPoints.length > 1) drawLines();
 
         for (let p of trackedPoints) {
+            // Pulse scaling: each blob swells based on pulseIntensity with random delay
+            let pScale = 1.0;
+            if (pulseIntensity > 0.01) {
+                let delayed = constrain(pulseIntensity - p.pulseOffset, 0, 1);
+                pScale = 1.0 + 0.2 * delayed;
+            }
+            let pw = p.width * pScale;
+            let ph = p.height * pScale;
+
             if (activeVizModes.has(10)) {
                 // ZOOM — magnified video crop inside blob
                 push();
                 let srcX = map(p.posicao.x, videoX, videoX + videoW, 0, videoEl.width);
                 let srcY = map(p.posicao.y, videoY, videoY + videoH, 0, videoEl.height);
                 let sampleR = 20;
-                let zW = max(p.width, 30);
-                let zH = max(p.height, 30);
+                let zW = max(pw, 30);
+                let zH = max(ph, 30);
                 image(videoEl, p.posicao.x - zW/2, p.posicao.y - zH/2, zW, zH,
                       srcX - sampleR, srcY - sampleR, sampleR * 2, sampleR * 2);
                 noFill(); stroke(255, 120); strokeWeight(1);
@@ -512,7 +525,7 @@ function draw() {
                 pop();
             } else {
                 stroke(150); noFill(); strokeWeight(1.2); rectMode(CENTER);
-                rect(p.posicao.x, p.posicao.y, p.width, p.height);
+                rect(p.posicao.x, p.posicao.y, pw, ph);
             }
             drawPointInfo(p);
         }
@@ -1183,7 +1196,7 @@ function keyPressed() {
         document.getElementById('val-10').value = audioThreshold;
         autoGainMax = { band: AUTO_GAIN_FLOOR, bass: AUTO_GAIN_FLOOR, mid: AUTO_GAIN_FLOOR, treble: AUTO_GAIN_FLOOR };
         smoothBand = 0;
-        for (let b in bandDetectors) { bandDetectors[b].fluxHistory = []; bandDetectors[b].intensity = 0; }
+        resetBandDetectors();
         changed = true;
     }
 
@@ -1209,7 +1222,7 @@ function keyPressed() {
     }
 
     if (key === 'q' || key === 'Q') {
-        const targets = ['all', 'qty', 'size', 'color', 'flash'];
+        const targets = ['all', 'qty', 'size', 'color', 'flash', 'pulse'];
         let curIdx = targets.indexOf(audioSyncTarget);
         audioSyncTarget = targets[(curIdx + 1) % targets.length];
         changed = true;
