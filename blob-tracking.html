@@ -908,11 +908,10 @@
                     Loading AI model...
                 </div>
                 <div id="mask-hint" style="font-size:10px;color:var(--text-muted);margin-bottom:6px">
-                    Click on the object you want to track
+                    Click object to track. &#x21E7;+click adds, &#x2325;+click removes.
                 </div>
                 <div style="display:flex;gap:6px">
-                    <button class="selector-btn" id="mask-repick-btn" style="flex:1;padding:6px 0">RE-PICK</button>
-                    <button class="selector-btn" id="mask-done-btn" style="flex:1;padding:6px 0;background:rgba(0,184,148,0.15);color:#00B894">DONE</button>
+                    <button class="selector-btn" id="mask-clear-btn" style="flex:1;padding:6px 0">CLEAR</button>
                 </div>
             </div>
 
@@ -1382,6 +1381,22 @@
                     <button class="selector-btn" data-value="flash">FLASH</button>
                 </div>
             </div>
+            <div class="control-group" id="sync-range-group" style="display:none">
+                <label>Qty Range</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input type="range" id="sync-min-qty" min="0" max="100" value="0" style="flex:1">
+                    <span style="font-size:10px;color:var(--text-muted)">to</span>
+                    <input type="range" id="sync-max-qty" min="0" max="100" value="100" style="flex:1">
+                </div>
+                <label>Size Range</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input type="range" id="sync-min-size" min="0" max="100" value="0" style="flex:1">
+                    <span style="font-size:10px;color:var(--text-muted)">to</span>
+                    <input type="range" id="sync-max-size" min="0" max="100" value="100" style="flex:1">
+                </div>
+                <label>Beat Decay <input type="number" class="value-input" id="val-beat-decay" value="82"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-beat-decay" min="70" max="98" value="82" step="1"></div>
+            </div>
 
             <!-- Record & Save -->
             <div class="playback-row">
@@ -1468,6 +1483,7 @@ async function initSegmenter() {
             baseOptions: {
                 modelAssetPath:
                     "https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite",
+                delegate: "GPU"
             },
             outputCategoryMask: true,
             outputConfidenceMasks: true,

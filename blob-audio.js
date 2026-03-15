@@ -62,6 +62,8 @@ function handleAudioFile(event) {
         audioGainNode.connect(audioContext.destination);
 
         frequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
+        floatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
+        prevFloatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
         audioLoaded = true;
         if (audioElement.duration && isFinite(audioElement.duration)) {
             audioDuration = audioElement.duration;
@@ -157,20 +159,71 @@ function updateSmoothedAudio() {
     smoothOverall = lerp(smoothOverall, raw.overall, raw.overall > smoothOverall ? attackRate : releaseRate);
     smoothBand = lerp(smoothBand, raw.band, raw.band > smoothBand ? attackRate : releaseRate);
 
-    // Beat detection
-    beatIntensity *= BEAT_DECAY;
-    if (beatHistory.length > 0) {
-        let avg = beatHistory.reduce((a, b) => a + b, 0) / beatHistory.length;
-        if (raw.band > avg * BEAT_THRESHOLD_MULT && raw.band > 0.15 && millis() - lastBeatTime > BEAT_COOLDOWN) {
-            beatIntensity = 1.0;
-            lastBeatTime = millis();
-        }
-    }
-    beatHistory.push(raw.band);
-    if (beatHistory.length > BEAT_HISTORY_SIZE) beatHistory.shift();
+    // Multi-band beat detection (spectral flux)
+    updateMultiBandBeats();
 
     // Always update meter
     ui.audioMeterFill.style.width = (smoothOverall * 100) + '%';
+}
+
+function updateMultiBandBeats() {
+    if (!audioAnalyser || !floatFreqData) return;
+
+    audioAnalyser.getFloatFrequencyData(floatFreqData);
+
+    const binCount = floatFreqData.length;
+    const nyquist = audioContext.sampleRate / 2;
+    const now = millis();
+
+    for (let name in bandDetectors) {
+        let band = bandDetectors[name];
+        let lowBin = Math.floor(band.low / nyquist * binCount);
+        let highBin = Math.floor(band.high / nyquist * binCount);
+        lowBin = Math.max(0, Math.min(lowBin, binCount - 1));
+        highBin = Math.max(lowBin + 1, Math.min(highBin, binCount));
+        let bandWidth = highBin - lowBin;
+
+        // Spectral flux (half-wave rectified)
+        let flux = 0;
+        for (let i = lowBin; i < highBin; i++) {
+            let diff = floatFreqData[i] - prevFloatFreqData[i];
+            if (diff > 0) flux += diff;
+        }
+        flux /= bandWidth;
+
+        band.fluxHistory.push(flux);
+        if (band.fluxHistory.length > FLUX_HISTORY_SIZE) band.fluxHistory.shift();
+
+        // Adaptive threshold: mean + FLUX_SENSITIVITY * stddev
+        if (band.fluxHistory.length >= 4) {
+            let sum = 0;
+            for (let v of band.fluxHistory) sum += v;
+            let mean = sum / band.fluxHistory.length;
+            let sqSum = 0;
+            for (let v of band.fluxHistory) sqSum += (v - mean) * (v - mean);
+            let stddev = Math.sqrt(sqSum / band.fluxHistory.length);
+            let threshold = mean + FLUX_SENSITIVITY * stddev;
+
+            if (flux > threshold && flux > 0.5 && now - band.lastBeat > BEAT_COOLDOWN) {
+                band.intensity = 1.0;
+                band.lastBeat = now;
+            } else {
+                band.intensity *= beatDecayValue;
+            }
+        } else {
+            band.intensity *= beatDecayValue;
+        }
+    }
+
+    // Copy current → previous
+    prevFloatFreqData.set(floatFreqData);
+
+    // Backward compat: beatIntensity = max of all band intensities
+    beatIntensity = Math.max(
+        bandDetectors.kick.intensity,
+        bandDetectors.snare.intensity,
+        bandDetectors.hat.intensity
+    );
 }
 
 function applyAudioSync() {
@@ -186,29 +239,23 @@ function applyAudioSync() {
     }
 
     const sens = paramValues[7] / 50;
-    const base = audioBaseValues;
     const target = audioSyncTarget;
-    const beat = beatIntensity;
+    const kick = bandDetectors.kick.intensity;
+    const snare = bandDetectors.snare.intensity;
 
     if (target === 'qty') {
-        let baseQty = base[0] || 15;
-        let scaled = smoothBand * baseQty * sens;
-        let beatBoost = beat * 35 * sens;
-        paramValues[0] = constrain(scaled + beatBoost, 0, 100);
+        let val = smoothBand * sens + beatIntensity * 0.5 * sens;
+        paramValues[0] = map(constrain(val, 0, 1), 0, 1, syncMinQty, syncMaxQty);
     }
 
     else if (target === 'size') {
-        let baseBlob = base[6] || 40;
-        let scaled = smoothBand * baseBlob * sens;
-        let beatBoost = beat * 40 * sens;
-        paramValues[6] = constrain(scaled + beatBoost, 0, 100);
+        let val = smoothBand * sens + beatIntensity * 0.5 * sens;
+        paramValues[6] = map(constrain(val, 0, 1), 0, 1, syncMinSize, syncMaxSize);
     }
 
     else if (target === 'color') {
-        let baseSpec = base[1] || 30;
-        let scaled = smoothBand * baseSpec * sens;
-        let beatBoost = beat * 30 * sens;
-        paramValues[1] = constrain(scaled + beatBoost, 0, 100);
+        let val = smoothBand * sens + beatIntensity * 0.4 * sens;
+        paramValues[1] = constrain(val * 100, 0, 100);
     }
 
     else if (target === 'flash') {
@@ -216,14 +263,19 @@ function applyAudioSync() {
     }
 
     else if (target === 'all') {
-        let baseQty = base[0] || 15;
-        paramValues[0] = constrain(smoothBass * baseQty * sens + beat * 25 * sens, 0, 100);
-        paramValues[6] = constrain(smoothOverall * (base[6] || 40) * sens + beat * 20 * sens, 0, 100);
-        paramValues[1] = constrain(smoothMid * (base[1] || 30) * sens + beat * 15 * sens, 0, 100);
+        // MIX: kick → qty, overall → size, mid/snare → color
+        let qtyVal = smoothBass * sens + kick * 0.5 * sens;
+        paramValues[0] = map(constrain(qtyVal, 0, 1), 0, 1, syncMinQty, syncMaxQty);
+
+        let sizeVal = smoothOverall * sens + snare * 0.3 * sens;
+        paramValues[6] = map(constrain(sizeVal, 0, 1), 0, 1, syncMinSize, syncMaxSize);
+
+        let colorVal = smoothMid * sens + snare * 0.3 * sens;
+        paramValues[1] = constrain(colorVal * 100, 0, 100);
     }
 
-    // Hard cutoff
-    if (paramValues[0] < 2) paramValues[0] = 0;
+    // Hard cutoff — only zero out if user's floor allows it
+    if (syncMinQty === 0 && paramValues[0] < 2) paramValues[0] = 0;
 
     if (++_syncUIFrameCount % 8 === 0) syncUI();
 }
@@ -311,11 +363,16 @@ function renderDebug() {
   bass:   ${smoothBass.toFixed(3)} ${barW(smoothBass)}
   mid:    ${smoothMid.toFixed(3)} ${barW(smoothMid)}
   treble: ${smoothTreble.toFixed(3)} ${barW(smoothTreble)}
-<span class="label">BEAT</span>        ${beatIntensity.toFixed(3)} ${barW(beatIntensity)}  ${beatIntensity > 0.5 ? '<span class="val">■ HIT</span>' : ''}
+<span class="label">BEAT</span>        ${beatIntensity.toFixed(3)} ${barW(beatIntensity)}  ${beatIntensity > 0.5 ? '<span class="val">■ HIT</span>' : ''}  decay:${beatDecayValue.toFixed(2)}
+<span class="label">BANDS</span>
+  kick:  ${bandDetectors.kick.intensity.toFixed(3)} ${barW(bandDetectors.kick.intensity)}  ${bandDetectors.kick.intensity > 0.5 ? '<span class="val">■</span>' : ''}
+  snare: ${bandDetectors.snare.intensity.toFixed(3)} ${barW(bandDetectors.snare.intensity)}  ${bandDetectors.snare.intensity > 0.5 ? '<span class="val">■</span>' : ''}
+  hat:   ${bandDetectors.hat.intensity.toFixed(3)} ${barW(bandDetectors.hat.intensity)}  ${bandDetectors.hat.intensity > 0.5 ? '<span class="val">■</span>' : ''}
 <span class="label">AUTO-GAIN MAX</span>
   band:${autoGainMax.band.toFixed(3)}  bass:${autoGainMax.bass.toFixed(3)}  mid:${autoGainMax.mid.toFixed(3)}  tre:${autoGainMax.treble.toFixed(3)}
 <span class="label">SYNC → ${audioSyncTarget.toUpperCase()}</span>
   qty:${paramValues[0].toFixed(1)}  spec:${paramValues[1].toFixed(1)}  blobVar:${paramValues[6].toFixed(1)}  rate:${paramValues[5].toFixed(1)}
+  qtyRange:${syncMinQty}-${syncMaxQty}  sizeRange:${syncMinSize}-${syncMaxSize}
 `;
 }
 
@@ -333,6 +390,8 @@ function setupAudioUIListeners() {
                     6: paramValues[6]
                 };
             }
+            let srg = document.getElementById('sync-range-group');
+            if (srg) srg.style.display = audioSync ? '' : 'none';
             updateButtonStates();
         });
     });
@@ -387,10 +446,10 @@ function setupAudioUIListeners() {
 
     // Frequency range presets
     const freqPresets = {
-        kick:  { low: 20,   high: 120 },
+        kick:  { low: 30,   high: 150 },
         bass:  { low: 60,   high: 300 },
         vocal: { low: 800,  high: 4000 },
-        hats:  { low: 5000, high: 16000 },
+        hats:  { low: 7500, high: 16000 },
         full:  { low: 20,   high: 20000 }
     };
     const presetThresholds = {
@@ -413,6 +472,10 @@ function setupAudioUIListeners() {
             autoGainMax.band = AUTO_GAIN_FLOOR;
             smoothBand = 0;
             beatHistory = [];
+            for (let b in bandDetectors) {
+                bandDetectors[b].fluxHistory = [];
+                bandDetectors[b].intensity = 0;
+            }
             updateButtonStates();
         });
     });
@@ -450,4 +513,55 @@ function setupAudioUIListeners() {
         updateButtonStates();
     });
     ui.freqHighInput.addEventListener('keydown', (e) => { e.stopPropagation(); });
+
+    // Sync range sliders
+    let syncMinQtySlider = document.getElementById('sync-min-qty');
+    let syncMaxQtySlider = document.getElementById('sync-max-qty');
+    let syncMinSizeSlider = document.getElementById('sync-min-size');
+    let syncMaxSizeSlider = document.getElementById('sync-max-size');
+
+    if (syncMinQtySlider) {
+        syncMinQtySlider.addEventListener('input', (e) => {
+            syncMinQty = parseInt(e.target.value);
+            if (syncMinQty > syncMaxQty) { syncMaxQty = syncMinQty; syncMaxQtySlider.value = syncMaxQty; }
+        });
+    }
+    if (syncMaxQtySlider) {
+        syncMaxQtySlider.addEventListener('input', (e) => {
+            syncMaxQty = parseInt(e.target.value);
+            if (syncMaxQty < syncMinQty) { syncMinQty = syncMaxQty; syncMinQtySlider.value = syncMinQty; }
+        });
+    }
+    if (syncMinSizeSlider) {
+        syncMinSizeSlider.addEventListener('input', (e) => {
+            syncMinSize = parseInt(e.target.value);
+            if (syncMinSize > syncMaxSize) { syncMaxSize = syncMinSize; syncMaxSizeSlider.value = syncMaxSize; }
+        });
+    }
+    if (syncMaxSizeSlider) {
+        syncMaxSizeSlider.addEventListener('input', (e) => {
+            syncMaxSize = parseInt(e.target.value);
+            if (syncMaxSize < syncMinSize) { syncMinSize = syncMaxSize; syncMinSizeSlider.value = syncMinSize; }
+        });
+    }
+
+    // Beat decay slider
+    let beatDecaySlider = document.getElementById('slider-beat-decay');
+    let beatDecayInput = document.getElementById('val-beat-decay');
+    if (beatDecaySlider) {
+        beatDecaySlider.addEventListener('input', (e) => {
+            beatDecayValue = parseInt(e.target.value) / 100;
+            if (beatDecayInput) beatDecayInput.value = parseInt(e.target.value);
+        });
+    }
+    if (beatDecayInput) {
+        beatDecayInput.addEventListener('change', (e) => {
+            let v = constrain(parseInt(e.target.value) || 82, 70, 98);
+            beatDecayValue = v / 100;
+            if (beatDecaySlider) beatDecaySlider.value = v;
+            e.target.value = v;
+            e.target.blur();
+        });
+        beatDecayInput.addEventListener('keydown', (e) => { e.stopPropagation(); });
+    }
 }

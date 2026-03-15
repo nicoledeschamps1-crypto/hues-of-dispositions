@@ -118,13 +118,20 @@ let currentVideoUrl = null;
 let maskSelecting = false;
 let maskReady = false;
 let maskSegData = null;
+let maskConfData = null;       // Float32Array — raw confidence values [0,1]
 let maskSegW = 0;
 let maskSegH = 0;
 let maskOverlay = null;
 let maskClickNorm = null;
 let maskFrameCount = 0;
 let maskSegInFlight = false;
-const MASK_RESEG_EVERY = 4;
+let maskIndicatorStart = 0;
+let maskPoints = [];            // click history: [{x, y, type: 'add'|'subtract'}]
+let maskPrevCentroid = null;    // previous centroid for adaptive re-seg
+let maskResegInterval = 3;      // adaptive: 2-6 frames
+const MASK_RESEG_EVERY = 3;
+const MASK_SOFT_THRESHOLD = 0.3;
+const MASK_FEATHER = 0.3;
 
 // Timeline state
 let timelineSegments = [];
@@ -285,10 +292,27 @@ let _syncUIFrameCount = 0;
 let beatHistory = [];
 const BEAT_HISTORY_SIZE = 30;
 let beatIntensity = 0;
-const BEAT_DECAY = 0.82;
+let beatDecayValue = 0.82;
 const BEAT_THRESHOLD_MULT = 1.4;
 let lastBeatTime = 0;
 const BEAT_COOLDOWN = 120;
+
+// Multi-band spectral flux detection
+let floatFreqData = null;
+let prevFloatFreqData = null;
+let bandDetectors = {
+    kick:  { low: 30, high: 150,   fluxHistory: [], lastBeat: 0, intensity: 0 },
+    snare: { low: 150, high: 3000, fluxHistory: [], lastBeat: 0, intensity: 0 },
+    hat:   { low: 7500, high: 16000, fluxHistory: [], lastBeat: 0, intensity: 0 }
+};
+const FLUX_HISTORY_SIZE = 43;
+const FLUX_SENSITIVITY = 1.5;
+
+// Audio sync range controls
+let syncMinQty = 0;
+let syncMaxQty = 100;
+let syncMinSize = 0;
+let syncMaxSize = 100;
 
 // ── CLASSES ───────────────────────────────
 
@@ -302,7 +326,7 @@ class TrackedPoint {
         this.cor = c;
         this.brightness = brightness(c);
         let sizeScale = map(paramValues[4], 0, 100, 0.3, 5);
-        let baseHeight = (11 + (this.brightness / 255.0) * 30) * sizeScale;
+        let baseHeight = (11 + (this.brightness / 100.0) * 30) * sizeScale;
         let baseWidth = 11 * sizeScale;
         let maxVariation = map(blobVarLevel, 0, 100, 0, 145) * sizeScale;
         let offsetX = random(-maxVariation, maxVariation);
@@ -384,48 +408,66 @@ function draw() {
 
         image(videoEl, videoX, videoY, videoW, videoH);
 
-        // MASK AI segmentation overlay — show selected object
-        if (currentMode === 14 && maskSelecting && maskOverlay) {
+        // MASK AI segmentation overlay — brief flash on selection
+        if (currentMode === 14 && maskOverlay) {
             push();
-            image(maskOverlay, videoX, videoY, videoW, videoH);
+            // Fade overlay out over 1.5s after auto-finalize
+            if (maskReady && maskIndicatorStart > 0) {
+                let elapsed = millis() - maskIndicatorStart;
+                if (elapsed < 1500) {
+                    tint(255, map(elapsed, 0, 1500, 255, 0));
+                    image(maskOverlay, videoX, videoY, videoW, videoH);
+                } else {
+                    maskOverlay.remove(); maskOverlay = null;
+                }
+            } else {
+                image(maskOverlay, videoX, videoY, videoW, videoH);
+            }
             pop();
         }
-        // MASK click cursor — crosshair on video when selecting
-        if (currentMode === 14 && maskSelecting && !maskSegData) {
-            if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
-                push();
-                stroke(0, 255, 128, 200);
-                strokeWeight(1);
-                let cx = mouseX, cy = mouseY;
-                line(cx - 12, cy, cx - 4, cy);
-                line(cx + 4, cy, cx + 12, cy);
-                line(cx, cy - 12, cx, cy - 4);
-                line(cx, cy + 4, cx, cy + 12);
-                noFill();
-                ellipse(cx, cy, 8, 8);
-                pop();
-            }
+        // MASK crosshair cursor — show when hovering video in MASK mode
+        if (currentMode === 14 && mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
+            push();
+            let cursorAlpha = maskReady ? 80 : 200;
+            stroke(0, 255, 128, cursorAlpha);
+            strokeWeight(1);
+            let cx = mouseX, cy = mouseY;
+            line(cx - 12, cy, cx - 4, cy);
+            line(cx + 4, cy, cx + 12, cy);
+            line(cx, cy - 12, cx, cy - 4);
+            line(cx, cy + 4, cx, cy + 12);
+            noFill();
+            ellipse(cx, cy, 8, 8);
+            pop();
         }
 
-        // MASK tracking indicator — show tracked point when active
+        // MASK tracking indicator — brief flash then fade out
         if (currentMode === 14 && maskReady && maskClickNorm) {
-            push();
-            let px = videoX + maskClickNorm.x * videoW;
-            let py = videoY + maskClickNorm.y * videoH;
-            noFill();
-            stroke(0, 255, 128, 160);
-            strokeWeight(1);
-            ellipse(px, py, 12, 12);
-            line(px - 8, py, px - 3, py);
-            line(px + 3, py, px + 8, py);
-            line(px, py - 8, px, py - 3);
-            line(px, py + 3, px, py + 8);
-            noStroke();
-            fill(0, 255, 128, 200);
-            textSize(9);
-            textAlign(LEFT, BOTTOM);
-            text('MASK', px + 8, py - 4);
-            pop();
+            if (typeof maskIndicatorStart === 'undefined' || maskIndicatorStart === 0) {
+                maskIndicatorStart = millis();
+            }
+            let elapsed = millis() - maskIndicatorStart;
+            let fadeDuration = 2000;
+            if (elapsed < fadeDuration) {
+                let alpha = map(elapsed, 0, fadeDuration, 200, 0);
+                push();
+                let px = videoX + maskClickNorm.x * videoW;
+                let py = videoY + maskClickNorm.y * videoH;
+                noFill();
+                stroke(0, 255, 128, alpha);
+                strokeWeight(1);
+                ellipse(px, py, 12, 12);
+                line(px - 8, py, px - 3, py);
+                line(px + 3, py, px + 8, py);
+                line(px, py - 8, px, py - 3);
+                line(px, py + 3, px, py + 8);
+                noStroke();
+                fill(0, 255, 128, alpha);
+                textSize(9);
+                textAlign(LEFT, BOTTOM);
+                text('MASK', px + 8, py - 4);
+                pop();
+            }
         }
 
         // Background dim overlay
@@ -667,18 +709,14 @@ function updateButtonStates() {
     if (currentMode === 14) {
         let statusEl = document.getElementById('mask-status');
         let hintEl = document.getElementById('mask-hint');
-        if (maskSelecting && !maskSegData) {
+        if (!maskReady && !maskSegData) {
             statusEl.textContent = 'CLICK SUBJECT';
             statusEl.style.color = '#FDCB6E';
-            hintEl.textContent = 'Click on the object you want to track';
-        } else if (maskSelecting && maskSegData) {
-            statusEl.textContent = 'SELECTED';
-            statusEl.style.color = '#6C5CE7';
-            hintEl.textContent = 'Click elsewhere to re-select, or press DONE';
+            hintEl.textContent = 'Click object to track. \u21E7+click adds, \u2325+click removes.';
         } else if (maskReady) {
             statusEl.textContent = 'TRACKING';
             statusEl.style.color = '#00B894';
-            hintEl.textContent = 'Object is being tracked';
+            hintEl.textContent = 'Click to re-target. \u21E7+click adds. \u2325+click removes.';
         }
     }
 
@@ -701,8 +739,8 @@ function updateButtonStates() {
 
     // Freq presets — highlight matching preset or none if custom
     const presetMap = {
-        kick:  [20, 120], bass: [60, 300], vocal: [800, 4000],
-        hats:  [5000, 16000], full: [20, 20000]
+        kick:  [30, 150], bass: [60, 300], vocal: [800, 4000],
+        hats:  [7500, 16000], full: [20, 20000]
     };
     ui.freqPresetButtons.forEach(btn => {
         let p = presetMap[btn.dataset.value];
@@ -1115,6 +1153,8 @@ function keyPressed() {
         if (audioSync) {
             audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 6: paramValues[6] };
         }
+        let srg = document.getElementById('sync-range-group');
+        if (srg) srg.style.display = audioSync ? '' : 'none';
         changed = true;
     }
 
@@ -1196,10 +1236,13 @@ function mouseDragged() {
 
 function mousePressed() {
     if (mouseButton === RIGHT) { lastX = mouseX; return; }
-    if (currentMode === 14 && maskSelecting && mouseButton === LEFT) {
+    if (currentMode === 14 && mouseButton === LEFT) {
         if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
             if (window.mpSegmenterReady) {
-                runMaskSegmentation(mouseX, mouseY);
+                let modType = null;
+                if (keyIsDown(SHIFT)) modType = 'add';
+                else if (keyIsDown(ALT)) modType = 'subtract';
+                runMaskSegmentation(mouseX, mouseY, modType);
             }
             return false;
         }
