@@ -289,21 +289,16 @@ let debugVisible = false;
 let _syncUIFrameCount = 0;
 
 // Beat detection state
-let beatHistory = [];
-const BEAT_HISTORY_SIZE = 30;
 let beatIntensity = 0;
 let beatDecayValue = 0.82;
-const BEAT_THRESHOLD_MULT = 1.4;
-let lastBeatTime = 0;
-const BEAT_COOLDOWN = 120;
 
 // Multi-band spectral flux detection
 let floatFreqData = null;
 let prevFloatFreqData = null;
 let bandDetectors = {
-    kick:  { low: 30, high: 150,   fluxHistory: [], lastBeat: 0, intensity: 0 },
-    snare: { low: 150, high: 3000, fluxHistory: [], lastBeat: 0, intensity: 0 },
-    hat:   { low: 7500, high: 16000, fluxHistory: [], lastBeat: 0, intensity: 0 }
+    kick:  { low: 30, high: 150,   fluxHistory: [], lastBeat: 0, intensity: 0, cooldown: 200, decay: 0.82 },
+    snare: { low: 150, high: 900,  fluxHistory: [], lastBeat: 0, intensity: 0, cooldown: 150, decay: 0.82 },
+    hat:   { low: 7500, high: 16000, fluxHistory: [], lastBeat: 0, intensity: 0, cooldown: 60,  decay: 0.70 }
 };
 const FLUX_HISTORY_SIZE = 43;
 const FLUX_SENSITIVITY = 1.5;
@@ -731,6 +726,8 @@ function updateButtonStates() {
         if (audioSync === isSyncOn) btn.classList.add('active');
         else btn.classList.remove('active');
     });
+    let srg = document.getElementById('sync-range-group');
+    if (srg) srg.style.display = audioSync ? '' : 'none';
 
     ui.syncTargetButtons.forEach(btn => {
         if (btn.dataset.value === audioSyncTarget) btn.classList.add('active');
@@ -1153,8 +1150,6 @@ function keyPressed() {
         if (audioSync) {
             audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 6: paramValues[6] };
         }
-        let srg = document.getElementById('sync-range-group');
-        if (srg) srg.style.display = audioSync ? '' : 'none';
         changed = true;
     }
 
@@ -1168,8 +1163,8 @@ function keyPressed() {
     if (key === 'f' || key === 'F') {
         const presetOrder = ['kick', 'bass', 'vocal', 'hats', 'full'];
         const presetValues = {
-            kick: { low: 20, high: 120 }, bass: { low: 60, high: 300 },
-            vocal: { low: 800, high: 4000 }, hats: { low: 5000, high: 16000 },
+            kick: { low: 30, high: 150 }, bass: { low: 60, high: 300 },
+            vocal: { low: 800, high: 4000 }, hats: { low: 7500, high: 16000 },
             full: { low: 20, high: 20000 }
         };
         const presetThresh = { kick: 15, bass: 15, vocal: 30, hats: 20, full: 5 };
@@ -1186,7 +1181,9 @@ function keyPressed() {
         audioThreshold = presetThresh[nextName];
         document.getElementById('slider-10').value = audioThreshold;
         document.getElementById('val-10').value = audioThreshold;
-        autoGainMax.band = AUTO_GAIN_FLOOR; smoothBand = 0; beatHistory = [];
+        autoGainMax = { band: AUTO_GAIN_FLOOR, bass: AUTO_GAIN_FLOOR, mid: AUTO_GAIN_FLOOR, treble: AUTO_GAIN_FLOOR };
+        smoothBand = 0;
+        for (let b in bandDetectors) { bandDetectors[b].fluxHistory = []; bandDetectors[b].intensity = 0; }
         changed = true;
     }
 
