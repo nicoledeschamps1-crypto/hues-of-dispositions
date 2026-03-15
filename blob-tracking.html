@@ -560,10 +560,10 @@
         /* ═══ TIMELINE ═══ */
         #timeline-container {
             position: fixed;
-            bottom: 260px;
+            bottom: 12px;
             left: 320px;
             right: 320px;
-            height: 70px;
+            height: 130px;
             background: rgba(12, 12, 12, 0.95);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.05);
@@ -600,7 +600,7 @@
             border-radius: 3px;
             cursor: pointer;
             overflow: hidden;
-            min-height: 30px;
+            min-height: 70px;
         }
         #timeline-playhead {
             position: absolute;
@@ -615,20 +615,20 @@
         }
         .timeline-segment {
             position: absolute;
-            height: 10px;
-            border-radius: 2px;
-            font-size: 7px;
+            height: 16px;
+            border-radius: 3px;
+            font-size: 8px;
             font-weight: 700;
-            color: rgba(0,0,0,0.7);
+            color: rgba(0,0,0,0.8);
             text-transform: uppercase;
-            line-height: 10px;
-            padding: 0 3px;
+            line-height: 16px;
+            padding: 0 5px;
             cursor: pointer;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             transition: opacity 0.15s;
-            min-width: 8px;
+            min-width: 12px;
         }
         .timeline-segment:hover { opacity: 0.85; }
         .timeline-segment.selected {
@@ -646,63 +646,127 @@
         .timeline-segment .seg-handle-left { left: 0; }
         .timeline-segment .seg-handle-right { right: 0; }
 
-        /* ═══ BOTTOM DOCK ═══ */
-        #bottom-dock {
-            position: fixed;
+        /* Ghost drop zone */
+        #timeline-ghost {
+            position: absolute;
+            top: 0;
             bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border-top: 1px solid rgba(255,255,255,0.05);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            max-height: 260px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-        }
-
-        /* Tab bar */
-        #dock-tabs {
-            display: flex;
-            gap: 0;
-            border-bottom: 1px solid #222;
-            flex-shrink: 0;
-        }
-        .dock-tab {
-            flex: 1;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 10px 0;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            border-bottom: 2px solid transparent;
-        }
-        .dock-tab:hover { color: var(--text-main); }
-        .dock-tab.active {
-            color: var(--text-main);
-            border-bottom-color: var(--text-main);
-        }
-
-        /* Tab content */
-        .tab-panel {
+            background: rgba(108, 92, 231, 0.12);
+            border: 1px dashed rgba(108, 92, 231, 0.4);
+            border-radius: 3px;
+            pointer-events: none;
             display: none;
-            padding: 10px 16px;
-            overflow-y: auto;
-            max-height: 200px;
+            z-index: 2;
         }
-        .tab-panel.active { display: block; }
-        .tab-panel::-webkit-scrollbar { width: 4px; }
-        .tab-panel::-webkit-scrollbar-track { background: transparent; }
-        .tab-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        #timeline-ghost.visible { display: block; }
+        /* Segment added flash */
+        @keyframes segFlash {
+            0% { outline: 2px solid #fff; outline-offset: 2px; }
+            100% { outline: 2px solid transparent; outline-offset: 6px; }
+        }
+        .timeline-segment.just-added {
+            animation: segFlash 0.5s ease-out;
+        }
+        /* Timeline waveform canvas */
+        #tl-waveform {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            border-radius: 3px;
+        }
+        /* Beat markers */
+        .tl-beat-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.35);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .tl-beat-marker::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -2px;
+            width: 5px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.6);
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+        /* Band selector in timeline controls */
+        .tl-band-selector {
+            display: flex;
+            gap: 2px;
+            margin-left: 8px;
+        }
+        .tl-band-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.12);
+            color: var(--text-muted);
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+        .tl-band-btn:hover { color: var(--text-main); }
+        .tl-band-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            border-color: rgba(255,255,255,0.3);
+        }
+        /* Snap indicator */
+        .timeline-segment.snapped {
+            outline: 1px solid rgba(255,255,255,0.6);
+            outline-offset: 1px;
+        }
+        /* Timeline drag-over state */
+        #timeline-track.drag-over {
+            background: #1e1a2e;
+            box-shadow: inset 0 0 16px rgba(108, 92, 231, 0.25);
+        }
+        /* Drag ghost (follows cursor) */
+        #drag-ghost {
+            position: fixed;
+            display: none;
+            padding: 4px 10px;
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(0,0,0,0.85);
+            text-transform: uppercase;
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        /* Drag hint on timeline */
+        .tl-offset-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: #6C5CE7;
+            font-family: 'Roboto Mono', monospace;
+            white-space: nowrap;
+        }
+        .tl-offset-label.hidden { display: none; }
+        #tl-drag-hint {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 2px;
+            opacity: 0.5;
+        }
+        #tl-drag-hint.drop-active {
+            color: #6C5CE7;
+            opacity: 1;
+        }
 
-        /* Category strips */
+        /* ═══ CATEGORY STRIPS (in left panel) ═══ */
         .fx-category {
             margin-bottom: 8px;
         }
@@ -766,72 +830,9 @@
             border-color: #E17055;
             color: #ffb8a8;
         }
-
-        /* Param drawer */
-        #param-drawer {
-            overflow: hidden;
-            max-height: 0;
-            transition: max-height 0.3s ease, padding 0.3s ease;
-            border-top: 1px solid transparent;
-            padding: 0 16px;
-        }
-        #param-drawer.open {
-            max-height: 250px;
-            padding: 10px 16px;
-            border-top-color: #222;
-            overflow-y: auto;
-        }
-        #drawer-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        #drawer-title {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-main);
-        }
-        #drawer-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 2px 6px;
-            font-family: inherit;
-        }
-        #drawer-close:hover { color: var(--text-main); }
-        #drawer-params .control-group { margin-bottom: 4px; }
-        #drawer-params .selector-row { margin-bottom: 6px; }
-
-        /* Mode toggle in effects tab */
-        .mode-toggle-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #222;
-        }
-        .mode-toggle-label {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .mode-toggle-row .selector-row { flex: 0; }
-        .mode-toggle-row .selector-btn { padding: 5px 12px; }
-
-        /* Audio tab layout */
-        #tab-audio .control-group { margin-bottom: 6px; }
-        #tab-audio #audio-input-container { margin-bottom: 8px; }
-
-        /* Export tab layout */
-        #tab-export .playback-row { margin-top: 0; }
+        /* FX card drag cursor */
+        .fx-card { cursor: grab; }
+        .fx-card:active { cursor: grabbing; }
     </style>
 </head>
 <body>
@@ -892,12 +893,27 @@
                     <button class="selector-btn" data-value="11">COOL</button>
                     <button class="selector-btn" data-value="12">FLKR</button>
                     <button class="selector-btn" data-value="13">INV</button>
+                    <button class="selector-btn" data-value="14">MASK</button>
                 </div>
             </div>
 
             <div class="control-group" id="custom-color-group" style="display:none">
                 <label>Target Color</label>
                 <input type="color" id="custom-color-picker" value="#00b7eb" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
+            </div>
+
+            <div class="control-group" id="mask-controls-group" style="display:none">
+                <label>Magic Mask <span id="mask-status" style="color:#FDCB6E">CLICK SUBJECT</span></label>
+                <div id="mask-loading" style="display:none;font-size:10px;color:var(--text-muted);margin-bottom:6px">
+                    Loading AI model...
+                </div>
+                <div id="mask-hint" style="font-size:10px;color:var(--text-muted);margin-bottom:6px">
+                    Click on the object you want to track
+                </div>
+                <div style="display:flex;gap:6px">
+                    <button class="selector-btn" id="mask-repick-btn" style="flex:1;padding:6px 0">RE-PICK</button>
+                    <button class="selector-btn" id="mask-done-btn" style="flex:1;padding:6px 0;background:rgba(0,184,148,0.15);color:#00B894">DONE</button>
+                </div>
             </div>
 
 
@@ -918,7 +934,271 @@
                 </div>
             </div>
 
-            <!-- FX Layer toggle (effects moved to bottom dock) -->
+            <!-- Effects (Effecto-style category strips) -->
+            <div class="control-group" id="group-fx">
+                <label>Effects <span style="font-size:8px;color:var(--text-muted);font-weight:400;margin-left:6px">click = toggle · drag to timeline = place</span></label>
+                <div class="fx-category">
+                    <div class="cat-label"><span class="cat-dot" style="background:#6C5CE7"></span> Color</div>
+                    <div class="fx-strip">
+                        <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
+                        <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
+                        <button class="fx-card" data-effect="palette" data-cat="color">PALTTE</button>
+                        <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
+                    </div>
+                </div>
+                <div class="fx-category">
+                    <div class="cat-label"><span class="cat-dot" style="background:#00B894"></span> Distortion</div>
+                    <div class="fx-strip">
+                        <button class="fx-card" data-effect="chroma" data-cat="distortion">CHROMA</button>
+                        <button class="fx-card" data-effect="curve" data-cat="distortion">CURVE</button>
+                        <button class="fx-card" data-effect="wave" data-cat="distortion">WAVE</button>
+                        <button class="fx-card" data-effect="jitter" data-cat="distortion">JITTER</button>
+                        <button class="fx-card" data-effect="mblur" data-cat="distortion">MBLUR</button>
+                    </div>
+                </div>
+                <div class="fx-category">
+                    <div class="cat-label"><span class="cat-dot" style="background:#FDCB6E"></span> Pattern</div>
+                    <div class="fx-strip">
+                        <button class="fx-card" data-effect="bloom" data-cat="pattern">BLOOM</button>
+                        <button class="fx-card" data-effect="dither" data-cat="pattern">DITHER</button>
+                        <button class="fx-card" data-effect="atkinson" data-cat="pattern">ATKNSN</button>
+                        <button class="fx-card" data-effect="halftone" data-cat="pattern">HALF</button>
+                        <button class="fx-card" data-effect="pxsort" data-cat="pattern">PXSORT</button>
+                        <button class="fx-card" data-effect="pixel" data-cat="pattern">PIXEL</button>
+                    </div>
+                </div>
+                <div class="fx-category">
+                    <div class="cat-label"><span class="cat-dot" style="background:#E17055"></span> Overlay</div>
+                    <div class="fx-strip">
+                        <button class="fx-card" data-effect="ascii" data-cat="overlay">ASCII</button>
+                        <button class="fx-card" data-effect="glitch" data-cat="overlay">GLITCH</button>
+                        <button class="fx-card" data-effect="noise" data-cat="overlay">NOISE</button>
+                        <button class="fx-card" data-effect="grain" data-cat="overlay">GRAIN</button>
+                        <button class="fx-card" data-effect="dots" data-cat="overlay">DOTS</button>
+                        <button class="fx-card" data-effect="grid" data-cat="overlay">GRID</button>
+                        <button class="fx-card" data-effect="scanlines" data-cat="overlay">SCAN</button>
+                        <button class="fx-card" data-effect="vignette" data-cat="overlay">VGNTE</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FX Parameters (show when parent effect is active) -->
+            <div class="fx-param-group" id="fx-params-ascii">
+                <label>Cell Size <input type="number" class="value-input" id="val-ascii-cell" value="10"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-ascii-cell" min="4" max="24" value="10" step="1"></div>
+                <label>Characters</label>
+                <div class="selector-row" id="ascii-charset-buttons">
+                    <button class="selector-btn active" data-value="classic">CLASSIC</button>
+                    <button class="selector-btn" data-value="blocks">BLOCKS</button>
+                    <button class="selector-btn" data-value="dots">DOTS</button>
+                    <button class="selector-btn" data-value="binary">BINARY</button>
+                    <button class="selector-btn" data-value="braille">BRAILLE</button>
+                    <button class="selector-btn" data-value="symbols">SYMBOLS</button>
+                    <button class="selector-btn" data-value="katakana">KATA</button>
+                </div>
+                <label>Color</label>
+                <div class="selector-row" id="ascii-color-buttons">
+                    <button class="selector-btn active" data-value="mono">MONO</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                    <button class="selector-btn" data-value="green">GREEN</button>
+                    <button class="selector-btn" data-value="amber">AMBER</button>
+                    <button class="selector-btn" data-value="cyan">CYAN</button>
+                </div>
+                <label>Invert</label>
+                <div class="selector-row" id="ascii-invert-buttons">
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                    <button class="selector-btn" data-value="on">ON</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-chroma">
+                <label>Offset <input type="number" class="value-input" id="val-chroma-offset" value="5"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-chroma-offset" min="1" max="25" value="5" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-atkinson">
+                <label>Atkinson Color</label>
+                <div class="selector-row" id="atkinson-color-buttons">
+                    <button class="selector-btn active" data-value="bw">B&W</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-scanlines">
+                <label>Intensity <input type="number" class="value-input" id="val-scan-intensity" value="50"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-scan-intensity" min="5" max="100" value="50" step="1"></div>
+                <label>Line Count <input type="number" class="value-input" id="val-scan-count" value="300"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-scan-count" min="50" max="800" value="300" step="10"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-vignette">
+                <label>Intensity <input type="number" class="value-input" id="val-vig-intensity" value="50"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-vig-intensity" min="5" max="100" value="50" step="1"></div>
+                <label>Radius <input type="number" class="value-input" id="val-vig-radius" value="70"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-vig-radius" min="20" max="100" value="70" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-grain">
+                <label>Intensity <input type="number" class="value-input" id="val-grain-intensity" value="35"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-grain-intensity" min="5" max="100" value="35" step="1"></div>
+                <label>Size <input type="number" class="value-input" id="val-grain-size" value="15"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-grain-size" min="5" max="40" value="15" step="1"></div>
+                <label>Grain Color</label>
+                <div class="selector-row" id="grain-color-buttons">
+                    <button class="selector-btn active" data-value="mono">MONO</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-bloom">
+                <label>Intensity <input type="number" class="value-input" id="val-bloom-intensity" value="40"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-bloom-intensity" min="5" max="100" value="40" step="1"></div>
+                <label>Radius <input type="number" class="value-input" id="val-bloom-radius" value="50"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-bloom-radius" min="10" max="100" value="50" step="1"></div>
+                <label>Threshold <input type="number" class="value-input" id="val-bloom-thresh" value="50"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-bloom-thresh" min="0" max="100" value="50" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-tint">
+                <label>Tint Preset</label>
+                <div class="selector-row" id="tint-preset-buttons">
+                    <button class="selector-btn active" data-value="green">GREEN</button>
+                    <button class="selector-btn" data-value="amber">AMBER</button>
+                    <button class="selector-btn" data-value="cyan">CYAN</button>
+                    <button class="selector-btn" data-value="blue">BLUE</button>
+                </div>
+                <label>Intensity <input type="number" class="value-input" id="val-tint-intensity" value="70"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-tint-intensity" min="5" max="100" value="70" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-sepia">
+                <label>Intensity <input type="number" class="value-input" id="val-sepia-intensity" value="70"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-sepia-intensity" min="5" max="100" value="70" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-pixel">
+                <label>Pixel Size <input type="number" class="value-input" id="val-pixel-size" value="8"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-pixel-size" min="2" max="50" value="8" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-halftone">
+                <label>Dot Size <input type="number" class="value-input" id="val-half-spacing" value="6"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-half-spacing" min="3" max="20" value="6" step="1"></div>
+                <label>Color</label>
+                <div class="selector-row" id="half-color-buttons">
+                    <button class="selector-btn active" data-value="bw">B&W</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-dither">
+                <label>Color</label>
+                <div class="selector-row" id="dither-color-buttons">
+                    <button class="selector-btn active" data-value="bw">B&W</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-pxsort">
+                <label>Threshold Low <input type="number" class="value-input" id="val-pxsort-lo" value="30"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-pxsort-lo" min="0" max="255" value="30" step="1"></div>
+                <label>Threshold High <input type="number" class="value-input" id="val-pxsort-hi" value="220"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-pxsort-hi" min="0" max="255" value="220" step="1"></div>
+                <label>Direction</label>
+                <div class="selector-row" id="pxsort-dir-buttons">
+                    <button class="selector-btn active" data-value="horizontal">HORIZ</button>
+                    <button class="selector-btn" data-value="vertical">VERT</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-wave">
+                <label>Amplitude <input type="number" class="value-input" id="val-wave-amp" value="20"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-wave-amp" min="1" max="100" value="20" step="1"></div>
+                <label>Frequency <input type="number" class="value-input" id="val-wave-freq" value="5"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-wave-freq" min="1" max="20" value="5" step="1"></div>
+                <label>Speed <input type="number" class="value-input" id="val-wave-speed" value="2"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-wave-speed" min="0" max="5" value="2" step="0.1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-glitch">
+                <label>Intensity <input type="number" class="value-input" id="val-glitch-intensity" value="30"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-glitch-intensity" min="5" max="100" value="30" step="1"></div>
+                <label>Frequency <input type="number" class="value-input" id="val-glitch-freq" value="20"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-glitch-freq" min="1" max="100" value="20" step="1"></div>
+                <label>Style</label>
+                <div class="selector-row" id="glitch-mode-buttons">
+                    <button class="selector-btn active" data-value="shift">SHIFT</button>
+                    <button class="selector-btn" data-value="tear">TEAR</button>
+                    <button class="selector-btn" data-value="corrupt">CORRUPT</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-jitter">
+                <label>Intensity <input type="number" class="value-input" id="val-jitter-intensity" value="20"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-jitter-intensity" min="1" max="100" value="20" step="1"></div>
+                <label>Block Size <input type="number" class="value-input" id="val-jitter-block" value="2"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-jitter-block" min="1" max="16" value="2" step="1"></div>
+                <label>Mode</label>
+                <div class="selector-row" id="jitter-mode-buttons">
+                    <button class="selector-btn active" data-value="random">RANDOM</button>
+                    <button class="selector-btn" data-value="perlin">PERLIN</button>
+                    <button class="selector-btn" data-value="shake">SHAKE</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-noise">
+                <label>Intensity <input type="number" class="value-input" id="val-noise-intensity" value="25"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-noise-intensity" min="5" max="100" value="25" step="1"></div>
+                <label>Scale <input type="number" class="value-input" id="val-noise-scale" value="1"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-noise-scale" min="1" max="10" value="1" step="1"></div>
+                <label>Noise Color</label>
+                <div class="selector-row" id="noise-color-buttons">
+                    <button class="selector-btn active" data-value="mono">MONO</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-curve">
+                <label>Intensity <input type="number" class="value-input" id="val-curve-intensity" value="30"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-curve-intensity" min="5" max="100" value="30" step="1"></div>
+                <label>Direction</label>
+                <div class="selector-row" id="curve-dir-buttons">
+                    <button class="selector-btn active" data-value="barrel">BARREL</button>
+                    <button class="selector-btn" data-value="pincushion">PINCH</button>
+                </div>
+            </div>
+            <div class="fx-param-group" id="fx-params-bricon">
+                <label>Brightness <input type="number" class="value-input" id="val-bri" value="0"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-bri" min="-100" max="100" value="0" step="1"></div>
+                <label>Contrast <input type="number" class="value-input" id="val-con" value="100"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-con" min="0" max="200" value="100" step="1"></div>
+                <label>Saturation <input type="number" class="value-input" id="val-sat" value="100"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-sat" min="0" max="200" value="100" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-grid">
+                <label>Scale <input type="number" class="value-input" id="val-grid-scale" value="20"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-grid-scale" min="5" max="50" value="20" step="1"></div>
+                <label>Line Width <input type="number" class="value-input" id="val-grid-width" value="1"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-grid-width" min="1" max="5" value="1" step="0.5"></div>
+                <label>Opacity <input type="number" class="value-input" id="val-grid-opacity" value="30"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-grid-opacity" min="5" max="100" value="30" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-dots">
+                <label>Angle <input type="number" class="value-input" id="val-dots-angle" value="45"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-dots-angle" min="0" max="360" value="45" step="1"></div>
+                <label>Scale <input type="number" class="value-input" id="val-dots-scale" value="6"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-dots-scale" min="2" max="20" value="6" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-mblur">
+                <label>Intensity <input type="number" class="value-input" id="val-mblur-intensity" value="30"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-mblur-intensity" min="5" max="100" value="30" step="1"></div>
+                <label>Angle <input type="number" class="value-input" id="val-mblur-angle" value="0"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-mblur-angle" min="0" max="360" value="0" step="1"></div>
+            </div>
+            <div class="fx-param-group" id="fx-params-palette">
+                <label>Palette</label>
+                <div class="selector-row" id="palette-preset-buttons" style="flex-wrap:wrap;row-gap:1px;">
+                    <button class="selector-btn active" data-value="noir">NOIR</button>
+                    <button class="selector-btn" data-value="terminal">TERM</button>
+                    <button class="selector-btn" data-value="gameboy">GMBOY</button>
+                    <button class="selector-btn" data-value="synthwave">SYNTH</button>
+                    <button class="selector-btn" data-value="cyberpunk">CYBER</button>
+                    <button class="selector-btn" data-value="amber">AMBER</button>
+                    <button class="selector-btn" data-value="arctic">ARTIC</button>
+                    <button class="selector-btn" data-value="rose">ROSE</button>
+                    <button class="selector-btn" data-value="neon">NEON</button>
+                    <button class="selector-btn" data-value="forest">FORST</button>
+                    <button class="selector-btn" data-value="sunset">SUNST</button>
+                    <button class="selector-btn" data-value="ocean">OCEAN</button>
+                </div>
+                <label>Intensity <input type="number" class="value-input" id="val-palette-intensity" value="80"></label>
+                <div class="slider-wrapper"><input type="range" id="slider-palette-intensity" min="5" max="100" value="80" step="1"></div>
+            </div>
+
+            <!-- FX Layer toggle -->
             <div class="control-group" id="group-fxlayer">
                 <label>FX Layer</label>
                 <div class="selector-row" id="fx-layer-buttons">
@@ -1028,93 +1308,7 @@
                 <input type="text" class="text-input" id="product-size" placeholder="Size">
             </div>
 
-        </div>
-    </div>
-
-    <!-- TIMELINE -->
-    <div id="timeline-container" class="hidden">
-        <div class="timeline-controls">
-            <button id="tl-btn-play" class="action-btn" title="Play/Pause">
-                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            </button>
-            <button id="tl-btn-restart" class="action-btn" title="Restart">
-                <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-            </button>
-            <span id="timeline-time">0:00 / 0:00</span>
-            <button id="tl-btn-record" class="action-btn" title="Record">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
-            </button>
-        </div>
-        <div id="timeline-track">
-            <div id="timeline-playhead"></div>
-        </div>
-    </div>
-
-    <!-- BOTTOM DOCK -->
-    <div id="bottom-dock">
-        <div id="dock-tabs">
-            <button class="dock-tab active" data-tab="effects">Effects</button>
-            <button class="dock-tab" data-tab="audio">Audio</button>
-            <button class="dock-tab" data-tab="export">Export</button>
-        </div>
-
-        <!-- Effects Tab -->
-        <div class="tab-panel active" id="tab-effects">
-            <div class="mode-toggle-row">
-                <span class="mode-toggle-label">Mode</span>
-                <div class="selector-row" id="fx-mode-buttons">
-                    <button class="selector-btn active" data-value="global">GLOBAL</button>
-                    <button class="selector-btn" data-value="timeline">TIMELINE</button>
-                </div>
-            </div>
-
-            <div class="fx-category">
-                <div class="cat-label"><span class="cat-dot" style="background:#6C5CE7"></span> Color</div>
-                <div class="fx-strip" id="fx-strip-color">
-                    <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
-                    <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
-                    <button class="fx-card" data-effect="palette" data-cat="color">PALTTE</button>
-                    <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
-                </div>
-            </div>
-            <div class="fx-category">
-                <div class="cat-label"><span class="cat-dot" style="background:#00B894"></span> Distortion</div>
-                <div class="fx-strip" id="fx-strip-distortion">
-                    <button class="fx-card" data-effect="chroma" data-cat="distortion">CHROMA</button>
-                    <button class="fx-card" data-effect="curve" data-cat="distortion">CURVE</button>
-                    <button class="fx-card" data-effect="wave" data-cat="distortion">WAVE</button>
-                    <button class="fx-card" data-effect="jitter" data-cat="distortion">JITTER</button>
-                    <button class="fx-card" data-effect="mblur" data-cat="distortion">MBLUR</button>
-                </div>
-            </div>
-            <div class="fx-category">
-                <div class="cat-label"><span class="cat-dot" style="background:#FDCB6E"></span> Pattern</div>
-                <div class="fx-strip" id="fx-strip-pattern">
-                    <button class="fx-card" data-effect="bloom" data-cat="pattern">BLOOM</button>
-                    <button class="fx-card" data-effect="dither" data-cat="pattern">DITHER</button>
-                    <button class="fx-card" data-effect="atkinson" data-cat="pattern">ATKNSN</button>
-                    <button class="fx-card" data-effect="halftone" data-cat="pattern">HALF</button>
-                    <button class="fx-card" data-effect="pxsort" data-cat="pattern">PXSORT</button>
-                    <button class="fx-card" data-effect="pixel" data-cat="pattern">PIXEL</button>
-                </div>
-            </div>
-            <div class="fx-category">
-                <div class="cat-label"><span class="cat-dot" style="background:#E17055"></span> Overlay</div>
-                <div class="fx-strip" id="fx-strip-overlay">
-                    <button class="fx-card" data-effect="ascii" data-cat="overlay">ASCII</button>
-                    <button class="fx-card" data-effect="glitch" data-cat="overlay">GLITCH</button>
-                    <button class="fx-card" data-effect="noise" data-cat="overlay">NOISE</button>
-                    <button class="fx-card" data-effect="grain" data-cat="overlay">GRAIN</button>
-                    <button class="fx-card" data-effect="dots" data-cat="overlay">DOTS</button>
-                    <button class="fx-card" data-effect="grid" data-cat="overlay">GRID</button>
-                    <button class="fx-card" data-effect="scanlines" data-cat="overlay">SCAN</button>
-                    <button class="fx-card" data-effect="vignette" data-cat="overlay">VGNTE</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Audio Tab -->
-        <div class="tab-panel" id="tab-audio">
+            <!-- Audio Upload -->
             <div class="control-group">
                 <label>Audio</label>
                 <div id="audio-input-container" onclick="document.getElementById('audioUpload').click()">
@@ -1132,6 +1326,8 @@
                 </div>
                 <canvas id="mini-spectrum" width="260" height="32"></canvas>
             </div>
+
+            <!-- Audio Sync -->
             <div class="control-group">
                 <label>Audio Sync</label>
                 <div class="selector-row" id="sync-buttons">
@@ -1151,33 +1347,23 @@
             </div>
             <div class="control-group" id="group-8">
                 <label>Freq Low (Hz) <input type="number" class="value-input" id="val-8" value="20"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-8" min="20" max="20000" value="20" step="1">
-                </div>
+                <div class="slider-wrapper"><input type="range" id="slider-8" min="20" max="20000" value="20" step="1"></div>
             </div>
             <div class="control-group" id="group-9">
                 <label>Freq High (Hz) <input type="number" class="value-input" id="val-9" value="20000"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-9" min="20" max="20000" value="20000" step="1">
-                </div>
+                <div class="slider-wrapper"><input type="range" id="slider-9" min="20" max="20000" value="20000" step="1"></div>
             </div>
             <div class="control-group" id="group-7">
                 <label>Sensitivity <input type="number" class="value-input" id="val-7" value="50"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-7" min="0" max="100" value="50" step="1">
-                </div>
+                <div class="slider-wrapper"><input type="range" id="slider-7" min="0" max="100" value="50" step="1"></div>
             </div>
             <div class="control-group" id="group-10">
                 <label>Threshold <input type="number" class="value-input" id="val-10" value="10"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-10" min="0" max="100" value="10" step="1">
-                </div>
+                <div class="slider-wrapper"><input type="range" id="slider-10" min="0" max="100" value="10" step="1"></div>
             </div>
             <div class="control-group" id="group-11">
                 <label>Release <input type="number" class="value-input" id="val-11" value="40"></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-11" min="0" max="100" value="40" step="1">
-                </div>
+                <div class="slider-wrapper"><input type="range" id="slider-11" min="0" max="100" value="40" step="1"></div>
             </div>
             <div class="control-group">
                 <label>Auto-Gain</label>
@@ -1191,15 +1377,13 @@
                 <div class="selector-row" id="sync-target-buttons">
                     <button class="selector-btn active" data-value="all">MIX</button>
                     <button class="selector-btn" data-value="qty">QTY</button>
-                    <button class="selector-btn" data-value="blob">SIZE</button>
-                    <button class="selector-btn" data-value="curve">COLOR</button>
+                    <button class="selector-btn" data-value="size">SIZE</button>
+                    <button class="selector-btn" data-value="color">COLOR</button>
                     <button class="selector-btn" data-value="flash">FLASH</button>
                 </div>
             </div>
-        </div>
 
-        <!-- Export Tab -->
-        <div class="tab-panel" id="tab-export">
+            <!-- Record & Save -->
             <div class="playback-row">
                 <button id="btn-record" class="action-btn">
                     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
@@ -1210,243 +1394,53 @@
                     Save
                 </button>
             </div>
-            <button id="btn-photo" class="action-btn" style="width:100%;margin-top:8px">
+            <button id="btn-photo" class="action-btn" style="width:100%">
                 <svg viewBox="0 0 24 24"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
                 Photo
             </button>
-        </div>
 
-        <!-- Param Drawer (slides up when effect selected) -->
-        <div id="param-drawer">
-            <div id="drawer-header">
-                <span id="drawer-title"></span>
-                <button id="drawer-close">&times;</button>
-            </div>
-            <div id="drawer-params"></div>
         </div>
     </div>
 
-    <!-- Hidden FX param templates (moved from left panel, used by drawer) -->
-    <div id="fx-param-templates" style="display:none">
-        <div class="fx-param-group" id="fx-params-ascii">
-            <label>Cell Size <input type="number" class="value-input" id="val-ascii-cell" value="10"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-ascii-cell" min="4" max="24" value="10" step="1">
+    <!-- TIMELINE -->
+    <div id="timeline-container" class="hidden">
+        <div class="timeline-controls">
+            <button id="tl-btn-play" class="action-btn" title="Play/Pause">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button id="tl-btn-restart" class="action-btn" title="Restart">
+                <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            </button>
+            <div class="tl-band-selector" id="tl-ruler-selector">
+                <button class="tl-band-btn active" data-ruler="video">VIDEO</button>
+                <button class="tl-band-btn" data-ruler="audio">AUDIO</button>
             </div>
-            <label>ASCII Color</label>
-            <div class="selector-row" id="ascii-color-buttons">
-                <button class="selector-btn active" data-value="mono">MONO</button>
-                <button class="selector-btn" data-value="color">COLOR</button>
+            <div class="tl-band-selector" id="tl-loop-selector">
+                <button class="tl-band-btn" data-loop="loop">LOOP</button>
+                <button class="tl-band-btn active" data-loop="through">PLAY</button>
+                <button class="tl-band-btn" data-loop="once">ONCE</button>
             </div>
+            <span id="tl-offset-label" class="tl-offset-label hidden">OFFSET: 0.0s</span>
+            <span id="timeline-time">0:00 / 0:00</span>
+            <div class="tl-band-selector" id="tl-band-selector">
+                <button class="tl-band-btn active" data-band="full">FULL</button>
+                <button class="tl-band-btn" data-band="kick">KICK</button>
+                <button class="tl-band-btn" data-band="vocal">VOCAL</button>
+                <button class="tl-band-btn" data-band="hats">HATS</button>
+            </div>
+            <button id="tl-btn-record" class="action-btn" title="Record">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+            </button>
         </div>
-        <div class="fx-param-group" id="fx-params-chroma">
-            <label>Offset <input type="number" class="value-input" id="val-chroma-offset" value="5"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-chroma-offset" min="1" max="25" value="5" step="1">
-            </div>
+        <div id="timeline-track">
+            <canvas id="tl-waveform"></canvas>
+            <div id="timeline-playhead"></div>
+            <div id="timeline-ghost"></div>
         </div>
-        <div class="fx-param-group" id="fx-params-atkinson">
-            <label>Atkinson Color</label>
-            <div class="selector-row" id="atkinson-color-buttons">
-                <button class="selector-btn active" data-value="bw">B&W</button>
-                <button class="selector-btn" data-value="color">COLOR</button>
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-scanlines">
-            <label>Intensity <input type="number" class="value-input" id="val-scan-intensity" value="50"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-scan-intensity" min="5" max="100" value="50" step="1">
-            </div>
-            <label>Line Count <input type="number" class="value-input" id="val-scan-count" value="300"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-scan-count" min="50" max="800" value="300" step="10">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-vignette">
-            <label>Intensity <input type="number" class="value-input" id="val-vig-intensity" value="50"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-vig-intensity" min="5" max="100" value="50" step="1">
-            </div>
-            <label>Radius <input type="number" class="value-input" id="val-vig-radius" value="70"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-vig-radius" min="20" max="100" value="70" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-grain">
-            <label>Intensity <input type="number" class="value-input" id="val-grain-intensity" value="35"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-grain-intensity" min="5" max="100" value="35" step="1">
-            </div>
-            <label>Size <input type="number" class="value-input" id="val-grain-size" value="15"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-grain-size" min="5" max="40" value="15" step="1">
-            </div>
-            <label>Grain Color</label>
-            <div class="selector-row" id="grain-color-buttons">
-                <button class="selector-btn active" data-value="mono">MONO</button>
-                <button class="selector-btn" data-value="color">COLOR</button>
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-bloom">
-            <label>Intensity <input type="number" class="value-input" id="val-bloom-intensity" value="40"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-bloom-intensity" min="5" max="100" value="40" step="1">
-            </div>
-            <label>Radius <input type="number" class="value-input" id="val-bloom-radius" value="50"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-bloom-radius" min="10" max="100" value="50" step="1">
-            </div>
-            <label>Threshold <input type="number" class="value-input" id="val-bloom-thresh" value="50"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-bloom-thresh" min="0" max="100" value="50" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-tint">
-            <label>Tint Preset</label>
-            <div class="selector-row" id="tint-preset-buttons">
-                <button class="selector-btn active" data-value="green">GREEN</button>
-                <button class="selector-btn" data-value="amber">AMBER</button>
-                <button class="selector-btn" data-value="cyan">CYAN</button>
-                <button class="selector-btn" data-value="blue">BLUE</button>
-            </div>
-            <label>Intensity <input type="number" class="value-input" id="val-tint-intensity" value="70"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-tint-intensity" min="5" max="100" value="70" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-sepia">
-            <label>Intensity <input type="number" class="value-input" id="val-sepia-intensity" value="70"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-sepia-intensity" min="5" max="100" value="70" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-pixel">
-            <label>Pixel Size <input type="number" class="value-input" id="val-pixel-size" value="8"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-pixel-size" min="2" max="50" value="8" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-wave">
-            <label>Amplitude <input type="number" class="value-input" id="val-wave-amp" value="20"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-wave-amp" min="1" max="100" value="20" step="1">
-            </div>
-            <label>Frequency <input type="number" class="value-input" id="val-wave-freq" value="5"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-wave-freq" min="1" max="20" value="5" step="1">
-            </div>
-            <label>Speed <input type="number" class="value-input" id="val-wave-speed" value="2"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-wave-speed" min="0" max="5" value="2" step="0.1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-glitch">
-            <label>Intensity <input type="number" class="value-input" id="val-glitch-intensity" value="30"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-glitch-intensity" min="5" max="100" value="30" step="1">
-            </div>
-            <label>Frequency <input type="number" class="value-input" id="val-glitch-freq" value="20"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-glitch-freq" min="1" max="100" value="20" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-jitter">
-            <label>Intensity <input type="number" class="value-input" id="val-jitter-intensity" value="20"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-jitter-intensity" min="1" max="100" value="20" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-noise">
-            <label>Intensity <input type="number" class="value-input" id="val-noise-intensity" value="25"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-noise-intensity" min="5" max="100" value="25" step="1">
-            </div>
-            <label>Scale <input type="number" class="value-input" id="val-noise-scale" value="1"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-noise-scale" min="1" max="10" value="1" step="1">
-            </div>
-            <label>Noise Color</label>
-            <div class="selector-row" id="noise-color-buttons">
-                <button class="selector-btn active" data-value="mono">MONO</button>
-                <button class="selector-btn" data-value="color">COLOR</button>
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-curve">
-            <label>Intensity <input type="number" class="value-input" id="val-curve-intensity" value="30"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-curve-intensity" min="5" max="100" value="30" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-bricon">
-            <label>Brightness <input type="number" class="value-input" id="val-bri" value="0"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-bri" min="-100" max="100" value="0" step="1">
-            </div>
-            <label>Contrast <input type="number" class="value-input" id="val-con" value="100"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-con" min="0" max="200" value="100" step="1">
-            </div>
-            <label>Saturation <input type="number" class="value-input" id="val-sat" value="100"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-sat" min="0" max="200" value="100" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-grid">
-            <label>Scale <input type="number" class="value-input" id="val-grid-scale" value="20"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-grid-scale" min="5" max="50" value="20" step="1">
-            </div>
-            <label>Line Width <input type="number" class="value-input" id="val-grid-width" value="1"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-grid-width" min="1" max="5" value="1" step="0.5">
-            </div>
-            <label>Opacity <input type="number" class="value-input" id="val-grid-opacity" value="30"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-grid-opacity" min="5" max="100" value="30" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-dots">
-            <label>Angle <input type="number" class="value-input" id="val-dots-angle" value="45"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-dots-angle" min="0" max="360" value="45" step="1">
-            </div>
-            <label>Scale <input type="number" class="value-input" id="val-dots-scale" value="6"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-dots-scale" min="2" max="20" value="6" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-mblur">
-            <label>Intensity <input type="number" class="value-input" id="val-mblur-intensity" value="30"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-mblur-intensity" min="5" max="100" value="30" step="1">
-            </div>
-            <label>Angle <input type="number" class="value-input" id="val-mblur-angle" value="0"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-mblur-angle" min="0" max="360" value="0" step="1">
-            </div>
-        </div>
-        <div class="fx-param-group" id="fx-params-palette">
-            <label>Palette</label>
-            <div class="selector-row" id="palette-preset-buttons" style="flex-wrap:wrap;row-gap:1px;">
-                <button class="selector-btn active" data-value="noir">NOIR</button>
-                <button class="selector-btn" data-value="terminal">TERM</button>
-                <button class="selector-btn" data-value="gameboy">GMBOY</button>
-                <button class="selector-btn" data-value="synthwave">SYNTH</button>
-                <button class="selector-btn" data-value="cyberpunk">CYBER</button>
-                <button class="selector-btn" data-value="amber">AMBER</button>
-                <button class="selector-btn" data-value="arctic">ARTIC</button>
-                <button class="selector-btn" data-value="rose">ROSE</button>
-                <button class="selector-btn" data-value="neon">NEON</button>
-                <button class="selector-btn" data-value="forest">FORST</button>
-                <button class="selector-btn" data-value="sunset">SUNST</button>
-                <button class="selector-btn" data-value="ocean">OCEAN</button>
-            </div>
-            <label>Intensity <input type="number" class="value-input" id="val-palette-intensity" value="80"></label>
-            <div class="slider-wrapper">
-                <input type="range" id="slider-palette-intensity" min="5" max="100" value="80" step="1">
-            </div>
-        </div>
+        <div id="tl-drag-hint">drag effects here to place them at specific moments &bull; drag waveform to offset audio</div>
     </div>
+    <div id="drag-ghost"></div>
+
 
 <script>
 
@@ -1496,6 +1490,17 @@ let activeEffects = new Set();
 let fxLayerAll = false;
 let asciiCellSize = 10;
 let asciiColorMode = 'mono';
+let asciiCharSet = 'classic';
+let asciiInvert = false;
+const ASCII_CHARSETS = {
+    classic: ' .,:;+*?%S#@',
+    blocks: ' ░▒▓█',
+    dots: ' ·•●○',
+    binary: '01',
+    braille: '⠀⠁⠂⠄⠈⠐⠠⡀⠃⠅⠆⠉⠊⠑⠒⠔⠘⠤⠰⡁⡂⡄⡈⡐⡠⣀',
+    symbols: ' -=+*#%@',
+    katakana: ' ｦｱｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ'
+};
 let chromaOffset = 5;
 let atkinsonColorMode = 'bw';
 let scanIntensity = 50;
@@ -1517,11 +1522,21 @@ let waveFreq = 5;
 let waveSpeed = 2;
 let glitchIntensity = 30;
 let glitchFreq = 20;
+let glitchMode = 'shift';
 let jitterIntensity = 20;
+let jitterBlockSize = 2;
+let jitterMode = 'random';
+let halfSpacing = 6;
+let halfColorMode = 'bw';
+let ditherColorMode = 'bw';
+let pxsortLo = 30;
+let pxsortHi = 220;
+let pxsortDir = 'horizontal';
 let noiseIntensity = 25;
 let noiseScale = 1;
 let noiseColorMode = 'mono';
 let curveIntensity = 30;
+let curveDirection = 'barrel';
 let briValue = 0;
 let conValue = 100;
 let satValue = 100;
@@ -1537,13 +1552,32 @@ let paletteIntensity = 80;
 
 let videoX, videoY, videoW, videoH;
 
+// MASK tracking state (MediaPipe AI re-segmentation per frame)
+let maskSelecting = false;       // in click-to-select mode (video paused)
+let maskReady = false;           // tracking active
+let maskSegData = null;          // Uint8Array — cached AI segmentation mask (0 or 255 per pixel)
+let maskSegW = 0;                // mask width
+let maskSegH = 0;                // mask height
+let maskOverlay = null;          // p5.Graphics — green overlay of segmented region
+let maskClickNorm = null;        // {x, y} — tracked click point in normalized [0,1] coords
+let maskFrameCount = 0;          // frames since last re-segmentation
+const MASK_RESEG_EVERY = 4;     // re-run AI every N frames
+
 // Timeline state
 let timelineSegments = [];
-let isTimelineMode = false;
 let videoDuration = 0;
+let audioDuration = 0; // duration of loaded audio file
 let selectedSegment = null;
-let selectedDrawerEffect = null;
 let tlDragging = false;
+let fxDragState = null; // drag-from-card state
+let tlWaveform = null;  // pre-analyzed audio energy array
+let tlBeats = [];       // detected beat timestamps
+let tlBandView = 'full'; // which band to show on timeline
+const BEAT_SNAP_MS = 150; // snap threshold in ms
+let tlRulerMode = 'video'; // 'video' or 'audio' — what defines timeline length
+let audioOffset = 0;        // seconds: positive = audio starts later, negative = audio starts earlier
+let loopMode = 'through';   // 'loop' = both loop synced, 'through' = video loops + audio plays through, 'once' = stop at shorter
+let waveformDragging = false; // for audio offset drag on timeline
 
 const FX_CATEGORIES = {
     sepia:'color', tint:'color', palette:'color', bricon:'color',
@@ -1558,18 +1592,18 @@ const FX_PARAM_MAP = {
     palette: [{v:'palettePreset',g:()=>palettePreset,s:v=>palettePreset=v},{v:'paletteIntensity',g:()=>paletteIntensity,s:v=>paletteIntensity=v}],
     bricon: [{v:'briValue',g:()=>briValue,s:v=>briValue=v},{v:'conValue',g:()=>conValue,s:v=>conValue=v},{v:'satValue',g:()=>satValue,s:v=>satValue=v}],
     chroma: [{v:'chromaOffset',g:()=>chromaOffset,s:v=>chromaOffset=v}],
-    curve: [{v:'curveIntensity',g:()=>curveIntensity,s:v=>curveIntensity=v}],
+    curve: [{v:'curveIntensity',g:()=>curveIntensity,s:v=>curveIntensity=v},{v:'curveDirection',g:()=>curveDirection,s:v=>curveDirection=v}],
     wave: [{v:'waveAmp',g:()=>waveAmp,s:v=>waveAmp=v},{v:'waveFreq',g:()=>waveFreq,s:v=>waveFreq=v},{v:'waveSpeed',g:()=>waveSpeed,s:v=>waveSpeed=v}],
-    jitter: [{v:'jitterIntensity',g:()=>jitterIntensity,s:v=>jitterIntensity=v}],
+    jitter: [{v:'jitterIntensity',g:()=>jitterIntensity,s:v=>jitterIntensity=v},{v:'jitterBlockSize',g:()=>jitterBlockSize,s:v=>jitterBlockSize=v},{v:'jitterMode',g:()=>jitterMode,s:v=>jitterMode=v}],
     mblur: [{v:'mblurIntensity',g:()=>mblurIntensity,s:v=>mblurIntensity=v},{v:'mblurAngle',g:()=>mblurAngle,s:v=>mblurAngle=v}],
     bloom: [{v:'bloomIntensity',g:()=>bloomIntensity,s:v=>bloomIntensity=v},{v:'bloomRadius',g:()=>bloomRadius,s:v=>bloomRadius=v},{v:'bloomThreshold',g:()=>bloomThreshold,s:v=>bloomThreshold=v}],
-    dither: [],
+    dither: [{v:'ditherColorMode',g:()=>ditherColorMode,s:v=>ditherColorMode=v}],
     atkinson: [{v:'atkinsonColorMode',g:()=>atkinsonColorMode,s:v=>atkinsonColorMode=v}],
-    halftone: [],
-    pxsort: [],
+    halftone: [{v:'halfSpacing',g:()=>halfSpacing,s:v=>halfSpacing=v},{v:'halfColorMode',g:()=>halfColorMode,s:v=>halfColorMode=v}],
+    pxsort: [{v:'pxsortLo',g:()=>pxsortLo,s:v=>pxsortLo=v},{v:'pxsortHi',g:()=>pxsortHi,s:v=>pxsortHi=v},{v:'pxsortDir',g:()=>pxsortDir,s:v=>pxsortDir=v}],
     pixel: [{v:'pixelSize',g:()=>pixelSize,s:v=>pixelSize=v}],
-    ascii: [{v:'asciiCellSize',g:()=>asciiCellSize,s:v=>asciiCellSize=v},{v:'asciiColorMode',g:()=>asciiColorMode,s:v=>asciiColorMode=v}],
-    glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v}],
+    ascii: [{v:'asciiCellSize',g:()=>asciiCellSize,s:v=>asciiCellSize=v},{v:'asciiColorMode',g:()=>asciiColorMode,s:v=>asciiColorMode=v},{v:'asciiCharSet',g:()=>asciiCharSet,s:v=>asciiCharSet=v},{v:'asciiInvert',g:()=>asciiInvert,s:v=>asciiInvert=v}],
+    glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v},{v:'glitchMode',g:()=>glitchMode,s:v=>glitchMode=v}],
     noise: [{v:'noiseIntensity',g:()=>noiseIntensity,s:v=>noiseIntensity=v},{v:'noiseScale',g:()=>noiseScale,s:v=>noiseScale=v},{v:'noiseColorMode',g:()=>noiseColorMode,s:v=>noiseColorMode=v}],
     grain: [{v:'grainIntensity',g:()=>grainIntensity,s:v=>grainIntensity=v},{v:'grainSize',g:()=>grainSize,s:v=>grainSize=v},{v:'grainColorMode',g:()=>grainColorMode,s:v=>grainColorMode=v}],
     dots: [{v:'dotsAngle',g:()=>dotsAngle,s:v=>dotsAngle=v},{v:'dotsScale',g:()=>dotsScale,s:v=>dotsScale=v}],
@@ -1596,6 +1630,7 @@ let audioSync = false;
 let audioSyncTarget = 'all';
 let frequencyData = null;
 let audioGainNode = null;
+let audioObjectUrl = null;
 
 // Recording state
 let mediaRecorder = null;
@@ -1655,13 +1690,14 @@ const ui = {
     tlBtnPlay: document.getElementById('tl-btn-play'),
     tlBtnRestart: document.getElementById('tl-btn-restart'),
     tlBtnRecord: document.getElementById('tl-btn-record'),
-    // Bottom dock
-    dockTabs: document.querySelectorAll('.dock-tab'),
-    fxModeButtons: document.querySelectorAll('#fx-mode-buttons .selector-btn'),
-    paramDrawer: document.getElementById('param-drawer'),
-    drawerTitle: document.getElementById('drawer-title'),
-    drawerParams: document.getElementById('drawer-params'),
-    drawerClose: document.getElementById('drawer-close'),
+    tlGhost: document.getElementById('timeline-ghost'),
+    tlDragHint: document.getElementById('tl-drag-hint'),
+    tlWaveformCanvas: document.getElementById('tl-waveform'),
+    tlBandButtons: document.querySelectorAll('#tl-band-selector .tl-band-btn'),
+    tlRulerButtons: document.querySelectorAll('#tl-ruler-selector .tl-band-btn'),
+    tlLoopButtons: document.querySelectorAll('#tl-loop-selector .tl-band-btn'),
+    tlOffsetLabel: document.getElementById('tl-offset-label'),
+    dragGhost: document.getElementById('drag-ghost'),
     sliders: {},
     inputs: {},
     groups: {}
@@ -1777,8 +1813,22 @@ function setupUIListeners() {
             if (currentMode === 3) prevGridPixels = {};
             if (currentMode === 12) flickerScores = {};
             ui.customColorGroup.style.display = (currentMode === 5 || currentMode === 13) ? '' : 'none';
+            // MASK mode: enter painting state
+            if (currentMode === 14) {
+                enterMaskSelecting();
+            } else {
+                exitMaskMode();
+            }
             updateButtonStates();
         });
+    });
+
+    // Mask controls
+    document.getElementById('mask-done-btn').addEventListener('click', () => {
+        if (currentMode === 14 && maskSelecting && maskSegData) finalizeMask();
+    });
+    document.getElementById('mask-repick-btn').addEventListener('click', () => {
+        if (currentMode === 14) enterMaskSelecting();
     });
 
     // Custom color picker
@@ -1817,7 +1867,7 @@ function setupUIListeners() {
             if (audioSync) {
                 audioBaseValues = {
                     0: paramValues[0], 1: paramValues[1],
-                    5: paramValues[5], 6: paramValues[6]
+                    6: paramValues[6]
                 };
             }
             updateButtonStates();
@@ -1984,55 +2034,154 @@ function setupUIListeners() {
         ui.toggleBtnRight.classList.toggle('rotated');
     });
 
-    // Effect cards (bottom dock — multi-select)
+    // Effect cards — click to toggle, drag to timeline
     ui.fxCards.forEach(card => {
-        card.addEventListener('click', (e) => {
-            let effectName = e.currentTarget.dataset.effect;
-            if (isTimelineMode && videoLoaded && !usingWebcam) {
-                addTimelineSegment(effectName);
+        card.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            fxDragState = {
+                effect: card.dataset.effect,
+                cat: card.dataset.cat,
+                startX: e.clientX,
+                startY: e.clientY,
+                dragging: false
+            };
+        });
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!fxDragState) return;
+        let dx = e.clientX - fxDragState.startX;
+        let dy = e.clientY - fxDragState.startY;
+        if (!fxDragState.dragging && (dx*dx + dy*dy) > 36) {
+            fxDragState.dragging = true;
+            ui.dragGhost.textContent = fxDragState.effect.toUpperCase();
+            ui.dragGhost.style.display = 'block';
+            ui.dragGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#888';
+        }
+        if (fxDragState.dragging) {
+            ui.dragGhost.style.left = (e.clientX + 12) + 'px';
+            ui.dragGhost.style.top = (e.clientY + 12) + 'px';
+            let tlRect = ui.tlTrack.getBoundingClientRect();
+            let overTl = e.clientX >= tlRect.left && e.clientX <= tlRect.right &&
+                         e.clientY >= tlRect.top - 20 && e.clientY <= tlRect.bottom + 20;
+            ui.tlTrack.classList.toggle('drag-over', overTl);
+            ui.tlDragHint.classList.toggle('drop-active', overTl);
+            let tlDurG = getTimelineDuration();
+            if (overTl && tlDurG > 0) {
+                let ratio = Math.max(0, Math.min(1, (e.clientX - tlRect.left) / tlRect.width));
+                let segW = Math.min(5, tlDurG) / tlDurG * 100;
+                ui.tlGhost.style.left = (ratio * 100) + '%';
+                ui.tlGhost.style.width = segW + '%';
+                ui.tlGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#888';
+                ui.tlGhost.style.opacity = '0.35';
+                ui.tlGhost.classList.add('visible');
             } else {
-                if (activeEffects.has(effectName)) {
-                    activeEffects.delete(effectName);
-                    if (selectedDrawerEffect === effectName) closeParamDrawer();
-                } else {
-                    activeEffects.add(effectName);
-                }
-                openParamDrawer(effectName);
+                ui.tlGhost.classList.remove('visible');
+            }
+        }
+    });
+    document.addEventListener('mouseup', (e) => {
+        if (!fxDragState) return;
+        if (fxDragState.dragging) {
+            ui.dragGhost.style.display = 'none';
+            ui.tlTrack.classList.remove('drag-over');
+            ui.tlDragHint.classList.remove('drop-active');
+            ui.tlGhost.classList.remove('visible');
+            let tlRect = ui.tlTrack.getBoundingClientRect();
+            let overTl = e.clientX >= tlRect.left && e.clientX <= tlRect.right &&
+                         e.clientY >= tlRect.top - 20 && e.clientY <= tlRect.bottom + 20;
+            let tlDur = getTimelineDuration();
+            if (overTl && tlDur > 0) {
+                let ratio = Math.max(0, Math.min(1, (e.clientX - tlRect.left) / tlRect.width));
+                let dropTime = snapToBeat(ratio * tlDur);
+                addTimelineSegmentAt(fxDragState.effect, dropTime);
+            }
+        } else {
+            // Click (not drag) — toggle effect globally
+            let effectName = fxDragState.effect;
+            if (activeEffects.has(effectName)) {
+                activeEffects.delete(effectName);
+            } else {
+                activeEffects.add(effectName);
             }
             updateEffectCardStates();
-        });
+            updateFxParamVisibility();
+        }
+        fxDragState = null;
     });
-
-    // Dock tab switching
-    ui.dockTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            ui.dockTabs.forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            tab.classList.add('active');
-            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-        });
-    });
-
-    // FX mode toggle (GLOBAL / TIMELINE)
-    ui.fxModeButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            isTimelineMode = (e.target.dataset.value === 'timeline');
-            ui.fxModeButtons.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-        });
-    });
-
-    // Param drawer close
-    ui.drawerClose.addEventListener('click', closeParamDrawer);
 
     // Timeline controls
     ui.tlBtnPlay.addEventListener('click', togglePlay);
     ui.tlBtnRestart.addEventListener('click', restartVideo);
     ui.tlBtnRecord.addEventListener('click', toggleRecording);
 
-    // Timeline scrubbing
+    // Timeline band selector
+    ui.tlBandButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            tlBandView = e.target.dataset.band;
+            ui.tlBandButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            renderTimelineWaveform();
+        });
+    });
+
+    // Timeline ruler toggle (VIDEO | AUDIO)
+    ui.tlRulerButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            tlRulerMode = e.target.dataset.ruler;
+            ui.tlRulerButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            renderTimelineWaveform();
+            renderTimelineSegments();
+        });
+    });
+
+    // Loop mode selector
+    ui.tlLoopButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            loopMode = e.target.dataset.loop;
+            ui.tlLoopButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            if (audioElement) audioElement.loop = (loopMode === 'loop');
+        });
+    });
+
+    // Audio offset — drag waveform on timeline track
+    ui.tlTrack.addEventListener('mousedown', (e) => {
+        // Only start waveform drag if clicking on the track background (not segments)
+        if (e.target === ui.tlWaveformCanvas || e.target === ui.tlTrack) {
+            if (e.shiftKey || !tlWaveform || tlWaveform.length === 0) return; // shift = scrub as before if no audio
+            // If audio is loaded, right-click or alt-click to drag waveform offset
+            if (e.altKey && tlWaveform && tlWaveform.length > 0) {
+                e.preventDefault();
+                waveformDragging = true;
+                let startX = e.clientX;
+                let origOffset = audioOffset;
+                let rect = ui.tlTrack.getBoundingClientRect();
+                let tlDur = getTimelineDuration();
+
+                function onWfMove(ev) {
+                    let dx = (ev.clientX - startX) / rect.width * tlDur;
+                    audioOffset = origOffset + dx;
+                    updateOffsetLabel();
+                    renderTimelineWaveform();
+                }
+                function onWfUp() {
+                    waveformDragging = false;
+                    document.removeEventListener('mousemove', onWfMove);
+                    document.removeEventListener('mouseup', onWfUp);
+                }
+                document.addEventListener('mousemove', onWfMove);
+                document.addEventListener('mouseup', onWfUp);
+                return; // don't also scrub
+            }
+        }
+    });
+
+    // Timeline scrubbing (left-click without alt = seek, alt+click = waveform drag handled above)
     ui.tlTrack.addEventListener('mousedown', (e) => {
         if (e.target.classList.contains('timeline-segment') || e.target.classList.contains('seg-handle')) return;
+        if (waveformDragging) return; // waveform offset drag in progress
+        if (e.altKey && tlWaveform && tlWaveform.length > 0) return; // handled by waveform drag listener
         tlDragging = true;
         seekToTimelinePosition(e.clientX);
     });
@@ -2068,6 +2217,20 @@ function setupUIListeners() {
         btn.addEventListener('click', (e) => {
             asciiColorMode = e.target.dataset.value;
             document.querySelectorAll('#ascii-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    document.querySelectorAll('#ascii-charset-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            asciiCharSet = e.target.dataset.value;
+            document.querySelectorAll('#ascii-charset-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    document.querySelectorAll('#ascii-invert-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            asciiInvert = (e.target.dataset.value === 'on');
+            document.querySelectorAll('#ascii-invert-buttons .selector-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
         });
     });
@@ -2145,10 +2308,56 @@ function setupUIListeners() {
     wireSlider('slider-wave-speed', 'val-wave-speed', v => waveSpeed = v);
     wireSlider('slider-glitch-intensity', 'val-glitch-intensity', v => glitchIntensity = v);
     wireSlider('slider-glitch-freq', 'val-glitch-freq', v => glitchFreq = v);
+    document.querySelectorAll('#glitch-mode-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            glitchMode = e.target.dataset.value;
+            document.querySelectorAll('#glitch-mode-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
     wireSlider('slider-jitter-intensity', 'val-jitter-intensity', v => jitterIntensity = v);
+    wireSlider('slider-jitter-block', 'val-jitter-block', v => jitterBlockSize = v);
+    document.querySelectorAll('#jitter-mode-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            jitterMode = e.target.dataset.value;
+            document.querySelectorAll('#jitter-mode-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    wireSlider('slider-half-spacing', 'val-half-spacing', v => halfSpacing = v);
+    document.querySelectorAll('#half-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            halfColorMode = e.target.dataset.value;
+            document.querySelectorAll('#half-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    document.querySelectorAll('#dither-color-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            ditherColorMode = e.target.dataset.value;
+            document.querySelectorAll('#dither-color-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    wireSlider('slider-pxsort-lo', 'val-pxsort-lo', v => pxsortLo = v);
+    wireSlider('slider-pxsort-hi', 'val-pxsort-hi', v => pxsortHi = v);
+    document.querySelectorAll('#pxsort-dir-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            pxsortDir = e.target.dataset.value;
+            document.querySelectorAll('#pxsort-dir-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
     wireSlider('slider-noise-intensity', 'val-noise-intensity', v => noiseIntensity = v);
     wireSlider('slider-noise-scale', 'val-noise-scale', v => noiseScale = v);
     wireSlider('slider-curve-intensity', 'val-curve-intensity', v => curveIntensity = v);
+    document.querySelectorAll('#curve-dir-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            curveDirection = e.target.dataset.value;
+            document.querySelectorAll('#curve-dir-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
     wireSlider('slider-bri', 'val-bri', v => briValue = v);
     wireSlider('slider-con', 'val-con', v => conValue = v);
     wireSlider('slider-sat', 'val-sat', v => satValue = v);
@@ -2179,6 +2388,8 @@ function setupUIListeners() {
         });
     });
 
+    // Re-render waveform on resize
+    window.addEventListener('resize', () => { if (tlWaveform) renderTimelineWaveform(); });
 }
 
 function updateButtonStates() {
@@ -2198,6 +2409,26 @@ function updateButtonStates() {
             else btn.classList.remove('active');
         }
     });
+
+    // Mask controls visibility
+    document.getElementById('mask-controls-group').style.display = (currentMode === 14) ? '' : 'none';
+    if (currentMode === 14) {
+        let statusEl = document.getElementById('mask-status');
+        let hintEl = document.getElementById('mask-hint');
+        if (maskSelecting && !maskSegData) {
+            statusEl.textContent = 'CLICK SUBJECT';
+            statusEl.style.color = '#FDCB6E';
+            hintEl.textContent = 'Click on the object you want to track';
+        } else if (maskSelecting && maskSegData) {
+            statusEl.textContent = 'SELECTED';
+            statusEl.style.color = '#6C5CE7';
+            hintEl.textContent = 'Click elsewhere to re-select, or press DONE';
+        } else if (maskReady) {
+            statusEl.textContent = 'TRACKING';
+            statusEl.style.color = '#00B894';
+            hintEl.textContent = 'Object is being tracked';
+        }
+    }
 
     ui.lineButtons.forEach(btn => {
         const isMsgOn = btn.dataset.value === 'on';
@@ -2252,7 +2483,8 @@ function updateFxParamVisibility() {
         pixel: 'fx-params-pixel', wave: 'fx-params-wave', glitch: 'fx-params-glitch',
         jitter: 'fx-params-jitter', noise: 'fx-params-noise', curve: 'fx-params-curve',
         bricon: 'fx-params-bricon', grid: 'fx-params-grid', dots: 'fx-params-dots',
-        mblur: 'fx-params-mblur', palette: 'fx-params-palette'
+        mblur: 'fx-params-mblur', palette: 'fx-params-palette',
+        halftone: 'fx-params-halftone', dither: 'fx-params-dither', pxsort: 'fx-params-pxsort'
     };
     for (let [fx, id] of Object.entries(map)) {
         let el = document.getElementById(id);
@@ -2272,86 +2504,60 @@ function updateEffectCardStates() {
     });
 }
 
-// ─── Param Drawer ───
-function openParamDrawer(effectName) {
-    let paramGroup = document.getElementById('fx-params-' + effectName);
-    if (!paramGroup) { closeParamDrawer(); return; }
-    selectedDrawerEffect = effectName;
-    ui.drawerTitle.textContent = effectName.toUpperCase();
-    ui.drawerParams.innerHTML = '';
-    // Clone param group content into drawer
-    let clone = paramGroup.cloneNode(true);
-    clone.style.display = 'block';
-    clone.classList.add('visible');
-    ui.drawerParams.appendChild(clone);
-    ui.paramDrawer.classList.add('open');
-    // Re-wire cloned sliders
-    rewireDrawerSliders(clone, effectName);
-}
-
-function closeParamDrawer() {
-    ui.paramDrawer.classList.remove('open');
-    selectedDrawerEffect = null;
-}
-
-function rewireDrawerSliders(container, effectName) {
-    // Re-wire all range inputs inside the cloned drawer content
-    container.querySelectorAll('input[type="range"]').forEach(sl => {
-        let origId = sl.id;
-        let origSlider = document.querySelector('#fx-param-templates #' + origId);
-        if (origSlider) sl.value = origSlider.value;
-        sl.addEventListener('input', () => {
-            // Sync to the original hidden slider and trigger its logic
-            if (origSlider) {
-                origSlider.value = sl.value;
-                origSlider.dispatchEvent(new Event('input'));
-            }
-        });
-    });
-    container.querySelectorAll('input[type="number"]').forEach(inp => {
-        let origId = inp.id;
-        let origInput = document.querySelector('#fx-param-templates #' + origId);
-        if (origInput) inp.value = origInput.value;
-        inp.addEventListener('change', (e) => {
-            if (origInput) {
-                origInput.value = e.target.value;
-                origInput.dispatchEvent(new Event('change'));
-                // Sync the range slider too
-                let sl = container.querySelector('input[type="range"][id="' + origId.replace('val-', 'slider-') + '"]');
-                if (sl) sl.value = e.target.value;
-            }
-        });
-        inp.addEventListener('keydown', (e) => { e.stopPropagation(); });
-    });
-    container.querySelectorAll('.selector-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            let origBtnContainer = document.querySelector('#fx-param-templates #' + e.target.parentElement.id);
-            if (origBtnContainer) {
-                let origBtn = origBtnContainer.querySelector(`[data-value="${e.target.dataset.value}"]`);
-                if (origBtn) origBtn.click();
-            }
-            e.target.parentElement.querySelectorAll('.selector-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-        });
-    });
-}
-
 // ─── Timeline ───
+function addTimelineSegmentAt(effectName, startTime) {
+    let tlDur = getTimelineDuration();
+    if (!tlDur) return;
+    let endTime = Math.min(startTime + 5, tlDur);
+    let seg = {
+        id: nextSegId++,
+        effect: effectName,
+        startTime: startTime,
+        endTime: endTime,
+        params: captureEffectParams(effectName),
+        lane: 0,
+        color: FX_CAT_COLORS[FX_CATEGORIES[effectName]] || '#888'
+    };
+    timelineSegments.push(seg);
+    assignLanes();
+    renderTimelineSegments();
+    let newEl = ui.tlTrack.querySelector(`.timeline-segment[data-id="${seg.id}"]`);
+    if (newEl) {
+        newEl.classList.add('just-added');
+        setTimeout(() => newEl.classList.remove('just-added'), 500);
+    }
+}
+
 function seekToTimelinePosition(clientX) {
-    if (!videoDuration || !videoEl) return;
+    let tlDur = getTimelineDuration();
+    if (!tlDur || !videoEl) return;
     let rect = ui.tlTrack.getBoundingClientRect();
     let ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    let seekTime = ratio * videoDuration;
-    videoEl.time(seekTime);
-    if (audioElement && audioLoaded) audioElement.currentTime = seekTime;
+    let seekTime = ratio * tlDur;
+    // In audio ruler mode, seekTime is audio-time; convert to video-time
+    if (tlRulerMode === 'audio') {
+        let videoTime = seekTime + audioOffset;
+        if (videoDuration > 0) videoTime = ((videoTime % videoDuration) + videoDuration) % videoDuration;
+        videoEl.time(videoTime);
+        if (audioElement && audioLoaded) audioElement.currentTime = Math.max(0, seekTime);
+    } else {
+        videoEl.time(Math.min(seekTime, videoDuration || seekTime));
+        if (audioElement && audioLoaded) audioElement.currentTime = Math.max(0, getAudioTimeForVideo(seekTime));
+    }
 }
 
 function updateTimelinePlayhead() {
-    if (!ui.tlPlayhead || !videoDuration) return;
-    let currentTime = videoEl.time();
-    let ratio = currentTime / videoDuration;
+    let tlDur = getTimelineDuration();
+    if (!ui.tlPlayhead || !tlDur) return;
+    let currentTime;
+    if (tlRulerMode === 'audio' && audioElement && audioLoaded) {
+        currentTime = audioElement.currentTime;
+    } else {
+        currentTime = videoEl.time();
+    }
+    let ratio = Math.max(0, Math.min(1, currentTime / tlDur));
     ui.tlPlayhead.style.left = (ratio * 100) + '%';
-    ui.tlTime.textContent = formatTime(currentTime) + ' / ' + formatTime(videoDuration);
+    ui.tlTime.textContent = formatTime(currentTime) + ' / ' + formatTime(tlDur);
 }
 
 function formatTime(s) {
@@ -2360,11 +2566,198 @@ function formatTime(s) {
     return m + ':' + String(sec).padStart(2, '0');
 }
 
+function getTimelineDuration() {
+    if (tlRulerMode === 'audio' && audioDuration > 0) return audioDuration;
+    return videoDuration || audioDuration;
+}
+
+function updateOffsetLabel() {
+    if (!ui.tlOffsetLabel) return;
+    if (Math.abs(audioOffset) < 0.05) {
+        ui.tlOffsetLabel.classList.add('hidden');
+    } else {
+        ui.tlOffsetLabel.classList.remove('hidden');
+        let sign = audioOffset >= 0 ? '+' : '';
+        ui.tlOffsetLabel.textContent = 'OFFSET: ' + sign + audioOffset.toFixed(1) + 's';
+    }
+}
+
+function getAudioTimeForVideo(videoTime) {
+    return videoTime - audioOffset;
+}
+
 function showTimeline() {
     ui.tlContainer.classList.remove('hidden');
 }
 function hideTimeline() {
     ui.tlContainer.classList.add('hidden');
+}
+
+// ─── Audio Waveform Analysis for Timeline ───
+function analyzeAudioForTimeline(file) {
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        initAudioContext();
+        audioContext.decodeAudioData(e.target.result.slice(0), function(buffer) {
+            let sr = buffer.sampleRate;
+            let raw = buffer.getChannelData(0);
+            if (buffer.numberOfChannels > 1) {
+                let ch2 = buffer.getChannelData(1);
+                let mono = new Float32Array(raw.length);
+                for (let i = 0; i < raw.length; i++) mono[i] = (raw[i] + ch2[i]) * 0.5;
+                raw = mono;
+            }
+
+            let winSize = Math.floor(sr * 0.02); // 20ms windows
+            let numWins = Math.floor(raw.length / winSize);
+
+            // Low-pass filter for bass (~200Hz cutoff)
+            let alpha1 = (1.0 / sr) / ((1.0 / (200 * 2 * Math.PI)) + (1.0 / sr));
+            let bassF = new Float32Array(raw.length);
+            bassF[0] = raw[0] * alpha1;
+            for (let i = 1; i < raw.length; i++) bassF[i] = bassF[i-1] + alpha1 * (raw[i] - bassF[i-1]);
+
+            // Low-pass at 4000Hz (everything below = bass+mid)
+            let alpha2 = (1.0 / sr) / ((1.0 / (4000 * 2 * Math.PI)) + (1.0 / sr));
+            let midLowF = new Float32Array(raw.length);
+            midLowF[0] = raw[0] * alpha2;
+            for (let i = 1; i < raw.length; i++) midLowF[i] = midLowF[i-1] + alpha2 * (raw[i] - midLowF[i-1]);
+
+            // Compute RMS per window for each band
+            tlWaveform = [];
+            for (let w = 0; w < numWins; w++) {
+                let s = w * winSize, e = s + winSize;
+                let fullR = 0, bassR = 0, midR = 0, highR = 0;
+                for (let i = s; i < e; i++) {
+                    fullR += raw[i] * raw[i];
+                    bassR += bassF[i] * bassF[i];
+                    let mid = midLowF[i] - bassF[i];
+                    midR += mid * mid;
+                    let high = raw[i] - midLowF[i];
+                    highR += high * high;
+                }
+                tlWaveform.push({
+                    time: (s + winSize / 2) / sr,
+                    full: Math.sqrt(fullR / winSize),
+                    bass: Math.sqrt(bassR / winSize),
+                    mid: Math.sqrt(midR / winSize),
+                    high: Math.sqrt(highR / winSize)
+                });
+            }
+
+            // Normalize each band to 0-1
+            let mx = { full: 0, bass: 0, mid: 0, high: 0 };
+            for (let w of tlWaveform) {
+                mx.full = Math.max(mx.full, w.full);
+                mx.bass = Math.max(mx.bass, w.bass);
+                mx.mid = Math.max(mx.mid, w.mid);
+                mx.high = Math.max(mx.high, w.high);
+            }
+            for (let w of tlWaveform) {
+                w.full = mx.full > 0 ? w.full / mx.full : 0;
+                w.bass = mx.bass > 0 ? w.bass / mx.bass : 0;
+                w.mid = mx.mid > 0 ? w.mid / mx.mid : 0;
+                w.high = mx.high > 0 ? w.high / mx.high : 0;
+            }
+
+            // Beat detection — peaks in bass energy
+            tlBeats = [];
+            let bw = Math.floor(0.3 / 0.02); // 300ms lookback
+            for (let i = bw; i < tlWaveform.length - 2; i++) {
+                let avg = 0;
+                for (let j = i - bw; j < i; j++) avg += tlWaveform[j].bass;
+                avg /= bw;
+                if (tlWaveform[i].bass > avg * 1.5 && tlWaveform[i].bass > 0.15) {
+                    let isPeak = true;
+                    for (let j = Math.max(0, i - 4); j <= Math.min(tlWaveform.length - 1, i + 4); j++) {
+                        if (j !== i && tlWaveform[j].bass > tlWaveform[i].bass) { isPeak = false; break; }
+                    }
+                    if (isPeak && (tlBeats.length === 0 || tlWaveform[i].time - tlBeats[tlBeats.length - 1] > 0.18)) {
+                        tlBeats.push(tlWaveform[i].time);
+                    }
+                }
+            }
+
+            audioDuration = buffer.duration;
+            renderTimelineWaveform();
+        }, function(err) {
+            console.error('Audio decode failed:', err);
+            ui.audioName.innerText = 'decode error — try another file';
+        });
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function renderTimelineWaveform() {
+    let canvas = ui.tlWaveformCanvas;
+    if (!canvas || !tlWaveform || tlWaveform.length === 0) return;
+    let rect = ui.tlTrack.getBoundingClientRect();
+    canvas.width = rect.width * (window.devicePixelRatio || 1);
+    canvas.height = rect.height * (window.devicePixelRatio || 1);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    let ctx = canvas.getContext('2d');
+    let w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    let audioDur = tlWaveform[tlWaveform.length - 1].time;
+    let dur = getTimelineDuration();
+    if (dur <= 0) return;
+
+    // Band colors — more opaque for visibility
+    let colors = {
+        full: 'rgba(200, 200, 200, 0.55)',
+        kick: 'rgba(231, 76, 60, 0.65)',
+        vocal: 'rgba(108, 92, 231, 0.6)',
+        hats: 'rgba(46, 204, 113, 0.55)'
+    };
+    let bandKey = tlBandView === 'kick' ? 'bass' : tlBandView === 'vocal' ? 'mid' : tlBandView === 'hats' ? 'high' : 'full';
+    let color = colors[tlBandView] || colors.full;
+
+    // Draw waveform bars — shifted by audioOffset
+    ctx.fillStyle = color;
+    let barCount = Math.min(w, tlWaveform.length);
+    let barW = w / barCount;
+    for (let i = 0; i < barCount; i++) {
+        let tlTime = (i / barCount) * dur;
+        // Convert timeline position to audio time (subtract offset)
+        let audioTime = tlTime - audioOffset;
+        if (audioTime < 0 || audioTime > audioDur) continue; // outside audio range
+        let idx = Math.floor(audioTime / audioDur * tlWaveform.length);
+        idx = Math.max(0, Math.min(idx, tlWaveform.length - 1));
+        let val = tlWaveform[idx][bandKey];
+        // Boost: sqrt curve makes quiet parts more visible
+        val = Math.sqrt(val);
+        let barH = val * h * 0.92;
+        ctx.fillRect(i * barW, h - barH, Math.max(barW, 1), barH);
+    }
+
+    // Draw beat markers — shifted by audioOffset
+    ui.tlTrack.querySelectorAll('.tl-beat-marker').forEach(el => el.remove());
+    for (let beatTime of tlBeats) {
+        let tlBeatTime = beatTime + audioOffset; // shift beat to timeline position
+        if (tlBeatTime < 0 || tlBeatTime > dur) continue;
+        let pct = (tlBeatTime / dur) * 100;
+        let marker = document.createElement('div');
+        marker.className = 'tl-beat-marker';
+        marker.style.left = pct + '%';
+        ui.tlTrack.appendChild(marker);
+    }
+}
+
+function snapToBeat(time) {
+    if (tlBeats.length === 0) return time;
+    let closest = time;
+    let minDist = BEAT_SNAP_MS / 1000;
+    for (let bt of tlBeats) {
+        let tlBeatTime = bt + audioOffset; // beats are in audio-time, shift to timeline-time
+        let dist = Math.abs(tlBeatTime - time);
+        if (dist < minDist) {
+            minDist = dist;
+            closest = tlBeatTime;
+        }
+    }
+    return closest;
 }
 
 // ─── Timeline Segments ───
@@ -2381,21 +2774,9 @@ function restoreEffectParams(effectName, params) {
 }
 
 function addTimelineSegment(effectName) {
-    if (!videoDuration) return;
+    if (!getTimelineDuration()) return;
     let currentTime = videoEl ? videoEl.time() : 0;
-    let endTime = Math.min(currentTime + 5, videoDuration);
-    let seg = {
-        id: nextSegId++,
-        effect: effectName,
-        startTime: currentTime,
-        endTime: endTime,
-        params: captureEffectParams(effectName),
-        lane: 0,
-        color: FX_CAT_COLORS[FX_CATEGORIES[effectName]] || '#888'
-    };
-    timelineSegments.push(seg);
-    assignLanes();
-    renderTimelineSegments();
+    addTimelineSegmentAt(effectName, currentTime);
 }
 
 function assignLanes() {
@@ -2420,16 +2801,17 @@ function assignLanes() {
 
 function renderTimelineSegments() {
     ui.tlTrack.querySelectorAll('.timeline-segment').forEach(el => el.remove());
-    if (!videoDuration) return;
+    let tlDur = getTimelineDuration();
+    if (!tlDur) return;
     for (let seg of timelineSegments) {
         let el = document.createElement('div');
         el.className = 'timeline-segment';
         el.dataset.id = seg.id;
-        let left = (seg.startTime / videoDuration) * 100;
-        let w = ((seg.endTime - seg.startTime) / videoDuration) * 100;
+        let left = (seg.startTime / tlDur) * 100;
+        let w = ((seg.endTime - seg.startTime) / tlDur) * 100;
         el.style.left = left + '%';
         el.style.width = Math.max(w, 0.5) + '%';
-        el.style.top = (seg.lane * 12 + 2) + 'px';
+        el.style.top = (seg.lane * 20 + 2) + 'px';
         el.style.background = seg.color;
         el.textContent = seg.effect.toUpperCase().slice(0, 6);
         if (selectedSegment && selectedSegment.id === seg.id) el.classList.add('selected');
@@ -2444,7 +2826,6 @@ function renderTimelineSegments() {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             selectedSegment = seg;
-            openParamDrawer(seg.effect);
             renderTimelineSegments();
         });
         // Double-click to delete
@@ -2494,16 +2875,20 @@ function setupSegmentDrag(el, seg) {
     function startDrag() {
         function onMove(e) {
             let rect = ui.tlTrack.getBoundingClientRect();
-            let dx = (e.clientX - startX) / rect.width * videoDuration;
+            let tlDur = getTimelineDuration();
+            let dx = (e.clientX - startX) / rect.width * tlDur;
             if (dragType === 'move') {
                 let dur = origEnd - origStart;
-                let newStart = Math.max(0, Math.min(origStart + dx, videoDuration - dur));
+                let newStart = Math.max(0, Math.min(origStart + dx, tlDur - dur));
+                newStart = snapToBeat(newStart);
                 seg.startTime = newStart;
                 seg.endTime = newStart + dur;
             } else if (dragType === 'left') {
-                seg.startTime = Math.max(0, Math.min(origStart + dx, seg.endTime - 0.1));
+                let newStart = Math.max(0, Math.min(origStart + dx, seg.endTime - 0.1));
+                seg.startTime = snapToBeat(newStart);
             } else if (dragType === 'right') {
-                seg.endTime = Math.max(seg.startTime + 0.1, Math.min(origEnd + dx, videoDuration));
+                let newEnd = Math.max(seg.startTime + 0.1, Math.min(origEnd + dx, tlDur));
+                seg.endTime = snapToBeat(newEnd);
             }
             assignLanes();
             renderTimelineSegments();
@@ -2544,7 +2929,14 @@ function togglePlay() {
              videoEl.loop();
              ui.btnPlay.innerHTML = pauseIcon;
              ui.tlBtnPlay.innerHTML = pauseIcon;
-             if (audioElement && audioLoaded) { audioElement.play(); audioPlaying = true; }
+             if (audioElement && audioLoaded) {
+                 let audioTime = getAudioTimeForVideo(videoEl.time());
+                 if (audioTime >= 0) {
+                     audioElement.currentTime = audioTime;
+                     audioElement.play().catch(() => { audioPlaying = false; });
+                     audioPlaying = true;
+                 }
+             }
         } else {
              videoEl.pause();
              ui.btnPlay.innerHTML = playIcon;
@@ -2557,7 +2949,14 @@ function togglePlay() {
 function restartVideo() {
     if (videoEl) {
         videoEl.time(0);
-        if (audioElement && audioLoaded) audioElement.currentTime = 0;
+        if (audioElement && audioLoaded) {
+            audioElement.currentTime = Math.max(0, getAudioTimeForVideo(0));
+            // Re-enable audio if it had ended
+            if (audioElement.ended || audioElement.paused) {
+                audioElement.play().catch(() => { audioPlaying = false; });
+                audioPlaying = true;
+            }
+        }
         if(!videoPlaying) togglePlay();
     }
 }
@@ -2643,6 +3042,45 @@ function handleFile(event) {
             let pauseIcon = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
             ui.btnPlay.innerHTML = pauseIcon;
             ui.tlBtnPlay.innerHTML = pauseIcon;
+            // Keep audio in sync with video — handles offset and loop modes
+            videoEl.elt.addEventListener('timeupdate', () => {
+                if (!audioElement || !audioLoaded || !videoPlaying) return;
+                let videoTime = videoEl.elt.currentTime;
+                let expectedAudioTime = getAudioTimeForVideo(videoTime);
+
+                if (loopMode === 'loop') {
+                    // Both loop — sync audio to video with offset, wrap audio
+                    if (expectedAudioTime < 0) {
+                        // Video hasn't reached the audio start point yet
+                        if (audioElement.currentTime > 0.5) audioElement.currentTime = 0;
+                    } else if (audioDuration > 0) {
+                        expectedAudioTime = ((expectedAudioTime % audioDuration) + audioDuration) % audioDuration;
+                        let drift = Math.abs(audioElement.currentTime - expectedAudioTime);
+                        if (drift > 0.2) audioElement.currentTime = expectedAudioTime;
+                    }
+                } else if (loopMode === 'through') {
+                    // Video loops, audio plays through — no re-sync
+                    // If audio ended, try restarting it on next video loop
+                    if (audioElement.paused && !audioElement.ended) {
+                        // Was paused externally, leave it
+                    } else if (audioElement.ended && videoPlaying) {
+                        // Audio finished — could restart or leave stopped
+                        audioPlaying = false;
+                    }
+                } else if (loopMode === 'once') {
+                    // Stop both at the shorter duration
+                    let shorter = Math.min(videoDuration || Infinity, audioDuration || Infinity);
+                    if (videoTime >= shorter - 0.1) {
+                        videoEl.pause();
+                        audioElement.pause();
+                        videoPlaying = false;
+                        audioPlaying = false;
+                        let playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                        ui.btnPlay.innerHTML = playIcon;
+                        ui.tlBtnPlay.innerHTML = playIcon;
+                    }
+                }
+            });
             // Capture duration for timeline
             videoEl.elt.addEventListener('loadedmetadata', () => {
                 videoDuration = videoEl.elt.duration;
@@ -2702,23 +3140,30 @@ function applyDithering() {
     let d = pixelDensity();
     let totalW = width * d;
     let totalH = height * d;
+    let isColor = (ditherColorMode === 'color');
     for (let y = 0; y < totalH; y++) {
         for (let x = 0; x < totalW; x++) {
             let idx = (x + y * totalW) * 4;
-            let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
-            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
             let threshold = (bayerMatrix[y % 4][x % 4] / 16) * 255;
-            let val = gray > threshold ? 255 : 0;
-            pixels[idx] = val;
-            pixels[idx+1] = val;
-            pixels[idx+2] = val;
+            if (isColor) {
+                pixels[idx]   = pixels[idx]   > threshold ? 255 : 0;
+                pixels[idx+1] = pixels[idx+1] > threshold ? 255 : 0;
+                pixels[idx+2] = pixels[idx+2] > threshold ? 255 : 0;
+            } else {
+                let gray = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+                let val = gray > threshold ? 255 : 0;
+                pixels[idx] = val;
+                pixels[idx+1] = val;
+                pixels[idx+2] = val;
+            }
         }
     }
     updatePixels();
 }
 
 function applyHalftone() {
-    let dotSpacing = 6;
+    let dotSpacing = halfSpacing;
+    let isColor = (halfColorMode === 'color');
     let d = pixelDensity();
     loadPixels();
     let dots = [];
@@ -2729,20 +3174,29 @@ function applyHalftone() {
             let idx = (px + py * width * d) * 4;
             let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
             let bri = 0.299 * r + 0.587 * g + 0.114 * b;
-            dots.push({ x, y, bri });
+            dots.push({ x, y, r, g, b, bri });
         }
     }
     updatePixels();
     push();
     noStroke();
-    fill(255, 220);
+    if (isColor) {
+        fill(0);
+    } else {
+        fill(255, 220);
+    }
     rectMode(CORNER);
     rect(videoX, videoY, videoW, videoH);
-    fill(0);
     let maxR = dotSpacing * 0.48;
     for (let dot of dots) {
-        let r = map(dot.bri, 0, 255, maxR, 0);
-        if (r > 0.3) ellipse(dot.x, dot.y, r * 2, r * 2);
+        let sz = map(dot.bri, 0, 255, maxR, 0);
+        if (sz < 0.3) continue;
+        if (isColor) {
+            fill(dot.r, dot.g, dot.b);
+        } else {
+            fill(0);
+        }
+        ellipse(dot.x, dot.y, sz * 2, sz * 2);
     }
     pop();
 }
@@ -2751,31 +3205,58 @@ function applyPixelSort() {
     let d = pixelDensity();
     let totalW = width * d;
     loadPixels();
-    let startX = Math.floor(videoX * d);
-    let endX = Math.floor((videoX + videoW) * d);
-    let startY = Math.floor(videoY * d);
-    let endY = Math.floor((videoY + videoH) * d);
-    for (let y = startY; y < endY; y += 2) {
-        let run = [];
-        let runStartPositions = [];
-        for (let x = startX; x <= endX; x++) {
-            let idx = (x + y * totalW) * 4;
-            let bri = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
-            if (bri > 30 && bri < 220 && x < endX) {
-                run.push({ r: pixels[idx], g: pixels[idx+1], b: pixels[idx+2], bri });
-                runStartPositions.push(x);
-            } else {
-                if (run.length > 3) {
-                    run.sort((a, b) => a.bri - b.bri);
-                    for (let i = 0; i < run.length; i++) {
-                        let idx2 = (runStartPositions[i] + y * totalW) * 4;
-                        pixels[idx2] = run[i].r;
-                        pixels[idx2+1] = run[i].g;
-                        pixels[idx2+2] = run[i].b;
+    let sX = Math.floor(videoX * d);
+    let eX = Math.floor((videoX + videoW) * d);
+    let sY = Math.floor(videoY * d);
+    let eY = Math.floor((videoY + videoH) * d);
+    let lo = pxsortLo, hi = pxsortHi;
+
+    if (pxsortDir === 'vertical') {
+        for (let x = sX; x < eX; x += 2) {
+            let run = [], positions = [];
+            for (let y = sY; y <= eY; y++) {
+                let idx = (x + y * totalW) * 4;
+                let bri = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+                if (bri > lo && bri < hi && y < eY) {
+                    run.push({ r: pixels[idx], g: pixels[idx+1], b: pixels[idx+2], bri });
+                    positions.push(y);
+                } else {
+                    if (run.length > 3) {
+                        run.sort((a, b) => a.bri - b.bri);
+                        for (let i = 0; i < run.length; i++) {
+                            let idx2 = (x + positions[i] * totalW) * 4;
+                            pixels[idx2] = run[i].r;
+                            pixels[idx2+1] = run[i].g;
+                            pixels[idx2+2] = run[i].b;
+                        }
                     }
+                    run = [];
+                    positions = [];
                 }
-                run = [];
-                runStartPositions = [];
+            }
+        }
+    } else {
+        for (let y = sY; y < eY; y += 2) {
+            let run = [], positions = [];
+            for (let x = sX; x <= eX; x++) {
+                let idx = (x + y * totalW) * 4;
+                let bri = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+                if (bri > lo && bri < hi && x < eX) {
+                    run.push({ r: pixels[idx], g: pixels[idx+1], b: pixels[idx+2], bri });
+                    positions.push(x);
+                } else {
+                    if (run.length > 3) {
+                        run.sort((a, b) => a.bri - b.bri);
+                        for (let i = 0; i < run.length; i++) {
+                            let idx2 = (positions[i] + y * totalW) * 4;
+                            pixels[idx2] = run[i].r;
+                            pixels[idx2+1] = run[i].g;
+                            pixels[idx2+2] = run[i].b;
+                        }
+                    }
+                    run = [];
+                    positions = [];
+                }
             }
         }
     }
@@ -2783,7 +3264,8 @@ function applyPixelSort() {
 }
 
 function applyASCII() {
-    const chars = ' .,:;+*?%S#@';
+    let chars = ASCII_CHARSETS[asciiCharSet] || ASCII_CHARSETS.classic;
+    if (asciiInvert) chars = chars.split('').reverse().join('');
     let d = pixelDensity();
     let totalW = width * d;
     let cellD = asciiCellSize * d;
@@ -2817,6 +3299,12 @@ function applyASCII() {
         ci = Math.max(0, Math.min(ci, chars.length - 1));
         if (asciiColorMode === 'color') {
             fill(cell.r, cell.g, cell.b);
+        } else if (asciiColorMode === 'green') {
+            fill(0, cell.bri, 0);
+        } else if (asciiColorMode === 'amber') {
+            fill(cell.bri, cell.bri * 0.75, 0);
+        } else if (asciiColorMode === 'cyan') {
+            fill(0, cell.bri, cell.bri);
         } else {
             fill(cell.bri);
         }
@@ -3221,29 +3709,86 @@ function applyGlitch() {
         original.set(pixels.subarray(start, end), start);
     }
     let maxShift = Math.round(intensity * 30 * d);
-    for (let y = sy; y < ey; y++) {
-        if (Math.random() > freq) continue;
-        let blockH = Math.floor(Math.random() * 8 * d) + 1;
-        let rShift = Math.round((Math.random() - 0.5) * maxShift * 2);
-        let bShift = Math.round((Math.random() - 0.5) * maxShift * 2);
-        for (let dy = 0; dy < blockH && (y + dy) < ey; dy++) {
-            let row = y + dy;
-            for (let x = sx; x < ex; x++) {
-                let idx = (x + row * totalW) * 4;
-                let rSrc = Math.max(sx, Math.min(ex - 1, x + rShift));
-                let bSrc = Math.max(sx, Math.min(ex - 1, x + bShift));
-                pixels[idx] = original[(rSrc + row * totalW) * 4];
-                pixels[idx + 2] = original[(bSrc + row * totalW) * 4 + 2];
+
+    if (glitchMode === 'tear') {
+        // Horizontal line tears — slices shift left/right
+        let numTears = Math.floor(freq * 20) + 1;
+        for (let t = 0; t < numTears; t++) {
+            let tearY = sy + Math.floor(Math.random() * (ey - sy));
+            let tearH = Math.floor(Math.random() * 12 * d) + 2;
+            let shift = Math.round((Math.random() - 0.5) * maxShift * 3);
+            for (let dy = 0; dy < tearH && (tearY + dy) < ey; dy++) {
+                let row = tearY + dy;
+                for (let x = sx; x < ex; x++) {
+                    let srcX = Math.max(sx, Math.min(ex - 1, x + shift));
+                    let dstIdx = (x + row * totalW) * 4;
+                    let srcIdx = (srcX + row * totalW) * 4;
+                    pixels[dstIdx] = original[srcIdx];
+                    pixels[dstIdx+1] = original[srcIdx+1];
+                    pixels[dstIdx+2] = original[srcIdx+2];
+                }
             }
         }
-        y += blockH;
+    } else if (glitchMode === 'corrupt') {
+        // Random rectangular blocks get displaced or color-swapped
+        let numBlocks = Math.floor(freq * 15) + 1;
+        for (let b = 0; b < numBlocks; b++) {
+            let bx = sx + Math.floor(Math.random() * (ex - sx));
+            let by = sy + Math.floor(Math.random() * (ey - sy));
+            let bw = Math.floor(Math.random() * maxShift * 2) + 4;
+            let bh = Math.floor(Math.random() * 10 * d) + 2;
+            let srcOx = Math.round((Math.random() - 0.5) * maxShift * 4);
+            let srcOy = Math.round((Math.random() - 0.5) * maxShift * 2);
+            let swap = Math.floor(Math.random() * 3); // 0=normal, 1=swap RB, 2=swap RG
+            for (let dy = 0; dy < bh && (by + dy) < ey; dy++) {
+                for (let dx = 0; dx < bw && (bx + dx) < ex; dx++) {
+                    let dstIdx = ((bx + dx) + (by + dy) * totalW) * 4;
+                    let sX = Math.max(sx, Math.min(ex - 1, bx + dx + srcOx));
+                    let sY = Math.max(sy, Math.min(ey - 1, by + dy + srcOy));
+                    let srcIdx = (sX + sY * totalW) * 4;
+                    if (swap === 1) {
+                        pixels[dstIdx] = original[srcIdx+2];
+                        pixels[dstIdx+1] = original[srcIdx+1];
+                        pixels[dstIdx+2] = original[srcIdx];
+                    } else if (swap === 2) {
+                        pixels[dstIdx] = original[srcIdx+1];
+                        pixels[dstIdx+1] = original[srcIdx];
+                        pixels[dstIdx+2] = original[srcIdx+2];
+                    } else {
+                        pixels[dstIdx] = original[srcIdx];
+                        pixels[dstIdx+1] = original[srcIdx+1];
+                        pixels[dstIdx+2] = original[srcIdx+2];
+                    }
+                }
+            }
+        }
+    } else {
+        // SHIFT — original channel-shift mode
+        for (let y = sy; y < ey; y++) {
+            if (Math.random() > freq) continue;
+            let blockH = Math.floor(Math.random() * 8 * d) + 1;
+            let rShift = Math.round((Math.random() - 0.5) * maxShift * 2);
+            let bShift = Math.round((Math.random() - 0.5) * maxShift * 2);
+            for (let dy = 0; dy < blockH && (y + dy) < ey; dy++) {
+                let row = y + dy;
+                for (let x = sx; x < ex; x++) {
+                    let idx = (x + row * totalW) * 4;
+                    let rSrc = Math.max(sx, Math.min(ex - 1, x + rShift));
+                    let bSrc = Math.max(sx, Math.min(ex - 1, x + bShift));
+                    pixels[idx] = original[(rSrc + row * totalW) * 4];
+                    pixels[idx + 2] = original[(bSrc + row * totalW) * 4 + 2];
+                }
+            }
+            y += blockH;
+        }
     }
     updatePixels();
 }
 
 function applyJitter() {
     let intensity = jitterIntensity / 100;
-    let maxOff = Math.round(intensity * 10);
+    let maxOff = Math.round(intensity * 15);
+    let bs = Math.max(1, jitterBlockSize);
     let d = pixelDensity();
     let totalW = width * d;
     let sx = Math.floor(videoX * d);
@@ -3251,6 +3796,7 @@ function applyJitter() {
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
     let offD = maxOff * d;
+    let bsD = bs * d;
     loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
@@ -3258,21 +3804,32 @@ function applyJitter() {
         let end = (ex + y * totalW) * 4;
         original.set(pixels.subarray(start, end), start);
     }
-    for (let y = sy; y < ey; y += 2) {
-        for (let x = sx; x < ex; x += 2) {
-            let ox = Math.round((Math.random() - 0.5) * offD * 2);
-            let oy = Math.round((Math.random() - 0.5) * offD * 2);
+    let t = millis() * 0.003;
+    for (let y = sy; y < ey; y += bsD) {
+        for (let x = sx; x < ex; x += bsD) {
+            let ox, oy;
+            if (jitterMode === 'perlin') {
+                ox = Math.round((noise(x * 0.02, y * 0.02, t) - 0.5) * offD * 4);
+                oy = Math.round((noise(x * 0.02 + 100, y * 0.02 + 100, t) - 0.5) * offD * 4);
+            } else if (jitterMode === 'shake') {
+                let shakeX = Math.sin(t * 7 + y * 0.01) * offD;
+                let shakeY = Math.cos(t * 5 + x * 0.01) * offD * 0.3;
+                ox = Math.round(shakeX);
+                oy = Math.round(shakeY);
+            } else {
+                ox = Math.round((Math.random() - 0.5) * offD * 2);
+                oy = Math.round((Math.random() - 0.5) * offD * 2);
+            }
             let srcX = Math.max(sx, Math.min(ex - 1, x + ox));
             let srcY = Math.max(sy, Math.min(ey - 1, y + oy));
-            let dstIdx = (x + y * totalW) * 4;
             let srcIdx = (srcX + srcY * totalW) * 4;
-            pixels[dstIdx] = original[srcIdx];
-            pixels[dstIdx+1] = original[srcIdx+1];
-            pixels[dstIdx+2] = original[srcIdx+2];
-            if (x + 1 < ex) {
-                pixels[dstIdx+4] = original[srcIdx];
-                pixels[dstIdx+5] = original[srcIdx+1];
-                pixels[dstIdx+6] = original[srcIdx+2];
+            for (let dy = 0; dy < bsD && (y + dy) < ey; dy++) {
+                for (let dx = 0; dx < bsD && (x + dx) < ex; dx++) {
+                    let dstIdx = ((x + dx) + (y + dy) * totalW) * 4;
+                    pixels[dstIdx] = original[srcIdx];
+                    pixels[dstIdx+1] = original[srcIdx+1];
+                    pixels[dstIdx+2] = original[srcIdx+2];
+                }
             }
         }
     }
@@ -3312,7 +3869,8 @@ function applyNoise() {
 }
 
 function applyCurve() {
-    let intensity = curveIntensity / 100 * 0.5;
+    let sign = (curveDirection === 'pincushion') ? -1 : 1;
+    let intensity = sign * curveIntensity / 100 * 0.5;
     let d = pixelDensity();
     let totalW = width * d;
     let sx = Math.floor(videoX * d);
@@ -3576,6 +4134,50 @@ function draw() {
 
         image(videoEl, videoX, videoY, videoW, videoH);
 
+        // MASK AI segmentation overlay — show selected object
+        if (currentMode === 14 && maskSelecting && maskOverlay) {
+            push();
+            image(maskOverlay, videoX, videoY, videoW, videoH);
+            pop();
+        }
+        // MASK click cursor — crosshair on video when selecting
+        if (currentMode === 14 && maskSelecting && !maskSegData) {
+            if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
+                push();
+                stroke(0, 255, 128, 200);
+                strokeWeight(1);
+                let cx = mouseX, cy = mouseY;
+                line(cx - 12, cy, cx - 4, cy);
+                line(cx + 4, cy, cx + 12, cy);
+                line(cx, cy - 12, cx, cy - 4);
+                line(cx, cy + 4, cx, cy + 12);
+                noFill();
+                ellipse(cx, cy, 8, 8);
+                pop();
+            }
+        }
+
+        // MASK tracking indicator — show tracked point when active
+        if (currentMode === 14 && maskReady && maskClickNorm) {
+            push();
+            let px = videoX + maskClickNorm.x * videoW;
+            let py = videoY + maskClickNorm.y * videoH;
+            noFill();
+            stroke(0, 255, 128, 160);
+            strokeWeight(1);
+            ellipse(px, py, 12, 12);
+            line(px - 8, py, px - 3, py);
+            line(px + 3, py, px + 8, py);
+            line(px, py - 8, px, py - 3);
+            line(px, py + 3, px, py + 8);
+            noStroke();
+            fill(0, 255, 128, 200);
+            textSize(9);
+            textAlign(LEFT, BOTTOM);
+            text('MASK', px + 8, py - 4);
+            pop();
+        }
+
         // Background dim overlay
         if (bgDim > 0) {
             push();
@@ -3588,8 +4190,8 @@ function draw() {
 
         // VIDEO mode: apply effects to video only (before blobs)
         if (!fxLayerAll) {
-            if (isTimelineMode) applyTimelineEffects();
-            else applyActiveEffects();
+            applyActiveEffects();
+            if (timelineSegments.length > 0) applyTimelineEffects();
         }
 
         let timeInterval = map(paramValues[5], 0, 100, 0, 1000);
@@ -3632,14 +4234,14 @@ function draw() {
 
         // ALL mode: apply effects to everything including blobs
         if (fxLayerAll) {
-            if (isTimelineMode) applyTimelineEffects();
-            else applyActiveEffects();
+            applyActiveEffects();
+            if (timelineSegments.length > 0) applyTimelineEffects();
         }
 
         // Update timeline playhead
-        if (videoDuration > 0) updateTimelinePlayhead();
+        if (getTimelineDuration() > 0) updateTimelinePlayhead();
     }
-    // Flash overlay on beat (FLASH sync target)
+    // Flash overlay on beat (FLASH sync target only — too intense in MIX)
     if (audioSync && audioSyncTarget === 'flash' && beatIntensity > 0.02) {
         push();
         noStroke();
@@ -3797,11 +4399,217 @@ function changeValue(amount) {
     syncUI();
 }
 
+// ── MASK TRACKING (AI re-segmentation per frame) ─────────────
+
+function enterMaskSelecting() {
+    if (!videoLoaded || !videoEl) return;
+    maskSelecting = true;
+    maskReady = false;
+    maskClickNorm = null;
+    maskSegData = null;
+    maskSegW = 0;
+    maskSegH = 0;
+    maskFrameCount = 0;
+    if (maskOverlay) { maskOverlay.remove(); maskOverlay = null; }
+    // Pause video for selection
+    if (videoPlaying && videoEl) {
+        videoEl.pause();
+        videoPlaying = false;
+        let playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        ui.btnPlay.innerHTML = playIcon;
+        ui.tlBtnPlay.innerHTML = playIcon;
+        if (audioElement && audioLoaded) { audioElement.pause(); audioPlaying = false; }
+    }
+    document.getElementById('mask-controls-group').style.display = '';
+    if (!window.mpSegmenterReady) {
+        document.getElementById('mask-loading').style.display = '';
+        document.getElementById('mask-hint').textContent = 'Loading AI model, please wait...';
+    }
+    updateButtonStates();
+}
+
+function exitMaskMode() {
+    let wasSelecting = maskSelecting;
+    maskSelecting = false;
+    maskReady = false;
+    maskClickNorm = null;
+    maskSegData = null;
+    maskSegW = 0;
+    maskSegH = 0;
+    if (maskOverlay) { maskOverlay.remove(); maskOverlay = null; }
+    document.getElementById('mask-controls-group').style.display = 'none';
+    if (wasSelecting && !videoPlaying && videoEl && videoLoaded) {
+        togglePlay();
+    }
+}
+
+function runMaskSegmentation(clickX, clickY) {
+    // clickX, clickY in screen coords → normalized [0,1]
+    if (!window.mpSegmenterReady || !window.mpSegmenter || !videoEl || !videoEl.elt) return;
+
+    let normX = Math.max(0, Math.min(1, (clickX - videoX) / videoW));
+    let normY = Math.max(0, Math.min(1, (clickY - videoY) / videoH));
+    maskClickNorm = { x: normX, y: normY };
+
+    maskSegmentWithPoint(normX, normY);
+}
+
+function maskSegmentWithPoint(normX, normY) {
+    // Run MediaPipe segmentation at the given normalized point
+    if (!window.mpSegmenter || !videoEl || !videoEl.elt) return;
+
+    const roi = { keypoint: { x: normX, y: normY } };
+
+    try {
+        window.mpSegmenter.segment(videoEl.elt, roi, (result) => {
+            // Prefer confidence masks (unambiguous: higher = more foreground)
+            if (result.confidenceMasks && result.confidenceMasks.length > 0) {
+                let fgMask = result.confidenceMasks.length > 1
+                    ? result.confidenceMasks[1] : result.confidenceMasks[0];
+                maskSegW = fgMask.width;
+                maskSegH = fgMask.height;
+                let floats = fgMask.getAsFloat32Array();
+                maskSegData = new Uint8Array(floats.length);
+                for (let i = 0; i < floats.length; i++) {
+                    maskSegData[i] = floats[i] > 0.5 ? 255 : 0;
+                }
+            } else if (result.categoryMask) {
+                const mask = result.categoryMask;
+                maskSegW = mask.width;
+                maskSegH = mask.height;
+                let raw = mask.getAsUint8Array();
+                maskSegData = new Uint8Array(raw.length);
+                let nonZero = 0;
+                for (let i = 0; i < raw.length; i++) if (raw[i] > 0) nonZero++;
+                let invert = nonZero > raw.length * 0.5;
+                for (let i = 0; i < raw.length; i++) {
+                    maskSegData[i] = invert ? (raw[i] === 0 ? 255 : 0)
+                                            : (raw[i] > 0 ? 255 : 0);
+                }
+            }
+
+            // Update click point to centroid of mask (for next re-segmentation)
+            if (maskSegData) {
+                let cx = 0, cy = 0, count = 0;
+                for (let y = 0; y < maskSegH; y++) {
+                    for (let x = 0; x < maskSegW; x++) {
+                        if (maskSegData[y * maskSegW + x] > 0) {
+                            cx += x; cy += y; count++;
+                        }
+                    }
+                }
+                if (count > 0) {
+                    maskClickNorm = {
+                        x: (cx / count) / maskSegW,
+                        y: (cy / count) / maskSegH
+                    };
+                }
+            }
+
+            // Build overlay for selection preview
+            if (maskSelecting) buildMaskOverlay();
+            updateButtonStates();
+        });
+    } catch (e) {
+        console.error('Segmentation failed:', e);
+    }
+}
+
+function buildMaskOverlay() {
+    if (!maskSegData || maskSegW === 0) return;
+    if (maskOverlay) maskOverlay.remove();
+    maskOverlay = createGraphics(maskSegW, maskSegH);
+    maskOverlay.pixelDensity(1);
+    maskOverlay.loadPixels();
+    for (let i = 0; i < maskSegData.length; i++) {
+        if (maskSegData[i] > 0) {
+            maskOverlay.pixels[i * 4 + 0] = 0;
+            maskOverlay.pixels[i * 4 + 1] = 255;
+            maskOverlay.pixels[i * 4 + 2] = 128;
+            maskOverlay.pixels[i * 4 + 3] = 100;
+        } else {
+            maskOverlay.pixels[i * 4 + 0] = 0;
+            maskOverlay.pixels[i * 4 + 1] = 0;
+            maskOverlay.pixels[i * 4 + 2] = 0;
+            maskOverlay.pixels[i * 4 + 3] = 0;
+        }
+    }
+    maskOverlay.updatePixels();
+}
+
+function finalizeMask() {
+    if (!maskSegData || !videoEl) return;
+    // Verify mask has content
+    let fgCount = 0;
+    for (let i = 0; i < maskSegData.length; i++) if (maskSegData[i] > 0) fgCount++;
+    if (fgCount === 0) {
+        maskSegData = null;
+        if (maskOverlay) { maskOverlay.remove(); maskOverlay = null; }
+        updateButtonStates();
+        return;
+    }
+
+    maskSelecting = false;
+    maskReady = true;
+    maskFrameCount = 0;
+    if (maskOverlay) { maskOverlay.remove(); maskOverlay = null; }
+    // Resume video
+    if (!videoPlaying && videoEl && videoLoaded) {
+        togglePlay();
+    }
+    updateButtonStates();
+}
+
 function trackPoints() {
     trackedPoints = [];
     if (currentMode === 0 || !videoLoaded || !videoPlaying) return;
     videoEl.loadPixels();
     if (videoEl.pixels.length === 0) return;
+
+    // MASK mode: AI re-segmentation — use mask directly for blob placement
+    if (currentMode === 14 && maskReady && maskSegData && maskClickNorm) {
+        const w = videoEl.width, h = videoEl.height;
+
+        // Re-run AI segmentation every N frames (tracks the click point)
+        maskFrameCount++;
+        if (maskFrameCount >= MASK_RESEG_EVERY && window.mpSegmenterReady) {
+            maskFrameCount = 0;
+            maskSegmentWithPoint(maskClickNorm.x, maskClickNorm.y);
+        }
+
+        // Use current mask to generate blob candidates
+        let gridSize = 15;
+        if (w > 1280) gridSize = 30;
+        let candidates = [];
+        const scaleX = maskSegW / w;
+        const scaleY = maskSegH / h;
+
+        for (let y = 0; y < h; y += gridSize) {
+            for (let x = 0; x < w; x += gridSize) {
+                // Look up mask at this video pixel
+                let mx = Math.min(Math.floor(x * scaleX), maskSegW - 1);
+                let my = Math.min(Math.floor(y * scaleY), maskSegH - 1);
+                if (maskSegData[my * maskSegW + mx] > 0) {
+                    let idx = (x + y * w) * 4;
+                    let r = videoEl.pixels[idx], g = videoEl.pixels[idx+1], b = videoEl.pixels[idx+2];
+                    candidates.push(new CandidatePoint(x, y, color(r, g, b)));
+                }
+            }
+        }
+
+        candidates.sort(() => Math.random() - 0.5);
+        let quantityLevel = paramValues[0];
+        let numPoints = (quantityLevel <= 10) ? floor(quantityLevel) : floor(map(quantityLevel, 11, 100, 11, candidates.length));
+        numPoints = min(numPoints, candidates.length);
+        let blobVarLevel = paramValues[6];
+        for (let i = 0; i < numPoints; i++) {
+            let c = candidates[i];
+            let screenX = map(c.x, 0, w, videoX, videoX + videoW);
+            let screenY = map(c.y, 0, h, videoY, videoY + videoH);
+            trackedPoints.push(new TrackedPoint(screenX, screenY, c.c, blobVarLevel));
+        }
+        return;
+    }
 
     let candidates = [];
     let spectrum = map(paramValues[1], 0, 100, 0, 70);
@@ -4071,19 +4879,38 @@ function handleAudioFile(event) {
     // Clean up previous
     if (audioElement) { audioElement.pause(); audioElement.remove(); }
     if (audioSource) { try { audioSource.disconnect(); } catch(e){} }
+    if (audioAnalyser) { try { audioAnalyser.disconnect(); } catch(e){} }
+    if (audioGainNode) { try { audioGainNode.disconnect(); } catch(e){} }
+    if (audioObjectUrl) { URL.revokeObjectURL(audioObjectUrl); }
 
     ui.audioName.innerText = file.name;
     const url = URL.createObjectURL(file);
+    audioObjectUrl = url;
+
+    // Pre-analyze audio for timeline waveform
+    analyzeAudioForTimeline(file);
 
     // Reset auto-gain for new audio source
     autoGainMax = { band: 0.01, bass: 0.01, mid: 0.01, treble: 0.01 };
 
     audioElement = new Audio();
-    audioElement.crossOrigin = 'anonymous';
     audioElement.src = url;
-    audioElement.loop = true;
+    audioElement.loop = (loopMode === 'loop'); // only loop audio in LOOP mode
+
+    // Track when audio ends (important for 'through' and 'once' modes)
+    audioElement.addEventListener('ended', () => {
+        audioPlaying = false;
+        if (loopMode === 'once' && videoEl) {
+            videoEl.pause();
+            videoPlaying = false;
+            let playIcon = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            ui.btnPlay.innerHTML = playIcon;
+            ui.tlBtnPlay.innerHTML = playIcon;
+        }
+    });
 
     audioElement.addEventListener('canplaythrough', () => {
+        if (audioContext.state === 'suspended') audioContext.resume();
         audioSource = audioContext.createMediaElementSource(audioElement);
         audioAnalyser = audioContext.createAnalyser();
         audioAnalyser.fftSize = 4096;
@@ -4096,11 +4923,19 @@ function handleAudioFile(event) {
 
         frequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
         audioLoaded = true;
+        // Capture duration early (before async waveform analysis finishes)
+        if (audioElement.duration && isFinite(audioElement.duration)) {
+            audioDuration = audioElement.duration;
+        }
 
         // Only auto-play audio if video is currently playing
         if (videoPlaying) {
-            audioElement.play();
-            audioPlaying = true;
+            let startTime = getAudioTimeForVideo(videoEl ? videoEl.time() : 0);
+            if (startTime >= 0) {
+                audioElement.currentTime = startTime;
+                audioElement.play().catch(() => { audioPlaying = false; });
+                audioPlaying = true;
+            }
         }
     }, { once: true });
 }
@@ -4154,8 +4989,13 @@ function getAudioEnergy() {
     overall = (bass + mid + treble) / 3;
 
     // Apply threshold gate — energy below threshold reads as 0
-    let gate = audioThreshold / 100;
-    band = band > gate ? (band - gate) / (1 - gate) : 0;
+    let gate = Math.min(audioThreshold / 100, 0.99); // clamp to avoid division by zero
+    let gateScale = 1 / (1 - gate);
+    band = band > gate ? (band - gate) * gateScale : 0;
+    bass = bass > gate ? (bass - gate) * gateScale : 0;
+    mid = mid > gate ? (mid - gate) * gateScale : 0;
+    treble = treble > gate ? (treble - gate) * gateScale : 0;
+    overall = (bass + mid + treble) / 3;
 
     return { band, bass, mid, treble, overall };
 }
@@ -4163,11 +5003,11 @@ function getAudioEnergy() {
 function applyAudioSync() {
     if (!audioSync) return;
 
-    // Sync is ON but audio isn't ready/playing — zero out everything
+    // Sync is ON but audio isn't ready/playing — hold at base values (don't destroy them)
     if (!audioLoaded || !audioPlaying) {
-        paramValues[0] = 0;
-        paramValues[1] = 0;
-        paramValues[6] = 0;
+        if (audioBaseValues[0] !== undefined) paramValues[0] = audioBaseValues[0];
+        if (audioBaseValues[1] !== undefined) paramValues[1] = audioBaseValues[1];
+        if (audioBaseValues[6] !== undefined) paramValues[6] = audioBaseValues[6];
         syncUI();
         return;
     }
@@ -4187,14 +5027,14 @@ function applyAudioSync() {
         paramValues[0] = constrain(scaled + beatBoost, 0, 100);
     }
 
-    else if (target === 'blob') {
+    else if (target === 'size') {
         let baseBlob = base[6] || 40;
         let scaled = smoothBand * baseBlob * sens;
         let beatBoost = beat * 40 * sens;
         paramValues[6] = constrain(scaled + beatBoost, 0, 100);
     }
 
-    else if (target === 'curve') {
+    else if (target === 'color') {
         let baseSpec = base[1] || 30;
         let scaled = smoothBand * baseSpec * sens;
         let beatBoost = beat * 30 * sens;
@@ -4353,17 +5193,26 @@ function keyPressed() {
         return false;
     }
 
-    if (key === 'z' || key === 'Z' || key === '1') { currentMode = 1; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === 'x' || key === 'X' || key === '2') { currentMode = 2; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '0') { currentMode = 0; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '3') { currentMode = 3; prevGridPixels = {}; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '4') { currentMode = 4; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '5') { currentMode = 5; ui.customColorGroup.style.display = ''; changed = true; }
-    if (key === '6') { currentMode = 6; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '7') { currentMode = 7; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '8') { currentMode = 8; ui.customColorGroup.style.display = 'none'; changed = true; }
-    if (key === '9') { currentMode = 9; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === 'z' || key === 'Z' || key === '1') { exitMaskMode(); currentMode = 1; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === 'x' || key === 'X' || key === '2') { exitMaskMode(); currentMode = 2; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '0') { exitMaskMode(); currentMode = 0; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '3') { exitMaskMode(); currentMode = 3; prevGridPixels = {}; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '4') { exitMaskMode(); currentMode = 4; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '5') { exitMaskMode(); currentMode = 5; ui.customColorGroup.style.display = ''; changed = true; }
+    if (key === '6') { exitMaskMode(); currentMode = 6; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '7') { exitMaskMode(); currentMode = 7; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '8') { exitMaskMode(); currentMode = 8; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === '9') { exitMaskMode(); currentMode = 9; ui.customColorGroup.style.display = 'none'; changed = true; }
+    if (key === 'm' || key === 'M') { currentMode = 14; enterMaskSelecting(); changed = true; }
     if (key === 'l' || key === 'L') { showLines = !showLines; changed = true; }
+
+    // Escape — cancel mask painting, return to BLUE mode
+    if (keyCode === ESCAPE && currentMode === 14) {
+        exitMaskMode();
+        currentMode = 1;
+        ui.customColorGroup.style.display = 'none';
+        changed = true;
+    }
 
     // T — toggle audio sync on/off
     if (key === 't' || key === 'T') {
@@ -4412,13 +5261,13 @@ function keyPressed() {
     if (keyCode === LEFT_ARROW && videoLoaded && videoDuration > 0) {
         let t = Math.max(0, videoEl.time() - 5);
         videoEl.time(t);
-        if (audioElement && audioLoaded) audioElement.currentTime = t;
+        if (audioElement && audioLoaded) audioElement.currentTime = Math.max(0, getAudioTimeForVideo(t));
         return false;
     }
     if (keyCode === RIGHT_ARROW && videoLoaded && videoDuration > 0) {
         let t = Math.min(videoDuration, videoEl.time() + 5);
         videoEl.time(t);
-        if (audioElement && audioLoaded) audioElement.currentTime = t;
+        if (audioElement && audioLoaded) audioElement.currentTime = Math.max(0, getAudioTimeForVideo(t));
         return false;
     }
 
@@ -4428,13 +5277,12 @@ function keyPressed() {
         selectedSegment = null;
         assignLanes();
         renderTimelineSegments();
-        closeParamDrawer();
         return false;
     }
 
     // Q — cycle sync targets: MIX → QTY → SIZE → COLOR → FLASH
     if (key === 'q' || key === 'Q') {
-        const targets = ['all', 'qty', 'blob', 'curve', 'flash'];
+        const targets = ['all', 'qty', 'size', 'color', 'flash'];
         let curIdx = targets.indexOf(audioSyncTarget);
         audioSyncTarget = targets[(curIdx + 1) % targets.length];
         changed = true;
@@ -4444,20 +5292,75 @@ function keyPressed() {
 }
 
 function mouseDragged() {
-    if (mouseButton === RIGHT && mouseX > 0) { 
+    if (mouseButton === RIGHT && mouseX > 0) {
         let delta = (mouseX - lastX) * 0.2;
-        if (currentParam !== 4) { 
+        if (currentParam !== 4) {
             paramValues[currentParam] = constrain(paramValues[currentParam] + delta, 0, 100);
             syncUI();
         }
         lastX = mouseX;
-        return false; 
+        return false;
     }
-    return true; 
+    return true;
 }
 
-function mousePressed() { if (mouseButton === RIGHT) lastX = mouseX; }
+function mousePressed() {
+    if (mouseButton === RIGHT) { lastX = mouseX; return; }
+    // MASK mode — click to segment object
+    if (currentMode === 14 && maskSelecting && mouseButton === LEFT) {
+        if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
+            if (window.mpSegmenterReady) {
+                runMaskSegmentation(mouseX, mouseY);
+            }
+            return false;
+        }
+    }
+}
 function mouseWheel(event) { }
+</script>
+
+<!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
+<script type="module">
+import { InteractiveSegmenter, FilesetResolver }
+    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs";
+
+window.mpSegmenterReady = false;
+window.mpSegmenter = null;
+
+async function initSegmenter() {
+    try {
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+        );
+        window.mpSegmenter = await InteractiveSegmenter.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath:
+                    "https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite",
+            },
+            outputCategoryMask: true,
+            outputConfidenceMasks: true,
+        });
+        window.mpSegmenterReady = true;
+        console.log("MediaPipe Interactive Segmenter ready");
+        // Update UI if mask mode is already active
+        let loadEl = document.getElementById('mask-loading');
+        if (loadEl) loadEl.style.display = 'none';
+        let hintEl = document.getElementById('mask-hint');
+        if (hintEl && document.getElementById('mask-controls-group').style.display !== 'none') {
+            hintEl.textContent = 'Click on the object you want to track';
+        }
+    } catch (e) {
+        console.error("Failed to load MediaPipe segmenter:", e);
+        let loadEl = document.getElementById('mask-loading');
+        if (loadEl) {
+            loadEl.style.display = '';
+            loadEl.textContent = 'AI model failed to load';
+            loadEl.style.color = '#E17055';
+        }
+    }
+}
+
+initSegmenter();
 </script>
 </body>
 </html>
