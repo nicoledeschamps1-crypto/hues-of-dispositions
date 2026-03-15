@@ -942,7 +942,7 @@
                     <div class="fx-strip">
                         <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
                         <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
-                        <button class="fx-card" data-effect="palette" data-cat="color">PALTTE</button>
+                        <button class="fx-card" data-effect="palette" data-cat="color">PALETTE</button>
                         <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
                     </div>
                 </div>
@@ -1459,7 +1459,6 @@ const wordBank = [
 
 const specialChars = "ㄱㄴㄷㄹㅁㅂㅅㅈㅊㅋㅌㅍイカクケコシスソテトナニヌノハヒフヘマミメモヤユヨラリルロワヲンгптшиилнхкевзсмяч".split('');
 
-let showCursor = true;
 let showLines = false;
 let currentMode = 1;
 let currentParam = 0;
@@ -1551,6 +1550,7 @@ let palettePreset = 'noir';
 let paletteIntensity = 80;
 
 let videoX, videoY, videoW, videoH;
+let currentVideoUrl = null;
 
 // MASK tracking state (MediaPipe AI re-segmentation per frame)
 let maskSelecting = false;       // in click-to-select mode (video paused)
@@ -1561,6 +1561,7 @@ let maskSegH = 0;                // mask height
 let maskOverlay = null;          // p5.Graphics — green overlay of segmented region
 let maskClickNorm = null;        // {x, y} — tracked click point in normalized [0,1] coords
 let maskFrameCount = 0;          // frames since last re-segmentation
+let maskSegInFlight = false;     // prevent overlapping async segmentations
 const MASK_RESEG_EVERY = 4;     // re-run AI every N frames
 
 // Timeline state
@@ -1578,6 +1579,8 @@ let tlRulerMode = 'video'; // 'video' or 'audio' — what defines timeline lengt
 let audioOffset = 0;        // seconds: positive = audio starts later, negative = audio starts earlier
 let loopMode = 'through';   // 'loop' = both loop synced, 'through' = video loops + audio plays through, 'once' = stop at shorter
 let waveformDragging = false; // for audio offset drag on timeline
+let _cachedBeatMarkers = [];
+let _cachedBeatKey = '';
 
 const FX_CATEGORIES = {
     sepia:'color', tint:'color', palette:'color', bricon:'color',
@@ -1638,6 +1641,7 @@ let recordedChunks = [];
 let isRecording = false;
 let lastRecordedBlob = null;
 let lastRecordedExt = 'webm';
+let recordingAudioDest = null;
 
 // Audio base values (snapshot of params when sync turns on)
 let audioBaseValues = {};
@@ -1713,6 +1717,7 @@ const AUTO_GAIN_FLOOR = 0.05; // never normalize below this raw energy — preve
 
 // Debug panel visibility (toggle with 'D' key)
 let debugVisible = false;
+let _syncUIFrameCount = 0;
 
 // Beat detection state
 let beatHistory = [];
@@ -2026,12 +2031,20 @@ function setupUIListeners() {
     ui.toggleBtn.addEventListener('click', () => {
         ui.uiControls.classList.toggle('collapsed');
         ui.toggleBtn.classList.toggle('rotated');
+        // Adjust timeline left margin when panel collapses
+        if (ui.tlContainer) {
+            ui.tlContainer.style.left = ui.uiControls.classList.contains('collapsed') ? '24px' : '320px';
+        }
     });
 
     // Right panel toggle
     ui.toggleBtnRight.addEventListener('click', () => {
         ui.uiControlsRight.classList.toggle('collapsed');
         ui.toggleBtnRight.classList.toggle('rotated');
+        // Adjust timeline right margin when panel collapses
+        if (ui.tlContainer) {
+            ui.tlContainer.style.right = ui.uiControlsRight.classList.contains('collapsed') ? '24px' : '320px';
+        }
     });
 
     // Effect cards — click to toggle, drag to timeline
@@ -2145,43 +2158,39 @@ function setupUIListeners() {
         });
     });
 
-    // Audio offset — drag waveform on timeline track
+    // Timeline track — single merged mousedown handler for waveform drag + scrub
     ui.tlTrack.addEventListener('mousedown', (e) => {
-        // Only start waveform drag if clicking on the track background (not segments)
-        if (e.target === ui.tlWaveformCanvas || e.target === ui.tlTrack) {
-            if (e.shiftKey || !tlWaveform || tlWaveform.length === 0) return; // shift = scrub as before if no audio
-            // If audio is loaded, right-click or alt-click to drag waveform offset
-            if (e.altKey && tlWaveform && tlWaveform.length > 0) {
-                e.preventDefault();
-                waveformDragging = true;
-                let startX = e.clientX;
-                let origOffset = audioOffset;
-                let rect = ui.tlTrack.getBoundingClientRect();
-                let tlDur = getTimelineDuration();
-
-                function onWfMove(ev) {
-                    let dx = (ev.clientX - startX) / rect.width * tlDur;
-                    audioOffset = origOffset + dx;
-                    updateOffsetLabel();
-                    renderTimelineWaveform();
-                }
-                function onWfUp() {
-                    waveformDragging = false;
-                    document.removeEventListener('mousemove', onWfMove);
-                    document.removeEventListener('mouseup', onWfUp);
-                }
-                document.addEventListener('mousemove', onWfMove);
-                document.addEventListener('mouseup', onWfUp);
-                return; // don't also scrub
-            }
-        }
-    });
-
-    // Timeline scrubbing (left-click without alt = seek, alt+click = waveform drag handled above)
-    ui.tlTrack.addEventListener('mousedown', (e) => {
+        // Ignore clicks on segments or handles
         if (e.target.classList.contains('timeline-segment') || e.target.classList.contains('seg-handle')) return;
-        if (waveformDragging) return; // waveform offset drag in progress
-        if (e.altKey && tlWaveform && tlWaveform.length > 0) return; // handled by waveform drag listener
+
+        // Alt+click on waveform = drag audio offset
+        if (e.altKey && tlWaveform && tlWaveform.length > 0 &&
+            (e.target === ui.tlWaveformCanvas || e.target === ui.tlTrack)) {
+            e.preventDefault();
+            waveformDragging = true;
+            let startX = e.clientX;
+            let origOffset = audioOffset;
+            let rect = ui.tlTrack.getBoundingClientRect();
+            let tlDur = getTimelineDuration();
+
+            function onWfMove(ev) {
+                let dx = (ev.clientX - startX) / rect.width * tlDur;
+                audioOffset = origOffset + dx;
+                updateOffsetLabel();
+                renderTimelineWaveform();
+            }
+            function onWfUp() {
+                waveformDragging = false;
+                document.removeEventListener('mousemove', onWfMove);
+                document.removeEventListener('mouseup', onWfUp);
+            }
+            document.addEventListener('mousemove', onWfMove);
+            document.addEventListener('mouseup', onWfUp);
+            return; // don't also scrub
+        }
+
+        // Normal click = scrub
+        if (waveformDragging) return;
         tlDragging = true;
         seekToTimelinePosition(e.clientX);
     });
@@ -2473,6 +2482,9 @@ function updateButtonStates() {
         if (fxLayerAll === isAll) btn.classList.add('active');
         else btn.classList.remove('active');
     });
+
+    // Keep FX param groups in sync with active effects
+    updateFxParamVisibility();
 }
 
 function updateFxParamVisibility() {
@@ -2538,6 +2550,7 @@ function seekToTimelinePosition(clientX) {
     if (tlRulerMode === 'audio') {
         let videoTime = seekTime + audioOffset;
         if (videoDuration > 0) videoTime = ((videoTime % videoDuration) + videoDuration) % videoDuration;
+        else videoTime = 0;
         videoEl.time(videoTime);
         if (audioElement && audioLoaded) audioElement.currentTime = Math.max(0, seekTime);
     } else {
@@ -2732,16 +2745,22 @@ function renderTimelineWaveform() {
         ctx.fillRect(i * barW, h - barH, Math.max(barW, 1), barH);
     }
 
-    // Draw beat markers — shifted by audioOffset
-    ui.tlTrack.querySelectorAll('.tl-beat-marker').forEach(el => el.remove());
-    for (let beatTime of tlBeats) {
-        let tlBeatTime = beatTime + audioOffset; // shift beat to timeline position
-        if (tlBeatTime < 0 || tlBeatTime > dur) continue;
-        let pct = (tlBeatTime / dur) * 100;
-        let marker = document.createElement('div');
-        marker.className = 'tl-beat-marker';
-        marker.style.left = pct + '%';
-        ui.tlTrack.appendChild(marker);
+    // Draw beat markers — shifted by audioOffset (cached, only rebuild when data changes)
+    let beatKey = tlBeats.length + '|' + audioOffset.toFixed(2) + '|' + dur.toFixed(2);
+    if (beatKey !== _cachedBeatKey) {
+        _cachedBeatKey = beatKey;
+        _cachedBeatMarkers.forEach(el => el.remove());
+        _cachedBeatMarkers = [];
+        for (let beatTime of tlBeats) {
+            let tlBeatTime = beatTime + audioOffset;
+            if (tlBeatTime < 0 || tlBeatTime > dur) continue;
+            let pct = (tlBeatTime / dur) * 100;
+            let marker = document.createElement('div');
+            marker.className = 'tl-beat-marker';
+            marker.style.left = pct + '%';
+            ui.tlTrack.appendChild(marker);
+            _cachedBeatMarkers.push(marker);
+        }
     }
 }
 
@@ -2771,12 +2790,6 @@ function captureEffectParams(effectName) {
 function restoreEffectParams(effectName, params) {
     let map = FX_PARAM_MAP[effectName];
     if (map) map.forEach(p => { if (params[p.v] !== undefined) p.s(params[p.v]); });
-}
-
-function addTimelineSegment(effectName) {
-    if (!getTimelineDuration()) return;
-    let currentTime = videoEl ? videoEl.time() : 0;
-    addTimelineSegmentAt(effectName, currentTime);
 }
 
 function assignLanes() {
@@ -2890,12 +2903,18 @@ function setupSegmentDrag(el, seg) {
                 let newEnd = Math.max(seg.startTime + 0.1, Math.min(origEnd + dx, tlDur));
                 seg.endTime = snapToBeat(newEnd);
             }
-            assignLanes();
-            renderTimelineSegments();
+            // CSS-only update during drag (no full DOM rebuild)
+            let left = (seg.startTime / tlDur) * 100;
+            let w = ((seg.endTime - seg.startTime) / tlDur) * 100;
+            el.style.left = left + '%';
+            el.style.width = Math.max(w, 0.5) + '%';
         }
         function onUp() {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
+            // Full rebuild on drag end (recalculates lanes, event listeners)
+            assignLanes();
+            renderTimelineSegments();
         }
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
@@ -2905,17 +2924,26 @@ function setupSegmentDrag(el, seg) {
 // ─── Timeline Effect Application ───
 function applyTimelineEffects() {
     if (timelineSegments.length === 0) return;
-    let currentTime = videoEl.time();
+    // M1: Use audio time in audio ruler mode for correct segment matching
+    let currentTime = (tlRulerMode === 'audio' && audioElement && audioLoaded)
+        ? audioElement.currentTime
+        : videoEl.time();
     let active = timelineSegments.filter(s => currentTime >= s.startTime && currentTime <= s.endTime);
     if (active.length === 0) return;
     // Sort by pipeline order
     const catOrder = ['color', 'distortion', 'pattern', 'overlay'];
     active.sort((a, b) => catOrder.indexOf(FX_CATEGORIES[a.effect]) - catOrder.indexOf(FX_CATEGORIES[b.effect]));
+    const drawOnly = new Set(['grid', 'scanlines', 'vignette']);
     for (let seg of active) {
         let saved = captureEffectParams(seg.effect);
         restoreEffectParams(seg.effect, seg.params);
         let fn = EFFECT_FN_MAP[seg.effect];
-        if (fn) fn();
+        if (fn) {
+            // Effects no longer self-manage loadPixels/updatePixels, so wrap them
+            if (!drawOnly.has(seg.effect)) loadPixels();
+            fn();
+            if (!drawOnly.has(seg.effect)) updatePixels();
+        }
         restoreEffectParams(seg.effect, saved);
     }
 }
@@ -3032,7 +3060,9 @@ function handleFile(event) {
         if (usingWebcam) stopWebcam();
         if (videoEl) { videoEl.stop(); videoEl.remove(); }
         ui.fileName.innerText = file.name;
-        const url = URL.createObjectURL(file);
+        if (currentVideoUrl) URL.revokeObjectURL(currentVideoUrl);
+        currentVideoUrl = URL.createObjectURL(file);
+        const url = currentVideoUrl;
         
         videoEl = createVideo(url, () => {
             videoEl.volume(0); videoEl.loop(); videoEl.hide();
@@ -3059,12 +3089,16 @@ function handleFile(event) {
                         if (drift > 0.2) audioElement.currentTime = expectedAudioTime;
                     }
                 } else if (loopMode === 'through') {
-                    // Video loops, audio plays through — no re-sync
-                    // If audio ended, try restarting it on next video loop
-                    if (audioElement.paused && !audioElement.ended) {
+                    // Video loops, audio plays through
+                    // Restart audio when video loops back near start
+                    if (audioElement.ended && videoEl.elt.currentTime < 1) {
+                        let audioTime = getAudioTimeForVideo(0);
+                        audioElement.currentTime = Math.max(0, audioTime);
+                        audioElement.play().catch(() => { audioPlaying = false; });
+                        audioPlaying = true;
+                    } else if (audioElement.paused && !audioElement.ended) {
                         // Was paused externally, leave it
                     } else if (audioElement.ended && videoPlaying) {
-                        // Audio finished — could restart or leave stopped
                         audioPlaying = false;
                     }
                 } else if (loopMode === 'once') {
@@ -3100,7 +3134,20 @@ function handleFile(event) {
 
 function applyActiveEffects() {
     if (activeEffects.size === 0) return;
-    // Color adjustments
+
+    // Classify active effects by rendering method
+    const pixelEffects = ['sepia','tint','palette','bricon','chroma','curve','wave',
+        'jitter','mblur','bloom','dither','atkinson','pxsort','pixel','glitch','noise','grain'];
+    const hybridEffects = ['halftone','ascii','dots'];
+    const drawEffects = ['grid','scanlines','vignette'];
+
+    let hasPixel = pixelEffects.some(e => activeEffects.has(e));
+    let hasHybrid = hybridEffects.some(e => activeEffects.has(e));
+
+    // Single loadPixels() for all pixel-manipulating effects
+    if (hasPixel || hasHybrid) loadPixels();
+
+    // Color adjustments (pixel-only)
     if (activeEffects.has('sepia')) applySepia();
     if (activeEffects.has('tint')) applyTint();
     if (activeEffects.has('palette')) applyPalette();
@@ -3111,26 +3158,32 @@ function applyActiveEffects() {
     if (activeEffects.has('wave')) applyWave();
     if (activeEffects.has('jitter')) applyJitter();
     if (activeEffects.has('mblur')) applyMblur();
-    // Pattern effects
+    // Pattern (pixel-only)
     if (activeEffects.has('bloom')) applyBloom();
     if (activeEffects.has('dither')) applyDithering();
     if (activeEffects.has('atkinson')) applyAtkinson();
-    if (activeEffects.has('halftone')) applyHalftone();
     if (activeEffects.has('pxsort')) applyPixelSort();
     if (activeEffects.has('pixel')) applyPixelate();
-    // Overlays
-    if (activeEffects.has('ascii')) applyASCII();
+    // Overlay (pixel-only)
     if (activeEffects.has('glitch')) applyGlitch();
     if (activeEffects.has('noise')) applyNoise();
     if (activeEffects.has('grain')) applyGrain();
+
+    // Commit pixel changes before hybrid/draw effects
+    if (hasPixel || hasHybrid) updatePixels();
+
+    // Hybrid effects (read pixels then draw shapes — need fresh loadPixels)
+    if (activeEffects.has('halftone')) applyHalftone();
+    if (activeEffects.has('ascii')) applyASCII();
     if (activeEffects.has('dots')) applyDots();
+
+    // Draw-only effects (no pixel access needed)
     if (activeEffects.has('grid')) applyGrid();
     if (activeEffects.has('scanlines')) applyScanlines();
     if (activeEffects.has('vignette')) applyVignette();
 }
 
 function applyDithering() {
-    loadPixels();
     const bayerMatrix = [
         [ 0, 8, 2, 10],
         [12, 4, 14,  6],
@@ -3139,10 +3192,13 @@ function applyDithering() {
     ];
     let d = pixelDensity();
     let totalW = width * d;
-    let totalH = height * d;
+    let sx = Math.floor(videoX * d);
+    let ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d);
+    let ey = Math.floor((videoY + videoH) * d);
     let isColor = (ditherColorMode === 'color');
-    for (let y = 0; y < totalH; y++) {
-        for (let x = 0; x < totalW; x++) {
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
             let idx = (x + y * totalW) * 4;
             let threshold = (bayerMatrix[y % 4][x % 4] / 16) * 255;
             if (isColor) {
@@ -3158,7 +3214,6 @@ function applyDithering() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyHalftone() {
@@ -3177,7 +3232,6 @@ function applyHalftone() {
             dots.push({ x, y, r, g, b, bri });
         }
     }
-    updatePixels();
     push();
     noStroke();
     if (isColor) {
@@ -3204,12 +3258,12 @@ function applyHalftone() {
 function applyPixelSort() {
     let d = pixelDensity();
     let totalW = width * d;
-    loadPixels();
     let sX = Math.floor(videoX * d);
     let eX = Math.floor((videoX + videoW) * d);
     let sY = Math.floor(videoY * d);
     let eY = Math.floor((videoY + videoH) * d);
     let lo = pxsortLo, hi = pxsortHi;
+    if (lo >= hi) { let tmp = lo; lo = hi; hi = tmp; }
 
     if (pxsortDir === 'vertical') {
         for (let x = sX; x < eX; x += 2) {
@@ -3260,7 +3314,6 @@ function applyPixelSort() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyASCII() {
@@ -3278,14 +3331,13 @@ function applyASCII() {
     for (let cy = sy; cy < ey; cy += cellD) {
         for (let cx = sx; cx < ex; cx += cellD) {
             let mx = Math.min(cx + Math.floor(cellD / 2), totalW - 1);
-            let my = Math.min(cy + Math.floor(cellD / 2), totalW * (height * d) - 1);
+            let my = Math.min(cy + Math.floor(cellD / 2), height * d - 1);
             let idx = (mx + my * totalW) * 4;
             let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
             let bri = 0.299 * r + 0.587 * g + 0.114 * b;
             cells.push({ x: cx / d, y: cy / d, r, g, b, bri });
         }
     }
-    updatePixels();
     push();
     noStroke();
     fill(0);
@@ -3322,7 +3374,6 @@ function applyChromatic() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     // Copy only the video region rows for performance
     for (let y = sy; y < ey; y++) {
@@ -3345,7 +3396,6 @@ function applyChromatic() {
             pixels[idx + 2] = original[bIdx + 2];
         }
     }
-    updatePixels();
 }
 
 function applyAtkinson() {
@@ -3357,7 +3407,6 @@ function applyAtkinson() {
     let ey = Math.floor((videoY + videoH) * d);
     let regionW = ex - sx;
     let regionH = ey - sy;
-    loadPixels();
 
     if (atkinsonColorMode === 'bw') {
         let gray = new Float32Array(regionW * regionH);
@@ -3435,7 +3484,6 @@ function applyAtkinson() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyScanlines() {
@@ -3462,7 +3510,8 @@ function applyVignette() {
     drawingContext.beginPath();
     drawingContext.rect(videoX, videoY, videoW, videoH);
     drawingContext.clip();
-    let grad = drawingContext.createRadialGradient(cx, cy, maxDim * radius * 0.4, cx, cy, maxDim * 0.65);
+    let outerR = maxDim * map(vigRadius, 20, 100, 0.45, 0.85);
+    let grad = drawingContext.createRadialGradient(cx, cy, maxDim * radius * 0.4, cx, cy, outerR);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(1, `rgba(0,0,0,${intensity})`);
     drawingContext.fillStyle = grad;
@@ -3473,14 +3522,13 @@ function applyVignette() {
 
 function applyGrain() {
     let intensity = grainIntensity / 100;
-    let sz = Math.max(1, Math.round(grainSize / 10));
+    let sz = Math.max(1, Math.round(map(grainSize, 5, 40, 1, 8)));
     let d = pixelDensity();
     let totalW = width * d;
     let sx = Math.floor(videoX * d);
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     let amp = intensity * 80;
     for (let y = sy; y < ey; y += sz) {
         for (let x = sx; x < ex; x += sz) {
@@ -3503,12 +3551,11 @@ function applyGrain() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyBloom() {
     let intensity = bloomIntensity / 100;
-    let rad = Math.max(1, Math.round(bloomRadius / 10));
+    let rad = Math.max(1, Math.round(map(bloomRadius, 10, 100, 1, 15)));
     let thresh = bloomThreshold / 100 * 255;
     let d = pixelDensity();
     let totalW = width * d;
@@ -3516,7 +3563,6 @@ function applyBloom() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     // Extract bright pixels into a separate buffer
     let regionW = ex - sx;
     let regionH = ey - sy;
@@ -3574,7 +3620,6 @@ function applyBloom() {
             pixels[idx + 2] = Math.min(255, pixels[idx + 2] + bright[bi + 2] * intensity);
         }
     }
-    updatePixels();
 }
 
 function applyTint() {
@@ -3590,7 +3635,6 @@ function applyTint() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     for (let y = sy; y < ey; y++) {
         for (let x = sx; x < ex; x++) {
             let idx = (x + y * totalW) * 4;
@@ -3601,7 +3645,6 @@ function applyTint() {
             pixels[idx + 2] = Math.round(pixels[idx + 2] * (1 - intensity) + tc[2] * lumN * intensity);
         }
     }
-    updatePixels();
 }
 
 function applySepia() {
@@ -3612,7 +3655,6 @@ function applySepia() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     for (let y = sy; y < ey; y++) {
         for (let x = sx; x < ex; x++) {
             let idx = (x + y * totalW) * 4;
@@ -3625,7 +3667,6 @@ function applySepia() {
             pixels[idx + 2] = Math.round(b * (1 - intensity) + sb * intensity);
         }
     }
-    updatePixels();
 }
 
 function applyPixelate() {
@@ -3637,7 +3678,6 @@ function applyPixelate() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     for (let y = sy; y < ey; y += szD) {
         for (let x = sx; x < ex; x += szD) {
             let sr = 0, sg = 0, sb = 0, cnt = 0;
@@ -3656,7 +3696,6 @@ function applyPixelate() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyWave() {
@@ -3669,7 +3708,6 @@ function applyWave() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
@@ -3689,7 +3727,6 @@ function applyWave() {
             pixels[dstIdx+2] = original[srcIdx+2];
         }
     }
-    updatePixels();
 }
 
 function applyGlitch() {
@@ -3701,7 +3738,6 @@ function applyGlitch() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
@@ -3779,10 +3815,9 @@ function applyGlitch() {
                     pixels[idx + 2] = original[(bSrc + row * totalW) * 4 + 2];
                 }
             }
-            y += blockH;
+            y += blockH - 1;
         }
     }
-    updatePixels();
 }
 
 function applyJitter() {
@@ -3797,7 +3832,6 @@ function applyJitter() {
     let ey = Math.floor((videoY + videoH) * d);
     let offD = maxOff * d;
     let bsD = bs * d;
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
@@ -3833,7 +3867,6 @@ function applyJitter() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyNoise() {
@@ -3846,7 +3879,6 @@ function applyNoise() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     let density = intensity * 0.3;
     for (let y = sy; y < ey; y += szD) {
         for (let x = sx; x < ex; x += szD) {
@@ -3865,7 +3897,6 @@ function applyNoise() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyCurve() {
@@ -3881,7 +3912,6 @@ function applyCurve() {
     let cy = (sy + ey) / 2;
     let hw = (ex - sx) / 2;
     let hh = (ey - sy) / 2;
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
@@ -3905,11 +3935,16 @@ function applyCurve() {
                 pixels[dstIdx+1] = original[srcIdx+1];
                 pixels[dstIdx+2] = original[srcIdx+2];
             } else {
-                pixels[dstIdx] = 0; pixels[dstIdx+1] = 0; pixels[dstIdx+2] = 0;
+                // Clamp to nearest edge pixel instead of black fill
+                let clampX = Math.max(sx, Math.min(ex - 1, srcX));
+                let clampY = Math.max(sy, Math.min(ey - 1, srcY));
+                let clampIdx = (clampX + clampY * totalW) * 4;
+                pixels[dstIdx] = original[clampIdx];
+                pixels[dstIdx+1] = original[clampIdx+1];
+                pixels[dstIdx+2] = original[clampIdx+2];
             }
         }
     }
-    updatePixels();
 }
 
 function applyBriCon() {
@@ -3922,7 +3957,6 @@ function applyBriCon() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     for (let y = sy; y < ey; y++) {
         for (let x = sx; x < ex; x++) {
             let idx = (x + y * totalW) * 4;
@@ -3942,7 +3976,6 @@ function applyBriCon() {
             pixels[idx+2] = Math.max(0, Math.min(255, Math.round(b)));
         }
     }
-    updatePixels();
 }
 
 function applyGrid() {
@@ -4005,7 +4038,6 @@ function applyDots() {
             }
         }
     }
-    updatePixels();
     drawingContext.restore();
     pop();
 }
@@ -4023,7 +4055,6 @@ function applyMblur() {
     let ey = Math.floor((videoY + videoH) * d);
     let dx = Math.cos(angle);
     let dy = Math.sin(angle);
-    loadPixels();
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
@@ -4053,7 +4084,6 @@ function applyMblur() {
             }
         }
     }
-    updatePixels();
 }
 
 function applyPalette() {
@@ -4079,7 +4109,6 @@ function applyPalette() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    loadPixels();
     for (let y = sy; y < ey; y++) {
         for (let x = sx; x < ex; x++) {
             let idx = (x + y * totalW) * 4;
@@ -4095,7 +4124,6 @@ function applyPalette() {
             pixels[idx+2] = Math.round(b * (1-intensity) + nearest[2] * intensity);
         }
     }
-    updatePixels();
 }
 
 function draw() {
@@ -4251,9 +4279,9 @@ function draw() {
         pop();
     }
 
-    if (!showCursor) noCursor(); else cursor();
+    cursor();
     renderMiniSpectrum();
-    if (debugVisible) renderDebug();
+    if (debugVisible && frameCount % 10 === 0) renderDebug();
 }
 
 function renderMiniSpectrum() {
@@ -4457,11 +4485,16 @@ function runMaskSegmentation(clickX, clickY) {
 function maskSegmentWithPoint(normX, normY) {
     // Run MediaPipe segmentation at the given normalized point
     if (!window.mpSegmenter || !videoEl || !videoEl.elt) return;
+    if (maskSegInFlight) return; // prevent overlapping async calls
+    maskSegInFlight = true;
 
     const roi = { keypoint: { x: normX, y: normY } };
 
     try {
         window.mpSegmenter.segment(videoEl.elt, roi, (result) => {
+            maskSegInFlight = false;
+            // L14: Discard result if user left MASK mode during segmentation
+            if (currentMode !== 14) return;
             // Prefer confidence masks (unambiguous: higher = more foreground)
             if (result.confidenceMasks && result.confidenceMasks.length > 0) {
                 let fgMask = result.confidenceMasks.length > 1
@@ -4511,6 +4544,7 @@ function maskSegmentWithPoint(normX, normY) {
             updateButtonStates();
         });
     } catch (e) {
+        maskSegInFlight = false;
         console.error('Segmentation failed:', e);
     }
 }
@@ -5008,7 +5042,7 @@ function applyAudioSync() {
         if (audioBaseValues[0] !== undefined) paramValues[0] = audioBaseValues[0];
         if (audioBaseValues[1] !== undefined) paramValues[1] = audioBaseValues[1];
         if (audioBaseValues[6] !== undefined) paramValues[6] = audioBaseValues[6];
-        syncUI();
+        if (++_syncUIFrameCount % 8 === 0) syncUI();
         return;
     }
 
@@ -5055,7 +5089,7 @@ function applyAudioSync() {
     // Hard cutoff: if quantity is below 2, snap to 0 for clean on/off
     if (paramValues[0] < 2) paramValues[0] = 0;
 
-    syncUI();
+    if (++_syncUIFrameCount % 8 === 0) syncUI();
 }
 
 // ─── Recording ───
@@ -5076,9 +5110,9 @@ function startRecording() {
     // Mix in audio if available
     let combinedStream;
     if (audioLoaded && audioContext && audioGainNode) {
-        const audioDest = audioContext.createMediaStreamDestination();
-        audioGainNode.connect(audioDest);
-        const audioTrack = audioDest.stream.getAudioTracks()[0];
+        recordingAudioDest = audioContext.createMediaStreamDestination();
+        audioGainNode.connect(recordingAudioDest);
+        const audioTrack = recordingAudioDest.stream.getAudioTracks()[0];
         combinedStream = new MediaStream([...canvasStream.getVideoTracks(), audioTrack]);
     } else {
         combinedStream = canvasStream;
@@ -5120,6 +5154,11 @@ function startRecording() {
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
+    }
+    // Disconnect recording audio node to prevent stale connections
+    if (recordingAudioDest && audioGainNode) {
+        try { audioGainNode.disconnect(recordingAudioDest); } catch(e) {}
+        recordingAudioDest = null;
     }
     isRecording = false;
     ui.btnRecord.classList.remove('recording');
@@ -5218,7 +5257,7 @@ function keyPressed() {
     if (key === 't' || key === 'T') {
         audioSync = !audioSync;
         if (audioSync) {
-            audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 5: paramValues[5], 6: paramValues[6] };
+            audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 6: paramValues[6] };
         }
         changed = true;
     }
@@ -5316,7 +5355,7 @@ function mousePressed() {
         }
     }
 }
-function mouseWheel(event) { }
+// mouseWheel handler removed (was empty/dead code)
 </script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
