@@ -246,6 +246,7 @@ const ui = {
     syncTargetButtons: document.querySelectorAll('#sync-target-buttons .selector-btn'),
     freqPresetButtons: document.querySelectorAll('#freq-preset-buttons .selector-btn'),
     autogainButtons: document.querySelectorAll('#autogain-buttons .selector-btn'),
+    bpmLockButtons: document.querySelectorAll('#bpm-lock-buttons .selector-btn'),
     customColorGroup: document.getElementById('custom-color-group'),
     customColorPicker: document.getElementById('custom-color-picker'),
     btnPhoto: document.getElementById('btn-photo'),
@@ -311,6 +312,13 @@ let syncMinQty = 0;
 let syncMaxQty = 100;
 let syncMinSize = 0;
 let syncMaxSize = 100;
+let syncMinRate = 5;
+let syncMaxRate = 80;
+
+// BPM detection & lock
+let bpmLocked = false;
+let bpmValue = 0;
+let bpmBeatTimes = [];
 
 // ── CLASSES ───────────────────────────────
 
@@ -757,6 +765,17 @@ function updateButtonStates() {
         else btn.classList.remove('active');
     });
 
+    ui.bpmLockButtons.forEach(btn => {
+        const isOn = btn.dataset.value === 'on';
+        if (bpmLocked === isOn) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+    let bpmDisplay = document.getElementById('bpm-display');
+    if (bpmDisplay) {
+        bpmDisplay.textContent = bpmValue > 0 ? Math.round(bpmValue) + ' BPM' : '— BPM';
+        bpmDisplay.style.color = bpmLocked && bpmValue > 0 ? '#00B894' : 'var(--text-muted)';
+    }
+
     // Freq presets — highlight matching preset or none if custom
     const presetMap = {
         kick:  [30, 150], bass: [60, 300], vocal: [800, 4000],
@@ -1171,7 +1190,7 @@ function keyPressed() {
     if (key === 't' || key === 'T') {
         audioSync = !audioSync;
         if (audioSync) {
-            audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 6: paramValues[6] };
+            audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 5: paramValues[5], 6: paramValues[6] };
         }
         changed = true;
     }
@@ -1232,9 +1251,14 @@ function keyPressed() {
     }
 
     if (key === 'q' || key === 'Q') {
-        const targets = ['all', 'qty', 'size', 'color', 'flash', 'pulse'];
+        const targets = ['all', 'qty', 'size', 'color', 'flash', 'pulse', 'rate'];
         let curIdx = targets.indexOf(audioSyncTarget);
         audioSyncTarget = targets[(curIdx + 1) % targets.length];
+        changed = true;
+    }
+
+    if (key === 'b' || key === 'B') {
+        bpmLocked = !bpmLocked;
         changed = true;
     }
 

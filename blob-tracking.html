@@ -1384,6 +1384,7 @@
                             <button class="selector-btn" data-value="color">COLOR</button>
                             <button class="selector-btn" data-value="flash">FLASH</button>
                             <button class="selector-btn" data-value="pulse">PULSE</button>
+                            <button class="selector-btn" data-value="rate">RATE</button>
                         </div>
                     </div>
                     <div class="control-group" id="sync-range-group" style="display:none">
@@ -1399,8 +1400,22 @@
                             <span style="font-size:10px;color:var(--text-muted)">to</span>
                             <input type="range" id="sync-max-size" min="0" max="100" value="100" style="flex:1">
                         </div>
+                        <label>Rate Range</label>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="range" id="sync-min-rate" min="0" max="100" value="5" style="flex:1">
+                            <span style="font-size:10px;color:var(--text-muted)">to</span>
+                            <input type="range" id="sync-max-rate" min="0" max="100" value="80" style="flex:1">
+                        </div>
                         <label>Beat Decay <input type="number" class="value-input" id="val-beat-decay" value="82"></label>
                         <div class="slider-wrapper"><input type="range" id="slider-beat-decay" min="70" max="95" value="82" step="1"></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>BPM Lock <span id="bpm-display" style="font-size:10px;color:var(--text-muted)">— BPM</span></label>
+                    <div class="selector-row" id="bpm-lock-buttons">
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                        <button class="selector-btn" data-value="on">ON</button>
                     </div>
                 </div>
             </div>

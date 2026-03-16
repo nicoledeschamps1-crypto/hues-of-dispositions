@@ -175,6 +175,8 @@ function resetBandDetectors() {
         bandDetectors[b].intensity = 0;
     }
     beatIntensity = 0;
+    bpmBeatTimes = [];
+    bpmValue = 0;
 }
 
 function getActiveBandDetector() {
@@ -229,6 +231,24 @@ function updateMultiBandBeats() {
             if (flux > threshold && now - band.lastBeat > band.cooldown) {
                 band.intensity = 1.0;
                 band.lastBeat = now;
+
+                // BPM detection from kick beats
+                if (name === 'kick') {
+                    bpmBeatTimes.push(now);
+                    if (bpmBeatTimes.length > 20) bpmBeatTimes.shift();
+                    if (bpmBeatTimes.length >= 4) {
+                        let intervals = [];
+                        for (let k = 1; k < bpmBeatTimes.length; k++) {
+                            let iv = bpmBeatTimes[k] - bpmBeatTimes[k-1];
+                            if (iv > 300 && iv < 2000) intervals.push(iv);
+                        }
+                        if (intervals.length >= 6) {
+                            let iSum = 0;
+                            for (let iv of intervals) iSum += iv;
+                            bpmValue = 60000 / (iSum / intervals.length);
+                        }
+                    }
+                }
             } else {
                 band.intensity *= (band.decay ?? beatDecayValue);
             }
@@ -255,6 +275,7 @@ function applyAudioSync() {
     if (!audioLoaded || !audioPlaying) {
         if (audioBaseValues[0] !== undefined) paramValues[0] = audioBaseValues[0];
         if (audioBaseValues[1] !== undefined) paramValues[1] = audioBaseValues[1];
+        if (audioBaseValues[5] !== undefined) paramValues[5] = audioBaseValues[5];
         if (audioBaseValues[6] !== undefined) paramValues[6] = audioBaseValues[6];
         if (++_syncUIFrameCount % 8 === 0) syncUI();
         return;
@@ -292,6 +313,12 @@ function applyAudioSync() {
         // Flash is handled in draw()
     }
 
+    else if (target === 'rate') {
+        let val = smoothBand * sens + activeBand.intensity * 1.0 * sens;
+        // Invert: high energy → low rate (fast), low energy → high rate (slow)
+        paramValues[5] = map(constrain(val, 0, 1), 0, 1, syncMaxRate, syncMinRate);
+    }
+
     else if (target === 'all') {
         // MIX: kick → qty, overall → size, mid+snare+hat → color
         let qtyVal = kick * 1.0 * sens + smoothBand * 0.3 * sens;
@@ -307,10 +334,23 @@ function applyAudioSync() {
     // Decay pulse when not in pulse mode
     if (target !== 'pulse') pulseIntensity *= 0.85;
 
+    // BPM Lock: override rate to match detected tempo (works with any target)
+    if (bpmLocked && bpmValue > 0) {
+        let beatPeriod = 60000 / bpmValue;
+        paramValues[5] = constrain(beatPeriod / 10, syncMinRate, syncMaxRate);
+    }
+
     // Hard cutoff — only zero out if user's floor allows it
     if (syncMinQty === 0 && paramValues[0] < 2) paramValues[0] = 0;
 
-    if (++_syncUIFrameCount % 8 === 0) syncUI();
+    if (++_syncUIFrameCount % 8 === 0) {
+        syncUI();
+        let bpmDisplay = document.getElementById('bpm-display');
+        if (bpmDisplay) {
+            bpmDisplay.textContent = bpmValue > 0 ? Math.round(bpmValue) + ' BPM' : '— BPM';
+            bpmDisplay.style.color = bpmLocked && bpmValue > 0 ? '#00B894' : 'var(--text-muted)';
+        }
+    }
 }
 
 function renderMiniSpectrum() {
@@ -403,9 +443,10 @@ function renderDebug() {
   hat:   ${bandDetectors.hat.intensity.toFixed(3)} ${barW(bandDetectors.hat.intensity)}  ${bandDetectors.hat.intensity > 0.5 ? '<span class="val">■</span>' : ''}
 <span class="label">AUTO-GAIN MAX</span>
   band:${autoGainMax.band.toFixed(3)}  bass:${autoGainMax.bass.toFixed(3)}  mid:${autoGainMax.mid.toFixed(3)}  tre:${autoGainMax.treble.toFixed(3)}
+<span class="label">BPM</span>        ${bpmValue > 0 ? bpmValue.toFixed(1) : '—'}  locked: <span class="${bpmLocked ? 'val' : 'off'}">${bpmLocked}</span>
 <span class="label">SYNC → ${audioSyncTarget.toUpperCase()}</span>
   qty:${paramValues[0].toFixed(1)}  spec:${paramValues[1].toFixed(1)}  blobVar:${paramValues[6].toFixed(1)}  rate:${paramValues[5].toFixed(1)}
-  qtyRange:${syncMinQty}-${syncMaxQty}  sizeRange:${syncMinSize}-${syncMaxSize}
+  qtyRange:${syncMinQty}-${syncMaxQty}  sizeRange:${syncMinSize}-${syncMaxSize}  rateRange:${syncMinRate}-${syncMaxRate}
 `;
 }
 
@@ -420,7 +461,7 @@ function setupAudioUIListeners() {
             if (audioSync) {
                 audioBaseValues = {
                     0: paramValues[0], 1: paramValues[1],
-                    6: paramValues[6]
+                    5: paramValues[5], 6: paramValues[6]
                 };
             }
             updateButtonStates();
@@ -571,6 +612,30 @@ function setupAudioUIListeners() {
             if (syncMaxSize < syncMinSize) { syncMinSize = syncMaxSize; syncMinSizeSlider.value = syncMinSize; }
         });
     }
+
+    // Rate range sliders
+    let syncMinRateSlider = document.getElementById('sync-min-rate');
+    let syncMaxRateSlider = document.getElementById('sync-max-rate');
+    if (syncMinRateSlider) {
+        syncMinRateSlider.addEventListener('input', (e) => {
+            syncMinRate = parseInt(e.target.value);
+            if (syncMinRate > syncMaxRate) { syncMaxRate = syncMinRate; syncMaxRateSlider.value = syncMaxRate; }
+        });
+    }
+    if (syncMaxRateSlider) {
+        syncMaxRateSlider.addEventListener('input', (e) => {
+            syncMaxRate = parseInt(e.target.value);
+            if (syncMaxRate < syncMinRate) { syncMinRate = syncMaxRate; syncMinRateSlider.value = syncMinRate; }
+        });
+    }
+
+    // BPM Lock toggle
+    ui.bpmLockButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            bpmLocked = (e.target.dataset.value === 'on');
+            updateButtonStates();
+        });
+    });
 
     // Beat decay slider
     let beatDecaySlider = document.getElementById('slider-beat-decay');
