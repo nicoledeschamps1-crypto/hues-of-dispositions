@@ -42,6 +42,32 @@ function refreshTimeline() {
 
 // ── Core Timeline Functions ──────────────
 
+function addModeSegmentAt(modeValue, startTime) {
+    let tlDur = getTimelineDuration();
+    if (!tlDur) return;
+    let endTime = Math.min(startTime + 5, tlDur);
+    let seg = {
+        id: nextSegId++,
+        type: 'mode',
+        effect: 'mode:' + modeValue,
+        modeValue: modeValue,
+        startTime: startTime,
+        endTime: endTime,
+        params: [...paramValues], // snapshot core params
+        lane: 0,
+        color: '#aaaaaa'
+    };
+    timelineSegments.push(seg);
+    assignLanes();
+    renderTimelineSegments();
+    let container = ui.tlTrackInner || ui.tlTrack;
+    let newEl = container.querySelector(`.timeline-segment[data-id="${seg.id}"]`);
+    if (newEl) {
+        newEl.classList.add('just-added');
+        setTimeout(() => newEl.classList.remove('just-added'), 500);
+    }
+}
+
 function addTimelineSegmentAt(effectName, startTime) {
     let tlDur = getTimelineDuration();
     if (!tlDur) return;
@@ -402,6 +428,13 @@ function assignLanes() {
     }
 }
 
+function segLabel(seg) {
+    if (seg.type === 'mode') {
+        return (MODE_NAMES[seg.modeValue] || 'MODE') + ' ' + formatTime(seg.startTime) + '-' + formatTime(seg.endTime);
+    }
+    return seg.effect.toUpperCase() + ' ' + formatTime(seg.startTime) + '-' + formatTime(seg.endTime);
+}
+
 function syncSelectedSegment() {
     selectedSegment = selectedSegments.size > 0
         ? timelineSegments.find(s => selectedSegments.has(s.id)) || null
@@ -444,7 +477,7 @@ function renderTimelineSegments() {
         el.style.width = Math.max(w, 0.5) + '%';
         el.style.top = (seg.lane * 26 + 2) + 'px';
         el.style.background = seg.color;
-        el.textContent = seg.effect.toUpperCase() + ' ' + formatTime(seg.startTime) + '-' + formatTime(seg.endTime);
+        el.textContent = segLabel(seg);
         if (selectedSegments.has(seg.id)) el.classList.add('selected');
 
         // Left/right resize handles
@@ -576,13 +609,13 @@ function setupSegmentDrag(el, seg) {
                     if (s && sEl) {
                         sEl.style.left = timeToPercent(s.startTime) + '%';
                         sEl.style.width = Math.max(((s.endTime - s.startTime) / vr.duration) * 100, 0.5) + '%';
-                        sEl.textContent = s.effect.toUpperCase() + ' ' + formatTime(s.startTime) + '-' + formatTime(s.endTime);
+                        sEl.textContent = segLabel(s);
                     }
                 }
             } else {
                 el.style.left = timeToPercent(seg.startTime) + '%';
                 el.style.width = Math.max(((seg.endTime - seg.startTime) / vr.duration) * 100, 0.5) + '%';
-                el.textContent = seg.effect.toUpperCase() + ' ' + formatTime(seg.startTime) + '-' + formatTime(seg.endTime);
+                el.textContent = segLabel(seg);
             }
         }
         function onUp() {
@@ -606,11 +639,26 @@ function applyTimelineEffects() {
         : videoEl.time();
     let active = timelineSegments.filter(s => currentTime >= s.startTime && currentTime <= s.endTime);
     if (active.length === 0) return;
-    // Sort by pipeline order
+
+    // Apply mode segments: last one wins (override currentMode + params)
+    let modeSegs = active.filter(s => s.type === 'mode');
+    if (modeSegs.length > 0) {
+        let modeSeg = modeSegs[modeSegs.length - 1]; // last = highest priority
+        currentMode = modeSeg.modeValue;
+        if (modeSeg.params && Array.isArray(modeSeg.params)) {
+            for (let i = 0; i < modeSeg.params.length; i++) {
+                paramValues[i] = modeSeg.params[i];
+            }
+        }
+    }
+
+    // Apply effect segments
+    let fxSegs = active.filter(s => s.type !== 'mode');
+    if (fxSegs.length === 0) return;
     const catOrder = ['color', 'distortion', 'pattern', 'overlay'];
-    active.sort((a, b) => catOrder.indexOf(FX_CATEGORIES[a.effect]) - catOrder.indexOf(FX_CATEGORIES[b.effect]));
+    fxSegs.sort((a, b) => catOrder.indexOf(FX_CATEGORIES[a.effect]) - catOrder.indexOf(FX_CATEGORIES[b.effect]));
     const drawOnly = new Set(['grid', 'scanlines', 'vignette']);
-    for (let seg of active) {
+    for (let seg of fxSegs) {
         let saved = captureEffectParams(seg.effect);
         restoreEffectParams(seg.effect, seg.params);
         let fn = EFFECT_FN_MAP[seg.effect];

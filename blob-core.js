@@ -155,6 +155,13 @@ let waveformDragging = false;
 let _cachedBeatMarkers = [];
 let _cachedBeatKey = '';
 
+const MODE_NAMES = {
+    0:'OFF', 1:'BLUE', 2:'RED', 3:'MOT', 4:'SKIN', 5:'CUST',
+    6:'BRI', 7:'DARK', 8:'EDGE', 9:'CHRM', 10:'WARM', 11:'COOL',
+    12:'FLKR', 13:'INV', 14:'MASK'
+};
+let modeDragState = null;
+
 const FX_CATEGORIES = {
     sepia:'color', tint:'color', palette:'color', bricon:'color',
     chroma:'distortion', curve:'distortion', wave:'distortion', jitter:'distortion', mblur:'distortion',
@@ -609,7 +616,17 @@ function setupCoreUIListeners() {
     });
 
     ui.modeButtons.forEach(btn => {
+        btn.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            modeDragState = {
+                mode: parseInt(btn.dataset.value),
+                startX: e.clientX,
+                startY: e.clientY,
+                dragging: false
+            };
+        });
         btn.addEventListener('click', (e) => {
+            if (modeDragState && modeDragState.dragging) return; // was a drag, not a click
             currentMode = parseInt(e.target.dataset.value);
             if (currentMode === 3) prevGridPixels = {};
             if (currentMode === 12) flickerScores = {};
@@ -621,6 +638,61 @@ function setupCoreUIListeners() {
             }
             updateButtonStates();
         });
+    });
+
+    // Mode button drag to timeline
+    document.addEventListener('mousemove', (e) => {
+        if (!modeDragState) return;
+        let dx = e.clientX - modeDragState.startX;
+        let dy = e.clientY - modeDragState.startY;
+        if (!modeDragState.dragging && (dx*dx + dy*dy) > 36) {
+            modeDragState.dragging = true;
+            ui.dragGhost.textContent = MODE_NAMES[modeDragState.mode] || 'MODE';
+            ui.dragGhost.style.display = 'block';
+            ui.dragGhost.style.background = '#aaa';
+        }
+        if (modeDragState.dragging) {
+            ui.dragGhost.style.left = (e.clientX + 12) + 'px';
+            ui.dragGhost.style.top = (e.clientY + 12) + 'px';
+            let tlInner = ui.tlTrackInner || ui.tlTrack;
+            let tlRect = tlInner.getBoundingClientRect();
+            let overTl = e.clientX >= tlRect.left && e.clientX <= tlRect.right &&
+                         e.clientY >= tlRect.top - 20 && e.clientY <= tlRect.bottom + 20;
+            tlInner.classList.toggle('drag-over', overTl);
+            ui.tlDragHint.classList.toggle('drop-active', overTl);
+            if (overTl && getTimelineDuration() > 0) {
+                let ratio = Math.max(0, Math.min(1, (e.clientX - tlRect.left) / tlRect.width));
+                let vr = getVisibleTimeRange();
+                let segW = Math.min(5, vr.duration) / vr.duration * 100;
+                ui.tlGhost.style.left = (ratio * 100) + '%';
+                ui.tlGhost.style.width = segW + '%';
+                ui.tlGhost.style.background = '#aaa';
+                ui.tlGhost.style.opacity = '0.35';
+                ui.tlGhost.classList.add('visible');
+            } else {
+                ui.tlGhost.classList.remove('visible');
+            }
+        }
+    });
+    document.addEventListener('mouseup', (e) => {
+        if (!modeDragState) return;
+        if (modeDragState.dragging) {
+            ui.dragGhost.style.display = 'none';
+            let tlInner = ui.tlTrackInner || ui.tlTrack;
+            tlInner.classList.remove('drag-over');
+            ui.tlDragHint.classList.remove('drop-active');
+            ui.tlGhost.classList.remove('visible');
+            let tlRect = tlInner.getBoundingClientRect();
+            let overTl = e.clientX >= tlRect.left && e.clientX <= tlRect.right &&
+                         e.clientY >= tlRect.top - 20 && e.clientY <= tlRect.bottom + 20;
+            let tlDur = getTimelineDuration();
+            if (overTl && tlDur > 0) {
+                let ratio = Math.max(0, Math.min(1, (e.clientX - tlRect.left) / tlRect.width));
+                let dropTime = snapToBeat(percentToTime(ratio * 100));
+                addModeSegmentAt(modeDragState.mode, dropTime);
+            }
+        }
+        modeDragState = null;
     });
 
     // Custom color picker
