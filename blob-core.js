@@ -113,6 +113,83 @@ let mblurAngle = 0;
 let palettePreset = 'noir';
 let paletteIntensity = 80;
 
+// ── NEW ENRICHED EFFECT PARAMS ──
+// Halftone enriched
+let halfAngle = 0;
+let halfContrast = 50;
+let halfSpread = 0;
+let halfShape = 'circle';
+let halfInkColor = '#000000';
+let halfPaperColor = '#ffffff';
+let halfInverted = false;
+
+// Dither enriched
+let ditherAlgorithm = 'bayer4';
+let ditherPalette = 'bw';
+let ditherColorCount = 2;
+let ditherPixelation = 1;
+let ditherStrength = 100;
+
+// Atkinson enriched
+let atkinsonThreshold = 128;
+let atkinsonSpread = 100;
+let atkinsonStrength = 100;
+
+// Bloom enriched
+let bloomSpread = 50;
+let bloomBlendMode = 'additive';
+let bloomExposure = 100;
+
+// Glitch enriched
+let glitchChannelShift = 50;
+let glitchBlockSize = 50;
+let glitchSeed = 0;
+let glitchSpeed = 50;
+
+// Tint enriched
+let tintCustomColor = '#00ff00';
+
+// ── NEW EFFECTS ──
+// CRT Screen
+let crtScanWeight = 2;
+let crtCurvature = 30;
+let crtGlow = 50;
+let crtChroma = 3;
+let crtStatic = 20;
+
+// Thermal
+let thermalIntensity = 80;
+
+// Emboss
+let embossAngle = 135;
+let embossStrength = 50;
+
+// LED Screen
+let ledCellSize = 8;
+let ledGap = 2;
+let ledGlow = 30;
+let ledBrightness = 100;
+
+// Gradient Map
+let gradColor1 = '#000033';
+let gradColor2 = '#ff6600';
+let gradIntensity = 80;
+
+// Duotone
+let duoShadow = '#1a1a2e';
+let duoHighlight = '#e94560';
+let duoIntensity = 80;
+
+// RGB Shift
+let rgbShiftRX = 5;
+let rgbShiftRY = 0;
+let rgbShiftBX = -5;
+let rgbShiftBY = 0;
+let rgbShiftIntensity = 70;
+
+// Master FX toggle
+let masterFxEnabled = true;
+
 let videoX, videoY, videoW, videoH;
 let currentVideoUrl = null;
 
@@ -198,15 +275,15 @@ const BLOB_SEG_COLOR = '#00CEC9';
 let editingBlobSeg = null; // when a blob segment is selected, sliders edit its params
 
 const FX_CATEGORIES = {
-    sepia:'color', tint:'color', palette:'color', bricon:'color',
-    chroma:'distortion', curve:'distortion', wave:'distortion', jitter:'distortion', mblur:'distortion',
-    bloom:'pattern', dither:'pattern', atkinson:'pattern', halftone:'pattern', pxsort:'pattern', pixel:'pattern',
-    ascii:'overlay', glitch:'overlay', noise:'overlay', grain:'overlay', dots:'overlay', grid:'overlay', scanlines:'overlay', vignette:'overlay'
+    sepia:'color', tint:'color', palette:'color', bricon:'color', thermal:'color', gradmap:'color', duotone:'color',
+    chroma:'distortion', rgbshift:'distortion', curve:'distortion', wave:'distortion', jitter:'distortion', mblur:'distortion', emboss:'distortion',
+    bloom:'pattern', dither:'pattern', atkinson:'pattern', halftone:'pattern', pxsort:'pattern', pixel:'pattern', led:'pattern',
+    ascii:'overlay', glitch:'overlay', noise:'overlay', grain:'overlay', dots:'overlay', grid:'overlay', scanlines:'overlay', vignette:'overlay', crt:'overlay'
 };
 const FX_CAT_COLORS = { color:'#6C5CE7', distortion:'#00B894', pattern:'#FDCB6E', overlay:'#E17055' };
 const FX_PARAM_MAP = {
     sepia: [{v:'sepiaIntensity',g:()=>sepiaIntensity,s:v=>sepiaIntensity=v}],
-    tint: [{v:'tintPreset',g:()=>tintPreset,s:v=>tintPreset=v},{v:'tintIntensity',g:()=>tintIntensity,s:v=>tintIntensity=v}],
+    tint: [{v:'tintPreset',g:()=>tintPreset,s:v=>tintPreset=v},{v:'tintIntensity',g:()=>tintIntensity,s:v=>tintIntensity=v},{v:'tintCustomColor',g:()=>tintCustomColor,s:v=>tintCustomColor=v}],
     palette: [{v:'palettePreset',g:()=>palettePreset,s:v=>palettePreset=v},{v:'paletteIntensity',g:()=>paletteIntensity,s:v=>paletteIntensity=v}],
     bricon: [{v:'briValue',g:()=>briValue,s:v=>briValue=v},{v:'conValue',g:()=>conValue,s:v=>conValue=v},{v:'satValue',g:()=>satValue,s:v=>satValue=v}],
     chroma: [{v:'chromaOffset',g:()=>chromaOffset,s:v=>chromaOffset=v}],
@@ -214,26 +291,87 @@ const FX_PARAM_MAP = {
     wave: [{v:'waveAmp',g:()=>waveAmp,s:v=>waveAmp=v},{v:'waveFreq',g:()=>waveFreq,s:v=>waveFreq=v},{v:'waveSpeed',g:()=>waveSpeed,s:v=>waveSpeed=v}],
     jitter: [{v:'jitterIntensity',g:()=>jitterIntensity,s:v=>jitterIntensity=v},{v:'jitterBlockSize',g:()=>jitterBlockSize,s:v=>jitterBlockSize=v},{v:'jitterMode',g:()=>jitterMode,s:v=>jitterMode=v}],
     mblur: [{v:'mblurIntensity',g:()=>mblurIntensity,s:v=>mblurIntensity=v},{v:'mblurAngle',g:()=>mblurAngle,s:v=>mblurAngle=v}],
-    bloom: [{v:'bloomIntensity',g:()=>bloomIntensity,s:v=>bloomIntensity=v},{v:'bloomRadius',g:()=>bloomRadius,s:v=>bloomRadius=v},{v:'bloomThreshold',g:()=>bloomThreshold,s:v=>bloomThreshold=v}],
-    dither: [{v:'ditherColorMode',g:()=>ditherColorMode,s:v=>ditherColorMode=v}],
-    atkinson: [{v:'atkinsonColorMode',g:()=>atkinsonColorMode,s:v=>atkinsonColorMode=v}],
-    halftone: [{v:'halfSpacing',g:()=>halfSpacing,s:v=>halfSpacing=v},{v:'halfColorMode',g:()=>halfColorMode,s:v=>halfColorMode=v}],
+    bloom: [{v:'bloomIntensity',g:()=>bloomIntensity,s:v=>bloomIntensity=v},{v:'bloomRadius',g:()=>bloomRadius,s:v=>bloomRadius=v},{v:'bloomThreshold',g:()=>bloomThreshold,s:v=>bloomThreshold=v},{v:'bloomSpread',g:()=>bloomSpread,s:v=>bloomSpread=v},{v:'bloomBlendMode',g:()=>bloomBlendMode,s:v=>bloomBlendMode=v},{v:'bloomExposure',g:()=>bloomExposure,s:v=>bloomExposure=v}],
+    dither: [{v:'ditherColorMode',g:()=>ditherColorMode,s:v=>ditherColorMode=v},{v:'ditherAlgorithm',g:()=>ditherAlgorithm,s:v=>ditherAlgorithm=v},{v:'ditherPalette',g:()=>ditherPalette,s:v=>ditherPalette=v},{v:'ditherColorCount',g:()=>ditherColorCount,s:v=>ditherColorCount=v},{v:'ditherPixelation',g:()=>ditherPixelation,s:v=>ditherPixelation=v},{v:'ditherStrength',g:()=>ditherStrength,s:v=>ditherStrength=v}],
+    atkinson: [{v:'atkinsonColorMode',g:()=>atkinsonColorMode,s:v=>atkinsonColorMode=v},{v:'atkinsonThreshold',g:()=>atkinsonThreshold,s:v=>atkinsonThreshold=v},{v:'atkinsonSpread',g:()=>atkinsonSpread,s:v=>atkinsonSpread=v},{v:'atkinsonStrength',g:()=>atkinsonStrength,s:v=>atkinsonStrength=v}],
+    halftone: [{v:'halfSpacing',g:()=>halfSpacing,s:v=>halfSpacing=v},{v:'halfColorMode',g:()=>halfColorMode,s:v=>halfColorMode=v},{v:'halfAngle',g:()=>halfAngle,s:v=>halfAngle=v},{v:'halfContrast',g:()=>halfContrast,s:v=>halfContrast=v},{v:'halfSpread',g:()=>halfSpread,s:v=>halfSpread=v},{v:'halfShape',g:()=>halfShape,s:v=>halfShape=v},{v:'halfInkColor',g:()=>halfInkColor,s:v=>halfInkColor=v},{v:'halfPaperColor',g:()=>halfPaperColor,s:v=>halfPaperColor=v},{v:'halfInverted',g:()=>halfInverted,s:v=>halfInverted=v}],
     pxsort: [{v:'pxsortLo',g:()=>pxsortLo,s:v=>pxsortLo=v},{v:'pxsortHi',g:()=>pxsortHi,s:v=>pxsortHi=v},{v:'pxsortDir',g:()=>pxsortDir,s:v=>pxsortDir=v}],
     pixel: [{v:'pixelSize',g:()=>pixelSize,s:v=>pixelSize=v}],
     ascii: [{v:'asciiCellSize',g:()=>asciiCellSize,s:v=>asciiCellSize=v},{v:'asciiColorMode',g:()=>asciiColorMode,s:v=>asciiColorMode=v},{v:'asciiCharSet',g:()=>asciiCharSet,s:v=>asciiCharSet=v},{v:'asciiInvert',g:()=>asciiInvert,s:v=>asciiInvert=v}],
-    glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v},{v:'glitchMode',g:()=>glitchMode,s:v=>glitchMode=v}],
+    glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v},{v:'glitchMode',g:()=>glitchMode,s:v=>glitchMode=v},{v:'glitchChannelShift',g:()=>glitchChannelShift,s:v=>glitchChannelShift=v},{v:'glitchBlockSize',g:()=>glitchBlockSize,s:v=>glitchBlockSize=v},{v:'glitchSeed',g:()=>glitchSeed,s:v=>glitchSeed=v},{v:'glitchSpeed',g:()=>glitchSpeed,s:v=>glitchSpeed=v}],
     noise: [{v:'noiseIntensity',g:()=>noiseIntensity,s:v=>noiseIntensity=v},{v:'noiseScale',g:()=>noiseScale,s:v=>noiseScale=v},{v:'noiseColorMode',g:()=>noiseColorMode,s:v=>noiseColorMode=v}],
     grain: [{v:'grainIntensity',g:()=>grainIntensity,s:v=>grainIntensity=v},{v:'grainSize',g:()=>grainSize,s:v=>grainSize=v},{v:'grainColorMode',g:()=>grainColorMode,s:v=>grainColorMode=v}],
     dots: [{v:'dotsAngle',g:()=>dotsAngle,s:v=>dotsAngle=v},{v:'dotsScale',g:()=>dotsScale,s:v=>dotsScale=v}],
     grid: [{v:'gridScale',g:()=>gridScale,s:v=>gridScale=v},{v:'gridWidth',g:()=>gridWidth,s:v=>gridWidth=v},{v:'gridOpacity',g:()=>gridOpacity,s:v=>gridOpacity=v}],
     scanlines: [{v:'scanIntensity',g:()=>scanIntensity,s:v=>scanIntensity=v},{v:'scanCount',g:()=>scanCount,s:v=>scanCount=v}],
-    vignette: [{v:'vigIntensity',g:()=>vigIntensity,s:v=>vigIntensity=v},{v:'vigRadius',g:()=>vigRadius,s:v=>vigRadius=v}]
+    vignette: [{v:'vigIntensity',g:()=>vigIntensity,s:v=>vigIntensity=v},{v:'vigRadius',g:()=>vigRadius,s:v=>vigRadius=v}],
+    // New effects
+    thermal: [{v:'thermalIntensity',g:()=>thermalIntensity,s:v=>thermalIntensity=v}],
+    gradmap: [{v:'gradColor1',g:()=>gradColor1,s:v=>gradColor1=v},{v:'gradColor2',g:()=>gradColor2,s:v=>gradColor2=v},{v:'gradIntensity',g:()=>gradIntensity,s:v=>gradIntensity=v}],
+    duotone: [{v:'duoShadow',g:()=>duoShadow,s:v=>duoShadow=v},{v:'duoHighlight',g:()=>duoHighlight,s:v=>duoHighlight=v},{v:'duoIntensity',g:()=>duoIntensity,s:v=>duoIntensity=v}],
+    rgbshift: [{v:'rgbShiftRX',g:()=>rgbShiftRX,s:v=>rgbShiftRX=v},{v:'rgbShiftRY',g:()=>rgbShiftRY,s:v=>rgbShiftRY=v},{v:'rgbShiftBX',g:()=>rgbShiftBX,s:v=>rgbShiftBX=v},{v:'rgbShiftBY',g:()=>rgbShiftBY,s:v=>rgbShiftBY=v},{v:'rgbShiftIntensity',g:()=>rgbShiftIntensity,s:v=>rgbShiftIntensity=v}],
+    emboss: [{v:'embossAngle',g:()=>embossAngle,s:v=>embossAngle=v},{v:'embossStrength',g:()=>embossStrength,s:v=>embossStrength=v}],
+    led: [{v:'ledCellSize',g:()=>ledCellSize,s:v=>ledCellSize=v},{v:'ledGap',g:()=>ledGap,s:v=>ledGap=v},{v:'ledGlow',g:()=>ledGlow,s:v=>ledGlow=v},{v:'ledBrightness',g:()=>ledBrightness,s:v=>ledBrightness=v}],
+    crt: [{v:'crtScanWeight',g:()=>crtScanWeight,s:v=>crtScanWeight=v},{v:'crtCurvature',g:()=>crtCurvature,s:v=>crtCurvature=v},{v:'crtGlow',g:()=>crtGlow,s:v=>crtGlow=v},{v:'crtChroma',g:()=>crtChroma,s:v=>crtChroma=v},{v:'crtStatic',g:()=>crtStatic,s:v=>crtStatic=v}]
 };
 const EFFECT_FN_MAP = {
     sepia:()=>applySepia(), tint:()=>applyTint(), palette:()=>applyPalette(), bricon:()=>applyBriCon(),
-    chroma:()=>applyChromatic(), curve:()=>applyCurve(), wave:()=>applyWave(), jitter:()=>applyJitter(), mblur:()=>applyMblur(),
-    bloom:()=>applyBloom(), dither:()=>applyDithering(), atkinson:()=>applyAtkinson(), halftone:()=>applyHalftone(), pxsort:()=>applyPixelSort(), pixel:()=>applyPixelate(),
-    ascii:()=>applyASCII(), glitch:()=>applyGlitch(), noise:()=>applyNoise(), grain:()=>applyGrain(), dots:()=>applyDots(), grid:()=>applyGrid(), scanlines:()=>applyScanlines(), vignette:()=>applyVignette()
+    thermal:()=>applyThermal(), gradmap:()=>applyGradientMap(), duotone:()=>applyDuotone(),
+    chroma:()=>applyChromatic(), rgbshift:()=>applyRGBShift(), curve:()=>applyCurve(), wave:()=>applyWave(), jitter:()=>applyJitter(), mblur:()=>applyMblur(), emboss:()=>applyEmboss(),
+    bloom:()=>applyBloom(), dither:()=>applyDithering(), atkinson:()=>applyAtkinson(), halftone:()=>applyHalftone(), pxsort:()=>applyPixelSort(), pixel:()=>applyPixelate(), led:()=>applyLED(),
+    ascii:()=>applyASCII(), glitch:()=>applyGlitch(), noise:()=>applyNoise(), grain:()=>applyGrain(), dots:()=>applyDots(), grid:()=>applyGrid(), scanlines:()=>applyScanlines(), vignette:()=>applyVignette(), crt:()=>applyCRT()
+};
+
+// ── SHARED PALETTES (used by Palette, Dither, Gradient effects) ──
+const PALETTES = {
+    noir: [[0,0,0],[255,255,255]],
+    terminal: [[0,17,0],[0,255,0]],
+    gameboy: [[15,56,15],[48,98,48],[139,172,15],[155,188,15]],
+    synthwave: [[18,4,88],[123,44,191],[224,64,251],[255,110,199],[255,245,157]],
+    cyberpunk: [[13,2,33],[38,20,71],[107,45,92],[247,37,133],[76,201,240]],
+    amber: [[26,15,0],[61,36,0],[122,72,0],[204,122,0],[255,204,102]],
+    arctic: [[10,10,20],[26,42,74],[58,90,138],[106,154,202],[202,232,255]],
+    rose: [[42,26,26],[107,64,64],[183,110,121],[232,180,188],[255,240,245]],
+    neon: [[13,13,13],[255,7,58],[57,255,20],[0,240,255],[255,255,255]],
+    forest: [[26,46,26],[45,74,45],[74,124,74],[122,179,122],[200,230,200]],
+    sunset: [[26,20,35],[74,25,66],[179,57,81],[245,169,98],[255,244,224]],
+    ocean: [[10,26,26],[26,58,58],[42,106,90],[74,154,122],[138,218,170]],
+    grayscale: [[0,0,0],[64,64,64],[128,128,128],[192,192,192],[255,255,255]],
+    bw: [[0,0,0],[255,255,255]]
+};
+
+// ── FX DEFAULTS (for reset functionality) ──
+const FX_DEFAULTS = {
+    sepia: {sepiaIntensity:70},
+    tint: {tintPreset:'green',tintIntensity:70,tintCustomColor:'#00ff00'},
+    palette: {palettePreset:'noir',paletteIntensity:80},
+    bricon: {briValue:0,conValue:100,satValue:100},
+    chroma: {chromaOffset:5},
+    curve: {curveIntensity:30,curveDirection:'barrel'},
+    wave: {waveAmp:20,waveFreq:5,waveSpeed:2},
+    jitter: {jitterIntensity:20,jitterBlockSize:2,jitterMode:'random'},
+    mblur: {mblurIntensity:30,mblurAngle:0},
+    bloom: {bloomIntensity:40,bloomRadius:50,bloomThreshold:50,bloomSpread:50,bloomBlendMode:'additive',bloomExposure:100},
+    dither: {ditherColorMode:'bw',ditherAlgorithm:'bayer4',ditherPalette:'bw',ditherColorCount:2,ditherPixelation:1,ditherStrength:100},
+    atkinson: {atkinsonColorMode:'bw',atkinsonThreshold:128,atkinsonSpread:100,atkinsonStrength:100},
+    halftone: {halfSpacing:6,halfColorMode:'bw',halfAngle:0,halfContrast:50,halfSpread:0,halfShape:'circle',halfInkColor:'#000000',halfPaperColor:'#ffffff',halfInverted:false},
+    pxsort: {pxsortLo:30,pxsortHi:220,pxsortDir:'horizontal'},
+    pixel: {pixelSize:8},
+    ascii: {asciiCellSize:10,asciiColorMode:'mono',asciiCharSet:'classic',asciiInvert:false},
+    glitch: {glitchIntensity:30,glitchFreq:20,glitchMode:'shift',glitchChannelShift:50,glitchBlockSize:50,glitchSeed:0,glitchSpeed:50},
+    noise: {noiseIntensity:25,noiseScale:1,noiseColorMode:'mono'},
+    grain: {grainIntensity:35,grainSize:15,grainColorMode:'mono'},
+    dots: {dotsAngle:45,dotsScale:6},
+    grid: {gridScale:20,gridWidth:1,gridOpacity:30},
+    scanlines: {scanIntensity:50,scanCount:300},
+    vignette: {vigIntensity:50,vigRadius:70},
+    thermal: {thermalIntensity:80},
+    gradmap: {gradColor1:'#000033',gradColor2:'#ff6600',gradIntensity:80},
+    duotone: {duoShadow:'#1a1a2e',duoHighlight:'#e94560',duoIntensity:80},
+    rgbshift: {rgbShiftRX:5,rgbShiftRY:0,rgbShiftBX:-5,rgbShiftBY:0,rgbShiftIntensity:70},
+    emboss: {embossAngle:135,embossStrength:50},
+    led: {ledCellSize:8,ledGap:2,ledGlow:30,ledBrightness:100},
+    crt: {crtScanWeight:2,crtCurvature:30,crtGlow:50,crtChroma:3,crtStatic:20}
 };
 let nextSegId = 1;
 
@@ -1071,7 +1209,10 @@ function updateFxParamVisibility() {
         jitter: 'fx-params-jitter', noise: 'fx-params-noise', curve: 'fx-params-curve',
         bricon: 'fx-params-bricon', grid: 'fx-params-grid', dots: 'fx-params-dots',
         mblur: 'fx-params-mblur', palette: 'fx-params-palette',
-        halftone: 'fx-params-halftone', dither: 'fx-params-dither', pxsort: 'fx-params-pxsort'
+        halftone: 'fx-params-halftone', dither: 'fx-params-dither', pxsort: 'fx-params-pxsort',
+        thermal: 'fx-params-thermal', gradmap: 'fx-params-gradmap', duotone: 'fx-params-duotone',
+        emboss: 'fx-params-emboss', rgbshift: 'fx-params-rgbshift',
+        led: 'fx-params-led', crt: 'fx-params-crt'
     };
     for (let [fx, id] of Object.entries(map)) {
         let el = document.getElementById(id);

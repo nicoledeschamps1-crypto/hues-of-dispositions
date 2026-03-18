@@ -15,8 +15,8 @@
 // EFFECT_TYPES — unified classification of all 23 effects by render method
 // ---------------------------------------------------------------------------
 const EFFECT_TYPES = {
-    pixel: ['sepia','tint','palette','bricon','chroma','curve','wave','jitter','mblur','bloom','dither','atkinson','pxsort','pixel','glitch','noise','grain'],
-    hybrid: ['halftone','ascii','dots'],
+    pixel: ['sepia','tint','palette','gradmap','duotone','thermal','bricon','emboss','chroma','rgbshift','curve','wave','jitter','mblur','bloom','dither','atkinson','pxsort','pixel','glitch','noise','grain'],
+    hybrid: ['halftone','ascii','dots','led','crt'],
     draw: ['grid','scanlines','vignette']
 };
 
@@ -24,7 +24,7 @@ const EFFECT_TYPES = {
 // applyActiveEffects() — batched pixel pipeline using EFFECT_TYPES
 // ---------------------------------------------------------------------------
 function applyActiveEffects() {
-    if (activeEffects.size === 0) return;
+    if (!masterFxEnabled || activeEffects.size === 0) return;
 
     let hasPixel = EFFECT_TYPES.pixel.some(e => activeEffects.has(e));
     let hasHybrid = EFFECT_TYPES.hybrid.some(e => activeEffects.has(e));
@@ -32,21 +32,30 @@ function applyActiveEffects() {
     // Single loadPixels() for all pixel-manipulating effects
     if (hasPixel || hasHybrid) loadPixels();
 
-    // Apply pixel effects in pipeline order
+    // Apply pixel effects in pipeline order (30 effects total)
+    // Color tier
     if (activeEffects.has('sepia')) applySepia();
     if (activeEffects.has('tint')) applyTint();
     if (activeEffects.has('palette')) applyPalette();
+    if (activeEffects.has('gradmap')) applyGradientMap();
+    if (activeEffects.has('duotone')) applyDuotone();
+    if (activeEffects.has('thermal')) applyThermal();
     if (activeEffects.has('bricon')) applyBriCon();
+    // Distortion tier
+    if (activeEffects.has('emboss')) applyEmboss();
     if (activeEffects.has('chroma')) applyChromatic();
+    if (activeEffects.has('rgbshift')) applyRGBShift();
     if (activeEffects.has('curve')) applyCurve();
     if (activeEffects.has('wave')) applyWave();
     if (activeEffects.has('jitter')) applyJitter();
     if (activeEffects.has('mblur')) applyMblur();
+    // Pattern tier
     if (activeEffects.has('bloom')) applyBloom();
     if (activeEffects.has('dither')) applyDithering();
     if (activeEffects.has('atkinson')) applyAtkinson();
     if (activeEffects.has('pxsort')) applyPixelSort();
     if (activeEffects.has('pixel')) applyPixelate();
+    // Overlay tier (pixel)
     if (activeEffects.has('glitch')) applyGlitch();
     if (activeEffects.has('noise')) applyNoise();
     if (activeEffects.has('grain')) applyGrain();
@@ -54,10 +63,12 @@ function applyActiveEffects() {
     // Commit pixel changes before hybrid/draw effects
     if (hasPixel || hasHybrid) updatePixels();
 
-    // Hybrid effects (read pixels then draw shapes — get fresh read from updatePixels above)
+    // Hybrid effects (read pixels then draw shapes)
     if (activeEffects.has('halftone')) applyHalftone();
     if (activeEffects.has('ascii')) applyASCII();
     if (activeEffects.has('dots')) applyDots();
+    if (activeEffects.has('led')) applyLED();
+    if (activeEffects.has('crt')) applyCRT();
 
     // Draw-only effects (no pixel access needed)
     if (activeEffects.has('grid')) applyGrid();
@@ -70,11 +81,13 @@ function applyActiveEffects() {
 // ---------------------------------------------------------------------------
 
 function applyDithering() {
-    const bayerMatrix = [
-        [ 0, 8, 2, 10],
-        [12, 4, 14,  6],
-        [ 3, 11, 1,  9],
-        [15, 7, 13,  5]
+    const bayer2 = [[0,2],[3,1]];
+    const bayer4 = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
+    const bayer8 = [
+        [0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],
+        [12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],
+        [3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],
+        [15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]
     ];
     let d = pixelDensity();
     let totalW = width * d;
@@ -82,21 +95,94 @@ function applyDithering() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
-    let isColor = (ditherColorMode === 'color');
-    for (let y = sy; y < ey; y++) {
-        for (let x = sx; x < ex; x++) {
-            let idx = (x + y * totalW) * 4;
-            let threshold = (bayerMatrix[y % 4][x % 4] / 16) * 255;
-            if (isColor) {
-                pixels[idx]   = pixels[idx]   > threshold ? 255 : 0;
-                pixels[idx+1] = pixels[idx+1] > threshold ? 255 : 0;
-                pixels[idx+2] = pixels[idx+2] > threshold ? 255 : 0;
-            } else {
-                let gray = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
-                let val = gray > threshold ? 255 : 0;
-                pixels[idx] = val;
-                pixels[idx+1] = val;
-                pixels[idx+2] = val;
+    let strength = ditherStrength / 100;
+    let pxScale = Math.max(1, Math.round(ditherPixelation));
+
+    // Get palette colors
+    let pal = PALETTES[ditherPalette] || PALETTES.bw;
+    // Limit to ditherColorCount
+    let colorCount = Math.max(2, Math.min(pal.length, ditherColorCount));
+    if (colorCount < pal.length) {
+        // Evenly sample from palette
+        let sampled = [];
+        for (let i = 0; i < colorCount; i++) sampled.push(pal[Math.floor(i * pal.length / colorCount)]);
+        pal = sampled;
+    }
+
+    function nearestPalColor(r, g, b) {
+        let minD = Infinity, best = pal[0];
+        for (let c of pal) {
+            let dr = r-c[0], dg = g-c[1], db = b-c[2];
+            let dist = dr*dr + dg*dg + db*db;
+            if (dist < minD) { minD = dist; best = c; }
+        }
+        return best;
+    }
+
+    let algo = ditherAlgorithm;
+
+    if (algo === 'floyd') {
+        // Floyd-Steinberg error diffusion
+        let regionW = ex - sx, regionH = ey - sy;
+        let rCh = new Float32Array(regionW * regionH);
+        let gCh = new Float32Array(regionW * regionH);
+        let bCh = new Float32Array(regionW * regionH);
+        for (let ry = 0; ry < regionH; ry += pxScale) {
+            for (let rx = 0; rx < regionW; rx += pxScale) {
+                let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
+                let i = rx + ry * regionW;
+                rCh[i] = pixels[idx]; gCh[i] = pixels[idx+1]; bCh[i] = pixels[idx+2];
+            }
+        }
+        for (let ry = 0; ry < regionH; ry += pxScale) {
+            for (let rx = 0; rx < regionW; rx += pxScale) {
+                let i = rx + ry * regionW;
+                let nc = nearestPalColor(rCh[i], gCh[i], bCh[i]);
+                let er = rCh[i]-nc[0], eg = gCh[i]-nc[1], eb = bCh[i]-nc[2];
+                rCh[i]=nc[0]; gCh[i]=nc[1]; bCh[i]=nc[2];
+                // Distribute error: right 7/16, below-left 3/16, below 5/16, below-right 1/16
+                if (rx+pxScale<regionW) { let j=i+pxScale; rCh[j]+=er*7/16; gCh[j]+=eg*7/16; bCh[j]+=eb*7/16; }
+                if (ry+pxScale<regionH) {
+                    if (rx-pxScale>=0) { let j=i+regionW*pxScale-pxScale; rCh[j]+=er*3/16; gCh[j]+=eg*3/16; bCh[j]+=eb*3/16; }
+                    { let j=i+regionW*pxScale; rCh[j]+=er*5/16; gCh[j]+=eg*5/16; bCh[j]+=eb*5/16; }
+                    if (rx+pxScale<regionW) { let j=i+regionW*pxScale+pxScale; rCh[j]+=er/16; gCh[j]+=eg/16; bCh[j]+=eb/16; }
+                }
+            }
+        }
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
+                let si = (rx - rx%pxScale) + (ry - ry%pxScale) * regionW;
+                let or = pixels[idx], og = pixels[idx+1], ob = pixels[idx+2];
+                pixels[idx]   = Math.round(or*(1-strength) + Math.max(0,Math.min(255,rCh[si]))*strength);
+                pixels[idx+1] = Math.round(og*(1-strength) + Math.max(0,Math.min(255,gCh[si]))*strength);
+                pixels[idx+2] = Math.round(ob*(1-strength) + Math.max(0,Math.min(255,bCh[si]))*strength);
+            }
+        }
+    } else {
+        // Bayer ordered dithering (bayer2, bayer4, bayer8)
+        let matrix, mSize;
+        if (algo === 'bayer2') { matrix = bayer2; mSize = 2; }
+        else if (algo === 'bayer8') { matrix = bayer8; mSize = 8; }
+        else { matrix = bayer4; mSize = 4; } // bayer4 default + 'ordered'
+        let mMax = mSize * mSize;
+        for (let y = sy; y < ey; y++) {
+            for (let x = sx; x < ex; x++) {
+                let idx = (x + y * totalW) * 4;
+                let bx = Math.floor((x-sx)/pxScale) % mSize;
+                let by = Math.floor((y-sy)/pxScale) % mSize;
+                let threshold = (matrix[by][bx] / mMax) * 255;
+                let or = pixels[idx], og = pixels[idx+1], ob = pixels[idx+2];
+                // Quantize to nearest palette color using threshold
+                let gray = 0.299*or + 0.587*og + 0.114*ob;
+                let nc = nearestPalColor(
+                    or + (threshold - 128) * 0.5,
+                    og + (threshold - 128) * 0.5,
+                    ob + (threshold - 128) * 0.5
+                );
+                pixels[idx]   = Math.round(or*(1-strength) + nc[0]*strength);
+                pixels[idx+1] = Math.round(og*(1-strength) + nc[1]*strength);
+                pixels[idx+2] = Math.round(ob*(1-strength) + nc[2]*strength);
             }
         }
     }
@@ -106,37 +192,78 @@ function applyHalftone() {
     let dotSpacing = halfSpacing;
     let isColor = (halfColorMode === 'color');
     let d = pixelDensity();
-    // BUG FIX: removed redundant loadPixels() — batch pipeline handles it
+    let inv = halfInverted;
+    let contrast = halfContrast / 50; // 0-2 range
+    let spread = halfSpread;
+    let angleRad = halfAngle * Math.PI / 180;
+
+    // Parse ink/paper colors
+    function hexToRGB(hex) {
+        let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        return [r,g,b];
+    }
+    let inkRGB = hexToRGB(inv ? halfPaperColor : halfInkColor);
+    let paperRGB = hexToRGB(inv ? halfInkColor : halfPaperColor);
+
     let dots = [];
-    for (let y = Math.floor(videoY); y < videoY + videoH; y += dotSpacing) {
-        for (let x = Math.floor(videoX); x < videoX + videoW; x += dotSpacing) {
-            let px = Math.floor(x * d);
-            let py = Math.floor(y * d);
+    // Sample with optional rotation
+    let cx = videoX + videoW/2, cy = videoY + videoH/2;
+    let cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
+    let extW = Math.max(videoW, videoH) * 1.5;
+    for (let gy = -extW/2; gy < extW/2; gy += dotSpacing) {
+        for (let gx = -extW/2; gx < extW/2; gx += dotSpacing) {
+            let rx = gx * cosA - gy * sinA + cx + (spread > 0 ? (Math.random()-0.5)*spread : 0);
+            let ry = gx * sinA + gy * cosA + cy + (spread > 0 ? (Math.random()-0.5)*spread : 0);
+            if (rx < videoX || rx >= videoX+videoW || ry < videoY || ry >= videoY+videoH) continue;
+            let px = Math.floor(rx * d), py = Math.floor(ry * d);
             let idx = (px + py * width * d) * 4;
+            if (idx < 0 || idx >= pixels.length - 3) continue;
             let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
-            let bri = 0.299 * r + 0.587 * g + 0.114 * b;
-            dots.push({ x, y, r, g, b, bri });
+            let bri = 0.299*r + 0.587*g + 0.114*b;
+            dots.push({ x:rx, y:ry, r, g, b, bri });
         }
     }
     push();
     noStroke();
-    if (isColor) {
-        fill(0);
-    } else {
-        fill(255, 220);
-    }
+    // Fill paper color
+    fill(paperRGB[0], paperRGB[1], paperRGB[2]);
     rectMode(CORNER);
     rect(videoX, videoY, videoW, videoH);
     let maxR = dotSpacing * 0.48;
     for (let dot of dots) {
-        let sz = map(dot.bri, 0, 255, maxR, 0);
+        // Apply contrast to brightness mapping
+        let bri01 = dot.bri / 255;
+        bri01 = 0.5 + (bri01 - 0.5) * contrast;
+        bri01 = Math.max(0, Math.min(1, bri01));
+        let sz = (1 - bri01) * maxR;
         if (sz < 0.3) continue;
         if (isColor) {
             fill(dot.r, dot.g, dot.b);
         } else {
-            fill(0);
+            fill(inkRGB[0], inkRGB[1], inkRGB[2]);
         }
-        ellipse(dot.x, dot.y, sz * 2, sz * 2);
+        // Draw shape
+        switch (halfShape) {
+            case 'square':
+                rectMode(CENTER);
+                rect(dot.x, dot.y, sz*2, sz*2);
+                break;
+            case 'diamond':
+                push(); translate(dot.x, dot.y); rotate(Math.PI/4);
+                rectMode(CENTER); rect(0, 0, sz*1.6, sz*1.6);
+                pop(); break;
+            case 'triangle':
+                triangle(dot.x, dot.y-sz, dot.x-sz*0.87, dot.y+sz*0.5, dot.x+sz*0.87, dot.y+sz*0.5);
+                break;
+            case 'line':
+                stroke(isColor ? color(dot.r,dot.g,dot.b) : color(inkRGB[0],inkRGB[1],inkRGB[2]));
+                strokeWeight(sz * 0.6);
+                line(dot.x - sz, dot.y, dot.x + sz, dot.y);
+                noStroke();
+                break;
+            default: // circle
+                ellipse(dot.x, dot.y, sz*2, sz*2);
+        }
     }
     pop();
 }
@@ -293,6 +420,29 @@ function applyAtkinson() {
     let ey = Math.floor((videoY + videoH) * d);
     let regionW = ex - sx;
     let regionH = ey - sy;
+    let thresh = atkinsonThreshold;
+    let errDiv = Math.round(map(atkinsonSpread, 0, 100, 12, 6));
+    let strength = atkinsonStrength / 100;
+
+    function diffuse(ch) {
+        for (let ry = 0; ry < regionH; ry++) {
+            for (let rx = 0; rx < regionW; rx++) {
+                let i = rx + ry * regionW;
+                let old = ch[i];
+                let nv = old > thresh ? 255 : 0;
+                ch[i] = nv;
+                let err = (old - nv) / errDiv;
+                if (rx + 1 < regionW) ch[i + 1] += err;
+                if (rx + 2 < regionW) ch[i + 2] += err;
+                if (ry + 1 < regionH) {
+                    if (rx - 1 >= 0) ch[i + regionW - 1] += err;
+                    ch[i + regionW] += err;
+                    if (rx + 1 < regionW) ch[i + regionW + 1] += err;
+                }
+                if (ry + 2 < regionH) ch[i + regionW * 2] += err;
+            }
+        }
+    }
 
     if (atkinsonColorMode === 'bw') {
         let gray = new Float32Array(regionW * regionH);
@@ -302,34 +452,17 @@ function applyAtkinson() {
                 gray[rx + ry * regionW] = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
             }
         }
-        for (let ry = 0; ry < regionH; ry++) {
-            for (let rx = 0; rx < regionW; rx++) {
-                let i = rx + ry * regionW;
-                let old = gray[i];
-                let nv = old > 128 ? 255 : 0;
-                gray[i] = nv;
-                let err = (old - nv) / 8;
-                if (rx + 1 < regionW) gray[i + 1] += err;
-                if (rx + 2 < regionW) gray[i + 2] += err;
-                if (ry + 1 < regionH) {
-                    if (rx - 1 >= 0) gray[i + regionW - 1] += err;
-                    gray[i + regionW] += err;
-                    if (rx + 1 < regionW) gray[i + regionW + 1] += err;
-                }
-                if (ry + 2 < regionH) gray[i + regionW * 2] += err;
-            }
-        }
+        diffuse(gray);
         for (let ry = 0; ry < regionH; ry++) {
             for (let rx = 0; rx < regionW; rx++) {
                 let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
                 let val = Math.max(0, Math.min(255, Math.round(gray[rx + ry * regionW])));
-                pixels[idx] = val;
-                pixels[idx + 1] = val;
-                pixels[idx + 2] = val;
+                pixels[idx] = Math.round(pixels[idx]*(1-strength) + val*strength);
+                pixels[idx+1] = Math.round(pixels[idx+1]*(1-strength) + val*strength);
+                pixels[idx+2] = Math.round(pixels[idx+2]*(1-strength) + val*strength);
             }
         }
     } else {
-        // Color mode: dither each channel independently
         let rCh = new Float32Array(regionW * regionH);
         let gCh = new Float32Array(regionW * regionH);
         let bCh = new Float32Array(regionW * regionH);
@@ -341,32 +474,14 @@ function applyAtkinson() {
                 bCh[rx + ry * regionW] = pixels[idx + 2];
             }
         }
-        [rCh, gCh, bCh].forEach(ch => {
-            for (let ry = 0; ry < regionH; ry++) {
-                for (let rx = 0; rx < regionW; rx++) {
-                    let i = rx + ry * regionW;
-                    let old = ch[i];
-                    let nv = old > 128 ? 255 : 0;
-                    ch[i] = nv;
-                    let err = (old - nv) / 8;
-                    if (rx + 1 < regionW) ch[i + 1] += err;
-                    if (rx + 2 < regionW) ch[i + 2] += err;
-                    if (ry + 1 < regionH) {
-                        if (rx - 1 >= 0) ch[i + regionW - 1] += err;
-                        ch[i + regionW] += err;
-                        if (rx + 1 < regionW) ch[i + regionW + 1] += err;
-                    }
-                    if (ry + 2 < regionH) ch[i + regionW * 2] += err;
-                }
-            }
-        });
+        [rCh, gCh, bCh].forEach(diffuse);
         for (let ry = 0; ry < regionH; ry++) {
             for (let rx = 0; rx < regionW; rx++) {
                 let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
                 let i = rx + ry * regionW;
-                pixels[idx] = Math.max(0, Math.min(255, Math.round(rCh[i])));
-                pixels[idx + 1] = Math.max(0, Math.min(255, Math.round(gCh[i])));
-                pixels[idx + 2] = Math.max(0, Math.min(255, Math.round(bCh[i])));
+                pixels[idx] = Math.round(pixels[idx]*(1-strength) + Math.max(0,Math.min(255,Math.round(rCh[i])))*strength);
+                pixels[idx+1] = Math.round(pixels[idx+1]*(1-strength) + Math.max(0,Math.min(255,Math.round(gCh[i])))*strength);
+                pixels[idx+2] = Math.round(pixels[idx+2]*(1-strength) + Math.max(0,Math.min(255,Math.round(bCh[i])))*strength);
             }
         }
     }
@@ -496,14 +611,59 @@ function applyBloom() {
             bright[bi] = sr / cnt; bright[bi + 1] = sg / cnt; bright[bi + 2] = sb / cnt;
         }
     }
-    // Additive blend back
+    // Multi-pass blur based on bloomSpread
+    let passes = Math.max(1, Math.round(bloomSpread / 30));
+    for (let p = 1; p < passes; p++) {
+        let tmp2 = new Float32Array(bright.length);
+        for (let y = 0; y < regionH; y++) {
+            for (let x = 0; x < regionW; x++) {
+                let sr = 0, sg = 0, sb = 0, cnt = 0;
+                for (let k = -rad; k <= rad; k++) {
+                    let nx = x + k;
+                    if (nx >= 0 && nx < regionW) { let bi = (nx + y * regionW) * 3; sr += bright[bi]; sg += bright[bi+1]; sb += bright[bi+2]; cnt++; }
+                }
+                let bi = (x + y * regionW) * 3;
+                tmp2[bi] = sr/cnt; tmp2[bi+1] = sg/cnt; tmp2[bi+2] = sb/cnt;
+            }
+        }
+        for (let y = 0; y < regionH; y++) {
+            for (let x = 0; x < regionW; x++) {
+                let sr = 0, sg = 0, sb = 0, cnt = 0;
+                for (let k = -rad; k <= rad; k++) {
+                    let ny = y + k;
+                    if (ny >= 0 && ny < regionH) { let bi = (x + ny * regionW) * 3; sr += tmp2[bi]; sg += tmp2[bi+1]; sb += tmp2[bi+2]; cnt++; }
+                }
+                let bi = (x + y * regionW) * 3;
+                bright[bi] = sr/cnt; bright[bi+1] = sg/cnt; bright[bi+2] = sb/cnt;
+            }
+        }
+    }
+    // Exposure scaling
+    let exposure = bloomExposure / 100;
+    // Blend back with selected mode
     for (let y = 0; y < regionH; y++) {
         for (let x = 0; x < regionW; x++) {
             let idx = ((sx + x) + (sy + y) * totalW) * 4;
             let bi = (x + y * regionW) * 3;
-            pixels[idx] = Math.min(255, pixels[idx] + bright[bi] * intensity);
-            pixels[idx + 1] = Math.min(255, pixels[idx + 1] + bright[bi + 1] * intensity);
-            pixels[idx + 2] = Math.min(255, pixels[idx + 2] + bright[bi + 2] * intensity);
+            let br = bright[bi] * intensity * exposure;
+            let bg = bright[bi+1] * intensity * exposure;
+            let bb = bright[bi+2] * intensity * exposure;
+            let pr = pixels[idx], pg = pixels[idx+1], pb = pixels[idx+2];
+            if (bloomBlendMode === 'screen') {
+                pixels[idx]   = Math.min(255, Math.round(255 - (255-pr)*(255-br)/255));
+                pixels[idx+1] = Math.min(255, Math.round(255 - (255-pg)*(255-bg)/255));
+                pixels[idx+2] = Math.min(255, Math.round(255 - (255-pb)*(255-bb)/255));
+            } else if (bloomBlendMode === 'softlight') {
+                let f = (c, b) => b < 128 ? c - (255 - 2*b) * c * (255 - c) / (255*255) : c + (2*b - 255) * (Math.sqrt(c/255)*255 - c) / 255;
+                pixels[idx]   = Math.min(255, Math.max(0, Math.round(f(pr, br))));
+                pixels[idx+1] = Math.min(255, Math.max(0, Math.round(f(pg, bg))));
+                pixels[idx+2] = Math.min(255, Math.max(0, Math.round(f(pb, bb))));
+            } else {
+                // Additive (default)
+                pixels[idx]   = Math.min(255, pr + br);
+                pixels[idx+1] = Math.min(255, pg + bg);
+                pixels[idx+2] = Math.min(255, pb + bb);
+            }
         }
     }
 }
@@ -514,7 +674,13 @@ function applyTint() {
         green: [0, 255, 0], amber: [255, 191, 0],
         cyan: [0, 255, 255], blue: [0, 100, 255]
     };
-    let tc = tints[tintPreset] || tints.green;
+    let tc;
+    if (tintPreset === 'custom') {
+        let hex = tintCustomColor || '#00ff00';
+        tc = [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+    } else {
+        tc = tints[tintPreset] || tints.green;
+    }
     let d = pixelDensity();
     let totalW = width * d;
     let sx = Math.floor(videoX * d);
@@ -624,21 +790,39 @@ function applyGlitch() {
     let ex = Math.floor((videoX + videoW) * d);
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
+    // Speed throttle: only regenerate every N frames
+    let spd = Math.max(1, Math.round((100 - glitchSpeed) / 10));
+    if (typeof applyGlitch._frame === 'undefined') applyGlitch._frame = 0;
+    applyGlitch._frame++;
+    if (applyGlitch._frame % spd !== 0 && applyGlitch._lastPixels) {
+        // Reuse last glitch frame
+        for (let y = sy; y < ey; y++) {
+            let start = (sx + y * totalW) * 4;
+            let end = (ex + y * totalW) * 4;
+            pixels.set(applyGlitch._lastPixels.subarray(start, end), start);
+        }
+        return;
+    }
     let original = new Uint8Array(pixels.length);
     for (let y = sy; y < ey; y++) {
         let start = (sx + y * totalW) * 4;
         let end = (ex + y * totalW) * 4;
         original.set(pixels.subarray(start, end), start);
     }
-    let maxShift = Math.round(intensity * 30 * d);
+    // Use seed for deterministic randomness if set
+    let rng = glitchSeed > 0 ?
+        (() => { let s = glitchSeed + applyGlitch._frame; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; })() :
+        Math.random;
+    let chShift = glitchChannelShift / 50; // multiplier
+    let blkSz = glitchBlockSize / 50; // multiplier
+    let maxShift = Math.round(intensity * 30 * d * chShift);
 
     if (glitchMode === 'tear') {
-        // Horizontal line tears — slices shift left/right
         let numTears = Math.floor(freq * 20) + 1;
         for (let t = 0; t < numTears; t++) {
-            let tearY = sy + Math.floor(Math.random() * (ey - sy));
-            let tearH = Math.floor(Math.random() * 12 * d) + 2;
-            let shift = Math.round((Math.random() - 0.5) * maxShift * 3);
+            let tearY = sy + Math.floor(rng() * (ey - sy));
+            let tearH = Math.floor(rng() * 12 * d * blkSz) + 2;
+            let shift = Math.round((rng() - 0.5) * maxShift * 3);
             for (let dy = 0; dy < tearH && (tearY + dy) < ey; dy++) {
                 let row = tearY + dy;
                 for (let x = sx; x < ex; x++) {
@@ -652,16 +836,15 @@ function applyGlitch() {
             }
         }
     } else if (glitchMode === 'corrupt') {
-        // Random rectangular blocks get displaced or color-swapped
         let numBlocks = Math.floor(freq * 15) + 1;
         for (let b = 0; b < numBlocks; b++) {
-            let bx = sx + Math.floor(Math.random() * (ex - sx));
-            let by = sy + Math.floor(Math.random() * (ey - sy));
-            let bw = Math.floor(Math.random() * maxShift * 2) + 4;
-            let bh = Math.floor(Math.random() * 10 * d) + 2;
-            let srcOx = Math.round((Math.random() - 0.5) * maxShift * 4);
-            let srcOy = Math.round((Math.random() - 0.5) * maxShift * 2);
-            let swap = Math.floor(Math.random() * 3); // 0=normal, 1=swap RB, 2=swap RG
+            let bx = sx + Math.floor(rng() * (ex - sx));
+            let by = sy + Math.floor(rng() * (ey - sy));
+            let bw = Math.floor(rng() * maxShift * 2 * blkSz) + 4;
+            let bh = Math.floor(rng() * 10 * d * blkSz) + 2;
+            let srcOx = Math.round((rng() - 0.5) * maxShift * 4);
+            let srcOy = Math.round((rng() - 0.5) * maxShift * 2);
+            let swap = Math.floor(rng() * 3);
             for (let dy = 0; dy < bh && (by + dy) < ey; dy++) {
                 for (let dx = 0; dx < bw && (bx + dx) < ex; dx++) {
                     let dstIdx = ((bx + dx) + (by + dy) * totalW) * 4;
@@ -669,28 +852,22 @@ function applyGlitch() {
                     let sY = Math.max(sy, Math.min(ey - 1, by + dy + srcOy));
                     let srcIdx = (sX + sY * totalW) * 4;
                     if (swap === 1) {
-                        pixels[dstIdx] = original[srcIdx+2];
-                        pixels[dstIdx+1] = original[srcIdx+1];
-                        pixels[dstIdx+2] = original[srcIdx];
+                        pixels[dstIdx] = original[srcIdx+2]; pixels[dstIdx+1] = original[srcIdx+1]; pixels[dstIdx+2] = original[srcIdx];
                     } else if (swap === 2) {
-                        pixels[dstIdx] = original[srcIdx+1];
-                        pixels[dstIdx+1] = original[srcIdx];
-                        pixels[dstIdx+2] = original[srcIdx+2];
+                        pixels[dstIdx] = original[srcIdx+1]; pixels[dstIdx+1] = original[srcIdx]; pixels[dstIdx+2] = original[srcIdx+2];
                     } else {
-                        pixels[dstIdx] = original[srcIdx];
-                        pixels[dstIdx+1] = original[srcIdx+1];
-                        pixels[dstIdx+2] = original[srcIdx+2];
+                        pixels[dstIdx] = original[srcIdx]; pixels[dstIdx+1] = original[srcIdx+1]; pixels[dstIdx+2] = original[srcIdx+2];
                     }
                 }
             }
         }
     } else {
-        // SHIFT — original channel-shift mode
+        // SHIFT
         for (let y = sy; y < ey; y++) {
-            if (Math.random() > freq) continue;
-            let blockH = Math.floor(Math.random() * 8 * d) + 1;
-            let rShift = Math.round((Math.random() - 0.5) * maxShift * 2);
-            let bShift = Math.round((Math.random() - 0.5) * maxShift * 2);
+            if (rng() > freq) continue;
+            let blockH = Math.floor(rng() * 8 * d * blkSz) + 1;
+            let rShift = Math.round((rng() - 0.5) * maxShift * 2);
+            let bShift = Math.round((rng() - 0.5) * maxShift * 2);
             for (let dy = 0; dy < blockH && (y + dy) < ey; dy++) {
                 let row = y + dy;
                 for (let x = sx; x < ex; x++) {
@@ -703,6 +880,15 @@ function applyGlitch() {
             }
             y += blockH - 1;
         }
+    }
+    // Cache for speed throttle
+    if (!applyGlitch._lastPixels || applyGlitch._lastPixels.length !== pixels.length) {
+        applyGlitch._lastPixels = new Uint8Array(pixels.length);
+    }
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4;
+        let end = (ex + y * totalW) * 4;
+        applyGlitch._lastPixels.set(pixels.subarray(start, end), start);
     }
 }
 
@@ -973,21 +1159,7 @@ function applyMblur() {
 }
 
 function applyPalette() {
-    const palettes = {
-        noir: [[0,0,0],[255,255,255]],
-        terminal: [[0,17,0],[0,255,0]],
-        gameboy: [[15,56,15],[48,98,48],[139,172,15],[155,188,15]],
-        synthwave: [[18,4,88],[123,44,191],[224,64,251],[255,110,199],[255,245,157]],
-        cyberpunk: [[13,2,33],[38,20,71],[107,45,92],[247,37,133],[76,201,240]],
-        amber: [[26,15,0],[61,36,0],[122,72,0],[204,122,0],[255,204,102]],
-        arctic: [[10,10,20],[26,42,74],[58,90,138],[106,154,202],[202,232,255]],
-        rose: [[42,26,26],[107,64,64],[183,110,121],[232,180,188],[255,240,245]],
-        neon: [[13,13,13],[255,7,58],[57,255,20],[0,240,255],[255,255,255]],
-        forest: [[26,46,26],[45,74,45],[74,124,74],[122,179,122],[200,230,200]],
-        sunset: [[26,20,35],[74,25,66],[179,57,81],[245,169,98],[255,244,224]],
-        ocean: [[10,26,26],[26,58,58],[42,106,90],[74,154,122],[138,218,170]]
-    };
-    let pal = palettes[palettePreset] || palettes.noir;
+    let pal = PALETTES[palettePreset] || PALETTES.noir;
     let intensity = paletteIntensity / 100;
     let d = pixelDensity();
     let totalW = width * d;
@@ -1010,6 +1182,386 @@ function applyPalette() {
             pixels[idx+2] = Math.round(b * (1-intensity) + nearest[2] * intensity);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// NEW EFFECTS (7) — Thermal, Gradient Map, Duotone, Emboss, RGB Shift, LED, CRT
+// ---------------------------------------------------------------------------
+
+function hexToRGBArray(hex) {
+    return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+function applyThermal() {
+    // Heatmap LUT: blue → cyan → green → yellow → red → white
+    const heatmap = [
+        [0,0,128],[0,0,255],[0,128,255],[0,255,255],[0,255,128],
+        [0,255,0],[128,255,0],[255,255,0],[255,128,0],[255,0,0],[255,255,255]
+    ];
+    let intensity = thermalIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let lum = (0.299*pixels[idx] + 0.587*pixels[idx+1] + 0.114*pixels[idx+2]) / 255;
+            let pos = lum * (heatmap.length - 1);
+            let lo = Math.floor(pos), hi = Math.min(heatmap.length-1, lo+1);
+            let t = pos - lo;
+            let hr = heatmap[lo][0]*(1-t) + heatmap[hi][0]*t;
+            let hg = heatmap[lo][1]*(1-t) + heatmap[hi][1]*t;
+            let hb = heatmap[lo][2]*(1-t) + heatmap[hi][2]*t;
+            pixels[idx]   = Math.round(pixels[idx]*(1-intensity) + hr*intensity);
+            pixels[idx+1] = Math.round(pixels[idx+1]*(1-intensity) + hg*intensity);
+            pixels[idx+2] = Math.round(pixels[idx+2]*(1-intensity) + hb*intensity);
+        }
+    }
+}
+
+function applyGradientMap() {
+    let c1 = hexToRGBArray(gradColor1);
+    let c2 = hexToRGBArray(gradColor2);
+    let intensity = gradIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let lum = (0.299*pixels[idx] + 0.587*pixels[idx+1] + 0.114*pixels[idx+2]) / 255;
+            let mr = c1[0]*(1-lum) + c2[0]*lum;
+            let mg = c1[1]*(1-lum) + c2[1]*lum;
+            let mb = c1[2]*(1-lum) + c2[2]*lum;
+            pixels[idx]   = Math.round(pixels[idx]*(1-intensity) + mr*intensity);
+            pixels[idx+1] = Math.round(pixels[idx+1]*(1-intensity) + mg*intensity);
+            pixels[idx+2] = Math.round(pixels[idx+2]*(1-intensity) + mb*intensity);
+        }
+    }
+}
+
+function applyDuotone() {
+    let s = hexToRGBArray(duoShadow);
+    let h = hexToRGBArray(duoHighlight);
+    let intensity = duoIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            let lum = (0.299*pixels[idx] + 0.587*pixels[idx+1] + 0.114*pixels[idx+2]) / 255;
+            let mr = s[0]*(1-lum) + h[0]*lum;
+            let mg = s[1]*(1-lum) + h[1]*lum;
+            let mb = s[2]*(1-lum) + h[2]*lum;
+            pixels[idx]   = Math.round(pixels[idx]*(1-intensity) + mr*intensity);
+            pixels[idx+1] = Math.round(pixels[idx+1]*(1-intensity) + mg*intensity);
+            pixels[idx+2] = Math.round(pixels[idx+2]*(1-intensity) + mb*intensity);
+        }
+    }
+}
+
+function applyEmboss() {
+    let angleRad = embossAngle * Math.PI / 180;
+    let strength = embossStrength / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+    let dx = Math.round(Math.cos(angleRad));
+    let dy = Math.round(Math.sin(angleRad));
+    // Work on a copy
+    let regionW = ex - sx, regionH = ey - sy;
+    let buf = new Uint8Array(regionW * regionH * 3);
+    for (let ry = 0; ry < regionH; ry++) {
+        for (let rx = 0; rx < regionW; rx++) {
+            let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
+            let bi = (rx + ry * regionW) * 3;
+            buf[bi] = pixels[idx]; buf[bi+1] = pixels[idx+1]; buf[bi+2] = pixels[idx+2];
+        }
+    }
+    for (let ry = 1; ry < regionH-1; ry++) {
+        for (let rx = 1; rx < regionW-1; rx++) {
+            let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
+            let bi1 = ((rx+dx) + (ry+dy) * regionW) * 3;
+            let bi2 = ((rx-dx) + (ry-dy) * regionW) * 3;
+            let er = buf[bi1] - buf[bi2] + 128;
+            let eg = buf[bi1+1] - buf[bi2+1] + 128;
+            let eb = buf[bi1+2] - buf[bi2+2] + 128;
+            pixels[idx]   = Math.round(pixels[idx]*(1-strength) + Math.max(0,Math.min(255,er))*strength);
+            pixels[idx+1] = Math.round(pixels[idx+1]*(1-strength) + Math.max(0,Math.min(255,eg))*strength);
+            pixels[idx+2] = Math.round(pixels[idx+2]*(1-strength) + Math.max(0,Math.min(255,eb))*strength);
+        }
+    }
+}
+
+function applyRGBShift() {
+    let intensity = rgbShiftIntensity / 100;
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+    let rxOff = Math.round(rgbShiftRX * d * intensity);
+    let ryOff = Math.round(rgbShiftRY * d * intensity);
+    let bxOff = Math.round(rgbShiftBX * d * intensity);
+    let byOff = Math.round(rgbShiftBY * d * intensity);
+    let original = new Uint8Array(pixels.length);
+    for (let y = sy; y < ey; y++) {
+        let start = (sx + y * totalW) * 4, end = (ex + y * totalW) * 4;
+        original.set(pixels.subarray(start, end), start);
+    }
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let idx = (x + y * totalW) * 4;
+            // Red channel offset
+            let rsx = Math.max(sx, Math.min(ex-1, x + rxOff));
+            let rsy = Math.max(sy, Math.min(ey-1, y + ryOff));
+            pixels[idx] = original[(rsx + rsy * totalW) * 4];
+            // Green stays
+            // Blue channel offset
+            let bsx = Math.max(sx, Math.min(ex-1, x + bxOff));
+            let bsy = Math.max(sy, Math.min(ey-1, y + byOff));
+            pixels[idx+2] = original[(bsx + bsy * totalW) * 4 + 2];
+        }
+    }
+}
+
+function applyLED() {
+    let cellSz = Math.max(3, ledCellSize);
+    let gap = Math.max(1, ledGap);
+    let glowR = ledGlow / 100;
+    let brightness = ledBrightness / 100;
+    let d = pixelDensity();
+
+    push();
+    drawingContext.save();
+    rectMode(CORNER);
+    drawingContext.beginPath();
+    drawingContext.rect(videoX, videoY, videoW, videoH);
+    drawingContext.clip();
+
+    // Black background
+    fill(0);
+    noStroke();
+    rect(videoX, videoY, videoW, videoH);
+
+    if (glowR > 0) {
+        drawingContext.shadowBlur = cellSz * glowR * 0.5;
+    }
+
+    for (let y = Math.floor(videoY); y < videoY + videoH; y += cellSz + gap) {
+        for (let x = Math.floor(videoX); x < videoX + videoW; x += cellSz + gap) {
+            let px = Math.floor((x + cellSz/2) * d);
+            let py = Math.floor((y + cellSz/2) * d);
+            let idx = (px + py * width * d) * 4;
+            if (idx < 0 || idx >= pixels.length - 3) continue;
+            let r = Math.min(255, pixels[idx] * brightness);
+            let g = Math.min(255, pixels[idx+1] * brightness);
+            let b = Math.min(255, pixels[idx+2] * brightness);
+            let c = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+            drawingContext.fillStyle = c;
+            if (glowR > 0) drawingContext.shadowColor = c;
+            drawingContext.beginPath();
+            drawingContext.roundRect(x, y, cellSz, cellSz, cellSz * 0.15);
+            drawingContext.fill();
+        }
+    }
+    drawingContext.shadowBlur = 0;
+    drawingContext.restore();
+    pop();
+}
+
+function applyCRT() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+
+    // Chromatic aberration on pixels
+    if (crtChroma > 0) {
+        let chrOff = Math.round(crtChroma * d);
+        let original = new Uint8Array(pixels.length);
+        for (let y = sy; y < ey; y++) {
+            let start = (sx + y * totalW) * 4, end = (ex + y * totalW) * 4;
+            original.set(pixels.subarray(start, end), start);
+        }
+        for (let y = sy; y < ey; y++) {
+            for (let x = sx; x < ex; x++) {
+                let idx = (x + y * totalW) * 4;
+                let rSrc = Math.max(sx, Math.min(ex-1, x + chrOff));
+                let bSrc = Math.max(sx, Math.min(ex-1, x - chrOff));
+                pixels[idx] = original[(rSrc + y * totalW) * 4];
+                pixels[idx+2] = original[(bSrc + y * totalW) * 4 + 2];
+            }
+        }
+    }
+
+    // Static noise overlay
+    if (crtStatic > 0) {
+        let noiseAmt = crtStatic / 100;
+        for (let y = sy; y < ey; y += 2) {
+            for (let x = sx; x < ex; x += 2) {
+                if (Math.random() > noiseAmt * 0.3) continue;
+                let idx = (x + y * totalW) * 4;
+                let n = Math.round(Math.random() * 60 * noiseAmt);
+                pixels[idx] = Math.min(255, pixels[idx] + n);
+                pixels[idx+1] = Math.min(255, pixels[idx+1] + n);
+                pixels[idx+2] = Math.min(255, pixels[idx+2] + n);
+            }
+        }
+    }
+
+    // Draw-phase: scanlines + glow + curvature vignette
+    push();
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(videoX, videoY, videoW, videoH);
+    drawingContext.clip();
+
+    // Scanlines
+    let scanWeight = crtScanWeight;
+    let lineH = Math.max(2, scanWeight + 1);
+    drawingContext.fillStyle = `rgba(0,0,0,${0.15 * scanWeight})`;
+    for (let y = videoY; y < videoY + videoH; y += lineH) {
+        drawingContext.fillRect(videoX, y, videoW, Math.max(1, scanWeight * 0.5));
+    }
+
+    // Phosphor glow (subtle RGB sub-pixel simulation)
+    if (crtGlow > 20) {
+        drawingContext.globalCompositeOperation = 'lighter';
+        drawingContext.globalAlpha = (crtGlow / 100) * 0.08;
+        drawingContext.filter = `blur(${Math.round(crtGlow/30)}px)`;
+        drawingContext.drawImage(drawingContext.canvas, videoX, videoY, videoW, videoH, videoX, videoY, videoW, videoH);
+        drawingContext.filter = 'none';
+        drawingContext.globalCompositeOperation = 'source-over';
+        drawingContext.globalAlpha = 1;
+    }
+
+    // Barrel curvature vignette
+    if (crtCurvature > 5) {
+        let curv = crtCurvature / 100;
+        let grad = drawingContext.createRadialGradient(
+            videoX + videoW/2, videoY + videoH/2, Math.min(videoW, videoH) * 0.3,
+            videoX + videoW/2, videoY + videoH/2, Math.max(videoW, videoH) * (0.55 + curv * 0.2)
+        );
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(0.7, `rgba(0,0,0,${curv * 0.3})`);
+        grad.addColorStop(1, `rgba(0,0,0,${curv * 0.8})`);
+        drawingContext.fillStyle = grad;
+        drawingContext.fillRect(videoX, videoY, videoW, videoH);
+    }
+
+    drawingContext.restore();
+    pop();
+}
+
+// ---------------------------------------------------------------------------
+// Randomize / Reset helpers
+// ---------------------------------------------------------------------------
+function randomizeEffect(effectName) {
+    let params = FX_PARAM_MAP[effectName];
+    let defaults = FX_DEFAULTS[effectName];
+    if (!params || !defaults) return;
+    params.forEach(p => {
+        let def = defaults[p.v];
+        if (def === undefined) return;
+        let val;
+        if (typeof def === 'boolean') {
+            val = Math.random() > 0.5;
+        } else if (typeof def === 'string') {
+            if (def.startsWith('#')) {
+                // Random color
+                val = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+            } else {
+                // Enum — pick from known options based on DOM buttons
+                let btns = document.querySelectorAll(`[data-effect="${effectName}"] .selector-btn, #fx-params-${effectName} .selector-btn, #fx-params-${effectName} .fx-shape-btn`);
+                if (btns.length > 0) {
+                    let options = Array.from(btns).map(b => b.dataset.value).filter(Boolean);
+                    val = options[Math.floor(Math.random() * options.length)] || def;
+                } else val = def;
+            }
+        } else {
+            // Number — find slider to get min/max
+            let sl = document.querySelector(`#fx-params-${effectName} input[type="range"]`);
+            // Find the specific slider for this param
+            let allSliders = document.querySelectorAll(`#fx-params-${effectName} input[type="range"]`);
+            let matched = null;
+            allSliders.forEach(s => {
+                if (s.id && s.id.includes(p.v.replace(/([A-Z])/g, '-$1').toLowerCase())) matched = s;
+            });
+            if (matched) {
+                let min = parseFloat(matched.min), max = parseFloat(matched.max);
+                val = min + Math.random() * (max - min);
+                val = parseFloat(matched.step) < 1 ? Math.round(val * 10) / 10 : Math.round(val);
+            } else {
+                val = def * (0.5 + Math.random());
+            }
+        }
+        p.s(val);
+    });
+    syncFxControlsForEffect(effectName);
+}
+
+function resetEffect(effectName) {
+    let params = FX_PARAM_MAP[effectName];
+    let defaults = FX_DEFAULTS[effectName];
+    if (!params || !defaults) return;
+    params.forEach(p => {
+        if (defaults[p.v] !== undefined) p.s(defaults[p.v]);
+    });
+    syncFxControlsForEffect(effectName);
+}
+
+function syncFxControlsForEffect(effectName) {
+    let group = document.getElementById('fx-params-' + effectName);
+    if (!group) return;
+    let params = FX_PARAM_MAP[effectName];
+    if (!params) return;
+    params.forEach(p => {
+        let val = p.g();
+        // Sync sliders
+        group.querySelectorAll('input[type="range"]').forEach(sl => {
+            if (sl.id && sl.id.includes(p.v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''))) {
+                sl.value = val;
+            }
+        });
+        // Sync number inputs
+        group.querySelectorAll('input[type="number"]').forEach(inp => {
+            if (inp.id && inp.id.includes(p.v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''))) {
+                inp.value = val;
+            }
+        });
+        // Sync color pickers
+        group.querySelectorAll('input[type="color"]').forEach(cp => {
+            if (cp.id && cp.id.includes(p.v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''))) {
+                cp.value = val;
+            }
+        });
+        // Sync hex inputs
+        group.querySelectorAll('.fx-hex-input').forEach(hi => {
+            if (hi.id && hi.id.includes(p.v.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, ''))) {
+                hi.value = val;
+            }
+        });
+        // Sync selector buttons
+        if (typeof val === 'string' && !val.startsWith('#')) {
+            group.querySelectorAll('.selector-btn, .fx-shape-btn').forEach(btn => {
+                if (btn.parentElement && btn.dataset.value === val) {
+                    btn.parentElement.querySelectorAll('.selector-btn, .fx-shape-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+            });
+        }
+        // Sync toggle switches
+        if (typeof val === 'boolean') {
+            group.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = val;
+            });
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -1293,4 +1845,150 @@ function setupFxUIListeners() {
             e.target.classList.add('active');
         });
     });
+
+    // ── ENRICHED EFFECT PARAMS ──
+
+    // Halftone enriched
+    wireSlider('slider-half-angle', 'val-half-angle', v => halfAngle = v);
+    wireSlider('slider-half-contrast', 'val-half-contrast', v => halfContrast = v);
+    wireSlider('slider-half-spread', 'val-half-spread', v => halfSpread = v);
+    document.querySelectorAll('#half-shape-buttons .fx-shape-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            halfShape = e.currentTarget.dataset.value;
+            document.querySelectorAll('#half-shape-buttons .fx-shape-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+        });
+    });
+    wireColorPicker('half-ink-color', 'half-ink-hex', v => halfInkColor = v);
+    wireColorPicker('half-paper-color', 'half-paper-hex', v => halfPaperColor = v);
+    let halfInvToggle = document.getElementById('half-inverted-toggle');
+    if (halfInvToggle) halfInvToggle.addEventListener('change', e => halfInverted = e.target.checked);
+    // Halftone presets
+    document.querySelectorAll('#half-presets .fx-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+            halfInkColor = sw.dataset.ink || '#000000';
+            halfPaperColor = sw.dataset.paper || '#ffffff';
+            let ci = document.getElementById('half-ink-color');
+            let ch = document.getElementById('half-ink-hex');
+            let pi = document.getElementById('half-paper-color');
+            let ph = document.getElementById('half-paper-hex');
+            if (ci) ci.value = halfInkColor;
+            if (ch) ch.value = halfInkColor;
+            if (pi) pi.value = halfPaperColor;
+            if (ph) ph.value = halfPaperColor;
+            document.querySelectorAll('#half-presets .fx-swatch').forEach(s => s.classList.remove('active'));
+            sw.classList.add('active');
+        });
+    });
+
+    // Dither enriched
+    document.querySelectorAll('#dither-algo-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            ditherAlgorithm = e.target.dataset.value;
+            document.querySelectorAll('#dither-algo-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    document.querySelectorAll('#dither-palette-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            ditherPalette = e.target.dataset.value;
+            document.querySelectorAll('#dither-palette-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+    wireSlider('slider-dither-count', 'val-dither-count', v => ditherColorCount = v);
+    wireSlider('slider-dither-pixelation', 'val-dither-pixelation', v => ditherPixelation = v);
+    wireSlider('slider-dither-strength', 'val-dither-strength', v => ditherStrength = v);
+
+    // Atkinson enriched
+    wireSlider('slider-atkinson-threshold', 'val-atkinson-threshold', v => atkinsonThreshold = v);
+    wireSlider('slider-atkinson-spread', 'val-atkinson-spread', v => atkinsonSpread = v);
+    wireSlider('slider-atkinson-strength', 'val-atkinson-strength', v => atkinsonStrength = v);
+
+    // Bloom enriched
+    wireSlider('slider-bloom-spread', 'val-bloom-spread', v => bloomSpread = v);
+    wireSlider('slider-bloom-exposure', 'val-bloom-exposure', v => bloomExposure = v);
+    document.querySelectorAll('#bloom-blend-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            bloomBlendMode = e.target.dataset.value;
+            document.querySelectorAll('#bloom-blend-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Glitch enriched
+    wireSlider('slider-glitch-chshift', 'val-glitch-chshift', v => glitchChannelShift = v);
+    wireSlider('slider-glitch-blocksize', 'val-glitch-blocksize', v => glitchBlockSize = v);
+    wireSlider('slider-glitch-seed', 'val-glitch-seed', v => glitchSeed = v);
+    wireSlider('slider-glitch-speed', 'val-glitch-speed', v => glitchSpeed = v);
+
+    // Tint custom color
+    wireColorPicker('tint-custom-color', 'tint-custom-hex', v => tintCustomColor = v);
+
+    // ── NEW EFFECT PARAMS ──
+
+    // Thermal
+    wireSlider('slider-thermal-intensity', 'val-thermal-intensity', v => thermalIntensity = v);
+
+    // Gradient Map
+    wireColorPicker('grad-color1', 'grad-color1-hex', v => gradColor1 = v);
+    wireColorPicker('grad-color2', 'grad-color2-hex', v => gradColor2 = v);
+    wireSlider('slider-grad-intensity', 'val-grad-intensity', v => gradIntensity = v);
+
+    // Duotone
+    wireColorPicker('duo-shadow', 'duo-shadow-hex', v => duoShadow = v);
+    wireColorPicker('duo-highlight', 'duo-highlight-hex', v => duoHighlight = v);
+    wireSlider('slider-duo-intensity', 'val-duo-intensity', v => duoIntensity = v);
+
+    // RGB Shift
+    wireSlider('slider-rgbshift-rx', 'val-rgbshift-rx', v => rgbShiftRX = v);
+    wireSlider('slider-rgbshift-ry', 'val-rgbshift-ry', v => rgbShiftRY = v);
+    wireSlider('slider-rgbshift-bx', 'val-rgbshift-bx', v => rgbShiftBX = v);
+    wireSlider('slider-rgbshift-by', 'val-rgbshift-by', v => rgbShiftBY = v);
+    wireSlider('slider-rgbshift-intensity', 'val-rgbshift-intensity', v => rgbShiftIntensity = v);
+
+    // Emboss
+    wireSlider('slider-emboss-angle', 'val-emboss-angle', v => embossAngle = v);
+    wireSlider('slider-emboss-strength', 'val-emboss-strength', v => embossStrength = v);
+
+    // LED Screen
+    wireSlider('slider-led-cellsize', 'val-led-cellsize', v => ledCellSize = v);
+    wireSlider('slider-led-gap', 'val-led-gap', v => ledGap = v);
+    wireSlider('slider-led-glow', 'val-led-glow', v => ledGlow = v);
+    wireSlider('slider-led-brightness', 'val-led-brightness', v => ledBrightness = v);
+
+    // CRT Screen
+    wireSlider('slider-crt-scanweight', 'val-crt-scanweight', v => crtScanWeight = v);
+    wireSlider('slider-crt-curvature', 'val-crt-curvature', v => crtCurvature = v);
+    wireSlider('slider-crt-glow', 'val-crt-glow', v => crtGlow = v);
+    wireSlider('slider-crt-chroma', 'val-crt-chroma', v => crtChroma = v);
+    wireSlider('slider-crt-static', 'val-crt-static', v => crtStatic = v);
+
+    // ── MASTER FX TOGGLE ──
+    let masterToggle = document.getElementById('master-fx-toggle');
+    if (masterToggle) masterToggle.addEventListener('change', e => masterFxEnabled = e.target.checked);
+
+    // ── RANDOMIZE / RESET BUTTONS ──
+    document.querySelectorAll('.fx-action-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            let effect = btn.dataset.effect;
+            if (btn.dataset.action === 'randomize') randomizeEffect(effect);
+            else if (btn.dataset.action === 'reset') resetEffect(effect);
+        });
+    });
+
+    // ── COLOR PICKER HELPER ──
+    function wireColorPicker(colorId, hexId, setter) {
+        let cp = document.getElementById(colorId);
+        let hi = document.getElementById(hexId);
+        if (!cp || !hi) return;
+        cp.addEventListener('input', (e) => { setter(e.target.value); hi.value = e.target.value; });
+        hi.addEventListener('change', (e) => {
+            let v = e.target.value;
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) { setter(v); cp.value = v; }
+            else { e.target.value = cp.value; }
+        });
+        hi.addEventListener('keydown', e => e.stopPropagation());
+    }
 }
