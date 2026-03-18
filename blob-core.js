@@ -286,7 +286,7 @@ const ui = {
     audioUpload: document.getElementById('audioUpload'),
     audioName: document.getElementById('audio-name'),
     audioMeterFill: document.getElementById('audio-meter-fill'),
-    modeButtons: document.querySelectorAll('#mode-buttons .selector-btn'),
+    modeButtons: document.querySelectorAll('#group-modes .selector-btn'),
     vizButtons: document.querySelectorAll('#viz-buttons .selector-btn'),
     fxCards: document.querySelectorAll('.fx-card'),
     fxLayerButtons: document.querySelectorAll('#fx-layer-buttons .selector-btn'),

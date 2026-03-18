@@ -530,12 +530,33 @@
         #debug-panel .val { color: #0f0; }
         #debug-panel .warn { color: #f80; }
         #debug-panel .off { color: #f44; }
-        #mode-buttons {
-            flex-wrap: wrap;
-            row-gap: 1px;
+        #group-modes .mode-cat {
+            margin-bottom: 6px;
         }
-        #mode-buttons .selector-btn {
+        #group-modes .mode-cat-label {
+            font-size: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+            margin-top: 2px;
+        }
+        #group-modes .mode-cat-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1px;
+        }
+        #group-modes .mode-cat-row .selector-btn {
             flex: 1 0 calc(16.66% - 1px);
+        }
+        #group-modes .mode-cat:last-child .selector-btn.active {
+            background: rgba(108, 92, 231, 0.25);
+            color: #c4b8ff;
+        }
+        #group-modes .mode-cat-off .selector-btn {
+            width: 100%;
+            text-align: center;
         }
         #viz-buttons {
             flex-wrap: wrap;
@@ -1354,27 +1375,44 @@
             </div>
 
 
-            <div class="control-group">
+            <div class="control-group" id="group-modes">
                 <label>Tracking Mode</label>
-                <div class="selector-row" id="mode-buttons">
-                    <button class="selector-btn" data-value="0">OFF</button>
-                    <button class="selector-btn active" data-value="1">BLUE</button>
-                    <button class="selector-btn" data-value="2">RED</button>
-                    <button class="selector-btn" data-value="3">MOT</button>
-                    <button class="selector-btn" data-value="4">SKIN</button>
-                    <button class="selector-btn" data-value="5">CUST</button>
-                    <button class="selector-btn" data-value="6">BRI</button>
-                    <button class="selector-btn" data-value="7">DARK</button>
-                    <button class="selector-btn" data-value="8">EDGE</button>
-                    <button class="selector-btn" data-value="9">CHRM</button>
-                    <button class="selector-btn" data-value="10">WARM</button>
-                    <button class="selector-btn" data-value="11">COOL</button>
-                    <button class="selector-btn" data-value="12">FLKR</button>
-                    <button class="selector-btn" data-value="13">INV</button>
-                    <button class="selector-btn" data-value="14">MASK</button>
-                    <button class="selector-btn" data-value="15">EYES</button>
-                    <button class="selector-btn" data-value="16">LIPS</button>
-                    <button class="selector-btn" data-value="17">FACE</button>
+                <div class="mode-cat mode-cat-off">
+                    <div class="selector-row">
+                        <button class="selector-btn" data-value="0">OFF</button>
+                    </div>
+                </div>
+                <div class="mode-cat">
+                    <div class="mode-cat-label">Color</div>
+                    <div class="mode-cat-row">
+                        <button class="selector-btn active" data-value="1">BLUE</button>
+                        <button class="selector-btn" data-value="2">RED</button>
+                        <button class="selector-btn" data-value="5">CUST</button>
+                        <button class="selector-btn" data-value="13">INV</button>
+                        <button class="selector-btn" data-value="10">WARM</button>
+                        <button class="selector-btn" data-value="11">COOL</button>
+                    </div>
+                </div>
+                <div class="mode-cat">
+                    <div class="mode-cat-label">Analysis</div>
+                    <div class="mode-cat-row">
+                        <button class="selector-btn" data-value="3">MOT</button>
+                        <button class="selector-btn" data-value="6">BRI</button>
+                        <button class="selector-btn" data-value="7">DARK</button>
+                        <button class="selector-btn" data-value="8">EDGE</button>
+                        <button class="selector-btn" data-value="9">CHRM</button>
+                        <button class="selector-btn" data-value="12">FLKR</button>
+                        <button class="selector-btn" data-value="4">SKIN</button>
+                    </div>
+                </div>
+                <div class="mode-cat">
+                    <div class="mode-cat-label">AI</div>
+                    <div class="mode-cat-row">
+                        <button class="selector-btn" data-value="14">MASK</button>
+                        <button class="selector-btn" data-value="15">EYES</button>
+                        <button class="selector-btn" data-value="16">LIPS</button>
+                        <button class="selector-btn" data-value="17">FACE</button>
+                    </div>
                 </div>
             </div>
 
