@@ -535,7 +535,7 @@
             row-gap: 1px;
         }
         #mode-buttons .selector-btn {
-            flex: 1 0 calc(14.28% - 1px);
+            flex: 1 0 calc(16.66% - 1px);
         }
         #viz-buttons {
             flex-wrap: wrap;
@@ -1372,6 +1372,9 @@
                     <button class="selector-btn" data-value="12">FLKR</button>
                     <button class="selector-btn" data-value="13">INV</button>
                     <button class="selector-btn" data-value="14">MASK</button>
+                    <button class="selector-btn" data-value="15">EYES</button>
+                    <button class="selector-btn" data-value="16">LIPS</button>
+                    <button class="selector-btn" data-value="17">FACE</button>
                 </div>
             </div>
 
@@ -1393,6 +1396,15 @@
                 </div>
             </div>
 
+            <div class="control-group" id="face-controls-group" style="display:none">
+                <label>Face Tracking <span id="face-status" style="color:#00CEC9">DETECTING</span></label>
+                <div id="face-loading" style="display:none;font-size:10px;color:var(--text-muted);margin-bottom:6px">
+                    Loading face model...
+                </div>
+                <div id="face-hint" style="font-size:10px;color:var(--text-muted);margin-bottom:6px">
+                    Point camera or video at a face. Blobs track facial landmarks.
+                </div>
+            </div>
 
             <div class="control-group" id="group-viz">
                 <label>Visualization</label>
@@ -2033,6 +2045,9 @@
                     <dt>9</dt><dd>CHROMA</dd>
                     <dt>M</dt><dd>AI MASK</dd>
                     <dt>Esc</dt><dd>Exit Mask</dd>
+                    <dt>EYES</dt><dd>Eye tracking (click btn)</dd>
+                    <dt>LIPS</dt><dd>Lip tracking (click btn)</dd>
+                    <dt>FACE</dt><dd>Full face mesh (click btn)</dd>
                 </dl>
             </div>
             <div class="help-section">
@@ -2154,6 +2169,48 @@ async function initSegmenter() {
 }
 
 initSegmenter();
+</script>
+
+<!-- MediaPipe Face Landmarker (Eyes / Lips / Face tracking) -->
+<script type="module">
+import { FaceLandmarker, FilesetResolver }
+    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs";
+
+window.mpFaceLandmarkerReady = false;
+window.mpFaceLandmarker = null;
+
+async function initFaceLandmarker() {
+    try {
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+        );
+        window.mpFaceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath:
+                    "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 2,
+            outputFaceBlendshapes: false,
+            outputFacialTransformationMatrixes: false
+        });
+        window.mpFaceLandmarkerReady = true;
+        console.log("MediaPipe Face Landmarker ready");
+        let loadEl = document.getElementById('face-loading');
+        if (loadEl) loadEl.style.display = 'none';
+    } catch (e) {
+        console.error("Failed to load Face Landmarker:", e);
+        let loadEl = document.getElementById('face-loading');
+        if (loadEl) {
+            loadEl.style.display = '';
+            loadEl.textContent = 'Face model failed to load';
+            loadEl.style.color = '#E17055';
+        }
+    }
+}
+
+initFaceLandmarker();
 </script>
 </body>
 </html>

@@ -165,8 +165,34 @@ let _cachedBeatKey = '';
 const MODE_NAMES = {
     0:'OFF', 1:'BLUE', 2:'RED', 3:'MOT', 4:'SKIN', 5:'CUST',
     6:'BRI', 7:'DARK', 8:'EDGE', 9:'CHRM', 10:'WARM', 11:'COOL',
-    12:'FLKR', 13:'INV', 14:'MASK'
+    12:'FLKR', 13:'INV', 14:'MASK', 15:'EYES', 16:'LIPS', 17:'FACE'
 };
+
+// Face landmark tracking state (MediaPipe Face Landmarker)
+let faceLandmarkCache = null;   // cached landmark results
+let faceDetectFrame = 0;        // frame counter for throttled detection
+const FACE_DETECT_INTERVAL = 2; // re-detect every N frames
+
+// Landmark index groups for face feature modes
+const FACE_EYES_INDICES = [
+    // Left eye contour
+    33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246,
+    // Right eye contour
+    263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466,
+    // Left iris
+    468, 469, 470, 471, 472,
+    // Right iris
+    473, 474, 475, 476, 477
+];
+
+const FACE_LIPS_INDICES = [
+    // Outer lip
+    61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
+    308, 324, 318, 402, 317, 14, 87, 178, 88, 95,
+    // Inner lip
+    78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308,
+    78, 95, 88, 178, 87, 14, 317, 402, 318, 324
+];
 let modeDragState = null;
 const BLOB_SEG_COLOR = '#00CEC9';
 let editingBlobSeg = null; // when a blob segment is selected, sliders edit its params
@@ -585,18 +611,35 @@ function draw() {
             let pw = p.width * pScale;
             let ph = p.height * pScale;
 
-            if (activeVizModes.has(10)) {
+            if (activeVizModes.has(10) || (currentMode >= 15 && currentMode <= 17)) {
                 // ZOOM — magnified video crop inside blob
+                // Crop radius scales with blob size for natural zoom feel
                 push();
                 let srcX = map(p.posicao.x, videoX, videoX + videoW, 0, videoEl.width);
                 let srcY = map(p.posicao.y, videoY, videoY + videoH, 0, videoEl.height);
-                let sampleR = 20;
-                let zW = max(pw, 30);
-                let zH = max(ph, 30);
+                let isFaceZoom = currentMode >= 15 && currentMode <= 17;
+                // Zoom factor: larger blob size → larger source crop → more magnification
+                // Blob Size (param4) controls how zoomed-in each crop is
+                let zoomFactor = map(paramValues[4], 0, 100, 1.5, 6);
+                let sampleR = max(pw, ph) / zoomFactor;
+                // Minimum source crop so tiny blobs still show detail
+                sampleR = max(sampleR, 8);
+                let zW = max(pw, 20);
+                let zH = max(ph, 20);
+                // Clamp source region to video bounds
+                let sx = constrain(srcX - sampleR, 0, videoEl.width - sampleR * 0.5);
+                let sy = constrain(srcY - sampleR, 0, videoEl.height - sampleR * 0.5);
+                let sw = min(sampleR * 2, videoEl.width - sx);
+                let sh = min(sampleR * 2, videoEl.height - sy);
                 image(videoEl, p.posicao.x - zW/2, p.posicao.y - zH/2, zW, zH,
-                      srcX - sampleR, srcY - sampleR, sampleR * 2, sampleR * 2);
-                noFill(); stroke(255, 120); strokeWeight(1);
-                rectMode(CENTER);
+                      sx, sy, sw, sh);
+                // Subtle border — thin for face, light for general zoom
+                noFill(); strokeWeight(0.8); rectMode(CENTER);
+                if (isFaceZoom) {
+                    stroke(255, 40);
+                } else {
+                    stroke(255, 80);
+                }
                 rect(p.posicao.x, p.posicao.y, zW, zH);
                 pop();
             } else {
@@ -708,6 +751,7 @@ function setupCoreUIListeners() {
             _userMode = currentMode;
             if (currentMode === 3) prevGridPixels = {};
             if (currentMode === 12) flickerScores = {};
+            if (currentMode < 15 || currentMode > 17) faceLandmarkCache = null;
             ui.customColorGroup.style.display = (currentMode === 5 || currentMode === 13) ? '' : 'none';
             if (currentMode === 14) {
                 enterMaskSelecting();
@@ -897,6 +941,29 @@ function updateButtonStates() {
             statusEl.textContent = 'TRACKING';
             statusEl.style.color = '#00B894';
             hintEl.textContent = 'Click to re-target. \u21E7+click adds. \u2325+click removes.';
+        }
+    }
+
+    // Face tracking controls visibility
+    const isFaceMode = currentMode >= 15 && currentMode <= 17;
+    document.getElementById('face-controls-group').style.display = isFaceMode ? '' : 'none';
+    if (isFaceMode) {
+        let fStatusEl = document.getElementById('face-status');
+        let fHintEl = document.getElementById('face-hint');
+        if (!window.mpFaceLandmarkerReady) {
+            fStatusEl.textContent = 'LOADING';
+            fStatusEl.style.color = '#FDCB6E';
+            document.getElementById('face-loading').style.display = '';
+            fHintEl.textContent = 'Loading face detection model...';
+        } else if (faceLandmarkCache && faceLandmarkCache.length > 0) {
+            fStatusEl.textContent = faceLandmarkCache.length + ' FACE' + (faceLandmarkCache.length > 1 ? 'S' : '');
+            fStatusEl.style.color = '#00B894';
+            fHintEl.textContent = currentMode === 15 ? 'Tracking eye landmarks' :
+                                  currentMode === 16 ? 'Tracking lip landmarks' : 'Tracking full face mesh';
+        } else {
+            fStatusEl.textContent = 'NO FACE';
+            fStatusEl.style.color = '#E17055';
+            fHintEl.textContent = 'Point camera or video at a face';
         }
     }
 

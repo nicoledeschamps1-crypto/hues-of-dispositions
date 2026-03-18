@@ -9,6 +9,91 @@ function trackPoints() {
     videoEl.loadPixels();
     if (videoEl.pixels.length === 0) return;
 
+    // FACE LANDMARK modes (EYES=15, LIPS=16, FACE=17)
+    if (currentMode >= 15 && currentMode <= 17) {
+        if (!window.mpFaceLandmarkerReady || !window.mpFaceLandmarker) return;
+
+        const w = videoEl.width, h = videoEl.height;
+
+        // Throttled detection — cache landmarks between frames
+        faceDetectFrame++;
+        if (faceDetectFrame >= FACE_DETECT_INTERVAL || !faceLandmarkCache) {
+            faceDetectFrame = 0;
+            try {
+                const ts = performance.now();
+                const result = window.mpFaceLandmarker.detectForVideo(videoEl.elt, ts);
+                if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+                    faceLandmarkCache = result.faceLandmarks;
+                }
+            } catch (e) {
+                // Detection failed — use cache
+            }
+        }
+
+        if (!faceLandmarkCache || faceLandmarkCache.length === 0) return;
+
+        // Select landmark indices based on mode
+        let indices = null;
+        if (currentMode === 15) indices = FACE_EYES_INDICES;
+        else if (currentMode === 16) indices = FACE_LIPS_INDICES;
+        // mode 17 (FACE) uses all landmarks — indices stays null
+
+        let candidates = [];
+        for (let faceIdx = 0; faceIdx < faceLandmarkCache.length; faceIdx++) {
+            const landmarks = faceLandmarkCache[faceIdx];
+            const landmarkList = indices
+                ? indices.filter(i => i < landmarks.length).map(i => landmarks[i])
+                : landmarks;
+
+            for (const lm of landmarkList) {
+                // MediaPipe landmarks are normalized [0,1]
+                let vx = Math.floor(lm.x * w);
+                let vy = Math.floor(lm.y * h);
+                vx = Math.max(0, Math.min(w - 1, vx));
+                vy = Math.max(0, Math.min(h - 1, vy));
+
+                // Sample video pixel color at landmark position
+                let idx = (vx + vy * w) * 4;
+                let r = videoEl.pixels[idx], g = videoEl.pixels[idx + 1], b = videoEl.pixels[idx + 2];
+                candidates.push(new CandidatePoint(vx, vy, color(r, g, b)));
+            }
+        }
+
+        // Spectrum param: add interpolated points between landmarks for density
+        let spectrum = map(paramValues[1], 0, 100, 0, 70);
+        if (spectrum > 20 && candidates.length > 1) {
+            let extras = [];
+            let numExtras = Math.floor(map(spectrum, 20, 70, 0, candidates.length * 2));
+            for (let i = 0; i < numExtras; i++) {
+                let a = candidates[Math.floor(Math.random() * candidates.length)];
+                let b_pt = candidates[Math.floor(Math.random() * candidates.length)];
+                let t = Math.random();
+                let mx = Math.floor(a.x + (b_pt.x - a.x) * t);
+                let my = Math.floor(a.y + (b_pt.y - a.y) * t);
+                mx = Math.max(0, Math.min(w - 1, mx));
+                my = Math.max(0, Math.min(h - 1, my));
+                let idx = (mx + my * w) * 4;
+                let r = videoEl.pixels[idx], g = videoEl.pixels[idx + 1], b_v = videoEl.pixels[idx + 2];
+                extras.push(new CandidatePoint(mx, my, color(r, g, b_v)));
+            }
+            candidates = candidates.concat(extras);
+        }
+
+        candidates.sort(() => Math.random() - 0.5);
+        let quantityLevel = paramValues[0];
+        let numPoints = (quantityLevel <= 10) ? floor(quantityLevel) : floor(map(quantityLevel, 11, 100, 11, candidates.length));
+        numPoints = min(numPoints, candidates.length);
+        let blobVarLevel = paramValues[6];
+
+        for (let i = 0; i < numPoints; i++) {
+            let c = candidates[i];
+            let screenX = map(c.x, 0, w, videoX, videoX + videoW);
+            let screenY = map(c.y, 0, h, videoY, videoY + videoH);
+            trackedPoints.push(new TrackedPoint(screenX, screenY, c.c, blobVarLevel));
+        }
+        return;
+    }
+
     // MASK mode: AI re-segmentation — use mask directly for blob placement
     if (currentMode === 14 && maskReady && maskSegData && maskClickNorm) {
         const w = videoEl.width, h = videoEl.height;
