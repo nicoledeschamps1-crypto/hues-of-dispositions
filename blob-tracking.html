@@ -453,6 +453,44 @@
         }
         .fx-param-group.visible { display: block; }
 
+        /* Collapsible FX categories */
+        .cat-toggle {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+        }
+        .cat-toggle:hover { color: var(--text-main); }
+        .cat-chevron {
+            margin-left: auto;
+            font-size: 8px;
+            transition: transform 0.2s;
+            color: var(--text-muted);
+        }
+        .fx-category.collapsed .cat-chevron {
+            transform: rotate(-90deg);
+        }
+        .fx-category.collapsed .fx-cat-body {
+            display: none;
+        }
+        .cat-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 14px;
+            height: 14px;
+            border-radius: 7px;
+            font-size: 8px;
+            font-weight: 700;
+            padding: 0 4px;
+            margin-left: 4px;
+        }
+        .cat-count:empty { display: none; }
+        .cat-count[data-cat="color"] { background: rgba(108, 92, 231, 0.3); color: #c4b8ff; }
+        .cat-count[data-cat="distortion"] { background: rgba(0, 184, 148, 0.3); color: #7dffd4; }
+        .cat-count[data-cat="pattern"] { background: rgba(253, 203, 110, 0.3); color: #fff0c0; }
+        .cat-count[data-cat="overlay"] { background: rgba(225, 112, 85, 0.3); color: #ffb8a8; }
+
         /* Playback Buttons */
         .playback-row {
             display: flex;
@@ -1165,7 +1203,7 @@
             color: var(--text-muted);
             font-size: 9px;
             font-weight: 700;
-            padding: 7px 10px;
+            padding: 9px 12px;
             cursor: pointer;
             transition: all 0.2s;
             text-transform: uppercase;
@@ -1523,268 +1561,274 @@
 
             <div class="tab-content" data-tab="fx">
 
-            <!-- Effects (Effecto-style category strips) -->
+            <!-- Effects (Effecto-style category strips with collapsible bodies) -->
             <div class="control-group" id="group-fx">
-                <label>Effects <span style="font-size:8px;color:var(--text-muted);font-weight:400;margin-left:6px">click = toggle · drag to timeline = place</span></label>
-                <div class="fx-category">
-                    <div class="cat-label"><span class="cat-dot" style="background:#6C5CE7"></span> Color</div>
-                    <div class="fx-strip">
-                        <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
-                        <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
-                        <button class="fx-card" data-effect="palette" data-cat="color">PALETTE</button>
-                        <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
+                <label>Effects <span style="font-size:8px;color:var(--text-muted);font-weight:400;margin-left:6px">click = toggle · drag to timeline</span></label>
+                <div class="fx-category" data-cat="color">
+                    <div class="cat-label cat-toggle"><span class="cat-dot" style="background:#6C5CE7"></span> Color <span class="cat-count" data-cat="color"></span><span class="cat-chevron">&#9662;</span></div>
+                    <div class="fx-cat-body">
+                        <div class="fx-strip">
+                            <button class="fx-card" data-effect="sepia" data-cat="color">SEPIA</button>
+                            <button class="fx-card" data-effect="tint" data-cat="color">TINT</button>
+                            <button class="fx-card" data-effect="palette" data-cat="color">PALETTE</button>
+                            <button class="fx-card" data-effect="bricon" data-cat="color">BRI/CON</button>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-sepia">
+                            <label>Intensity <input type="number" class="value-input" id="val-sepia-intensity" value="70"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-sepia-intensity" min="5" max="100" value="70" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-tint">
+                            <label>Tint Preset</label>
+                            <div class="selector-row" id="tint-preset-buttons">
+                                <button class="selector-btn active" data-value="green">GREEN</button>
+                                <button class="selector-btn" data-value="amber">AMBER</button>
+                                <button class="selector-btn" data-value="cyan">CYAN</button>
+                                <button class="selector-btn" data-value="blue">BLUE</button>
+                            </div>
+                            <label>Intensity <input type="number" class="value-input" id="val-tint-intensity" value="70"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-tint-intensity" min="5" max="100" value="70" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-palette">
+                            <label>Palette</label>
+                            <div class="selector-row" id="palette-preset-buttons" style="flex-wrap:wrap;row-gap:1px;">
+                                <button class="selector-btn active" data-value="noir">NOIR</button>
+                                <button class="selector-btn" data-value="terminal">TERM</button>
+                                <button class="selector-btn" data-value="gameboy">GMBOY</button>
+                                <button class="selector-btn" data-value="synthwave">SYNTH</button>
+                                <button class="selector-btn" data-value="cyberpunk">CYBER</button>
+                                <button class="selector-btn" data-value="amber">AMBER</button>
+                                <button class="selector-btn" data-value="arctic">ARTIC</button>
+                                <button class="selector-btn" data-value="rose">ROSE</button>
+                                <button class="selector-btn" data-value="neon">NEON</button>
+                                <button class="selector-btn" data-value="forest">FORST</button>
+                                <button class="selector-btn" data-value="sunset">SUNST</button>
+                                <button class="selector-btn" data-value="ocean">OCEAN</button>
+                            </div>
+                            <label>Intensity <input type="number" class="value-input" id="val-palette-intensity" value="80"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-palette-intensity" min="5" max="100" value="80" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-bricon">
+                            <label>Brightness <input type="number" class="value-input" id="val-bri" value="0"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-bri" min="-100" max="100" value="0" step="1"></div>
+                            <label>Contrast <input type="number" class="value-input" id="val-con" value="100"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-con" min="0" max="200" value="100" step="1"></div>
+                            <label>Saturation <input type="number" class="value-input" id="val-sat" value="100"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-sat" min="0" max="200" value="100" step="1"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="fx-category">
-                    <div class="cat-label"><span class="cat-dot" style="background:#00B894"></span> Distortion</div>
-                    <div class="fx-strip">
-                        <button class="fx-card" data-effect="chroma" data-cat="distortion">CHROMA</button>
-                        <button class="fx-card" data-effect="curve" data-cat="distortion">CURVE</button>
-                        <button class="fx-card" data-effect="wave" data-cat="distortion">WAVE</button>
-                        <button class="fx-card" data-effect="jitter" data-cat="distortion">JITTER</button>
-                        <button class="fx-card" data-effect="mblur" data-cat="distortion">MBLUR</button>
+                <div class="fx-category" data-cat="distortion">
+                    <div class="cat-label cat-toggle"><span class="cat-dot" style="background:#00B894"></span> Distortion <span class="cat-count" data-cat="distortion"></span><span class="cat-chevron">&#9662;</span></div>
+                    <div class="fx-cat-body">
+                        <div class="fx-strip">
+                            <button class="fx-card" data-effect="chroma" data-cat="distortion">CHROMA</button>
+                            <button class="fx-card" data-effect="curve" data-cat="distortion">CURVE</button>
+                            <button class="fx-card" data-effect="wave" data-cat="distortion">WAVE</button>
+                            <button class="fx-card" data-effect="jitter" data-cat="distortion">JITTER</button>
+                            <button class="fx-card" data-effect="mblur" data-cat="distortion">MBLUR</button>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-chroma">
+                            <label>Offset <input type="number" class="value-input" id="val-chroma-offset" value="5"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-chroma-offset" min="1" max="25" value="5" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-curve">
+                            <label>Intensity <input type="number" class="value-input" id="val-curve-intensity" value="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-curve-intensity" min="5" max="100" value="30" step="1"></div>
+                            <label>Direction</label>
+                            <div class="selector-row" id="curve-dir-buttons">
+                                <button class="selector-btn active" data-value="barrel">BARREL</button>
+                                <button class="selector-btn" data-value="pincushion">PINCH</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-wave">
+                            <label>Amplitude <input type="number" class="value-input" id="val-wave-amp" value="20"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-wave-amp" min="1" max="100" value="20" step="1"></div>
+                            <label>Frequency <input type="number" class="value-input" id="val-wave-freq" value="5"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-wave-freq" min="1" max="20" value="5" step="1"></div>
+                            <label>Speed <input type="number" class="value-input" id="val-wave-speed" value="2"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-wave-speed" min="0" max="5" value="2" step="0.1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-jitter">
+                            <label>Intensity <input type="number" class="value-input" id="val-jitter-intensity" value="20"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-jitter-intensity" min="1" max="100" value="20" step="1"></div>
+                            <label>Block Size <input type="number" class="value-input" id="val-jitter-block" value="2"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-jitter-block" min="1" max="16" value="2" step="1"></div>
+                            <label>Mode</label>
+                            <div class="selector-row" id="jitter-mode-buttons">
+                                <button class="selector-btn active" data-value="random">RANDOM</button>
+                                <button class="selector-btn" data-value="perlin">PERLIN</button>
+                                <button class="selector-btn" data-value="shake">SHAKE</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-mblur">
+                            <label>Intensity <input type="number" class="value-input" id="val-mblur-intensity" value="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-mblur-intensity" min="5" max="100" value="30" step="1"></div>
+                            <label>Angle <input type="number" class="value-input" id="val-mblur-angle" value="0"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-mblur-angle" min="0" max="360" value="0" step="1"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="fx-category">
-                    <div class="cat-label"><span class="cat-dot" style="background:#FDCB6E"></span> Pattern</div>
-                    <div class="fx-strip">
-                        <button class="fx-card" data-effect="bloom" data-cat="pattern">BLOOM</button>
-                        <button class="fx-card" data-effect="dither" data-cat="pattern">DITHER</button>
-                        <button class="fx-card" data-effect="atkinson" data-cat="pattern">ATKNSN</button>
-                        <button class="fx-card" data-effect="halftone" data-cat="pattern">HALF</button>
-                        <button class="fx-card" data-effect="pxsort" data-cat="pattern">PXSORT</button>
-                        <button class="fx-card" data-effect="pixel" data-cat="pattern">PIXEL</button>
+                <div class="fx-category" data-cat="pattern">
+                    <div class="cat-label cat-toggle"><span class="cat-dot" style="background:#FDCB6E"></span> Pattern <span class="cat-count" data-cat="pattern"></span><span class="cat-chevron">&#9662;</span></div>
+                    <div class="fx-cat-body">
+                        <div class="fx-strip">
+                            <button class="fx-card" data-effect="bloom" data-cat="pattern">BLOOM</button>
+                            <button class="fx-card" data-effect="dither" data-cat="pattern">DITHER</button>
+                            <button class="fx-card" data-effect="atkinson" data-cat="pattern">ATKNSN</button>
+                            <button class="fx-card" data-effect="halftone" data-cat="pattern">HALF</button>
+                            <button class="fx-card" data-effect="pxsort" data-cat="pattern">PXSORT</button>
+                            <button class="fx-card" data-effect="pixel" data-cat="pattern">PIXEL</button>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-bloom">
+                            <label>Intensity <input type="number" class="value-input" id="val-bloom-intensity" value="40"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-bloom-intensity" min="5" max="100" value="40" step="1"></div>
+                            <label>Radius <input type="number" class="value-input" id="val-bloom-radius" value="50"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-bloom-radius" min="10" max="100" value="50" step="1"></div>
+                            <label>Threshold <input type="number" class="value-input" id="val-bloom-thresh" value="50"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-bloom-thresh" min="0" max="100" value="50" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-dither">
+                            <label>Color</label>
+                            <div class="selector-row" id="dither-color-buttons">
+                                <button class="selector-btn active" data-value="bw">B&W</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-atkinson">
+                            <label>Atkinson Color</label>
+                            <div class="selector-row" id="atkinson-color-buttons">
+                                <button class="selector-btn active" data-value="bw">B&W</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-halftone">
+                            <label>Dot Size <input type="number" class="value-input" id="val-half-spacing" value="6"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-half-spacing" min="3" max="20" value="6" step="1"></div>
+                            <label>Color</label>
+                            <div class="selector-row" id="half-color-buttons">
+                                <button class="selector-btn active" data-value="bw">B&W</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-pxsort">
+                            <label>Threshold Low <input type="number" class="value-input" id="val-pxsort-lo" value="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-pxsort-lo" min="0" max="255" value="30" step="1"></div>
+                            <label>Threshold High <input type="number" class="value-input" id="val-pxsort-hi" value="220"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-pxsort-hi" min="0" max="255" value="220" step="1"></div>
+                            <label>Direction</label>
+                            <div class="selector-row" id="pxsort-dir-buttons">
+                                <button class="selector-btn active" data-value="horizontal">HORIZ</button>
+                                <button class="selector-btn" data-value="vertical">VERT</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-pixel">
+                            <label>Pixel Size <input type="number" class="value-input" id="val-pixel-size" value="8"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-pixel-size" min="2" max="50" value="8" step="1"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="fx-category">
-                    <div class="cat-label"><span class="cat-dot" style="background:#E17055"></span> Overlay</div>
-                    <div class="fx-strip">
-                        <button class="fx-card" data-effect="ascii" data-cat="overlay">ASCII</button>
-                        <button class="fx-card" data-effect="glitch" data-cat="overlay">GLITCH</button>
-                        <button class="fx-card" data-effect="noise" data-cat="overlay">NOISE</button>
-                        <button class="fx-card" data-effect="grain" data-cat="overlay">GRAIN</button>
-                        <button class="fx-card" data-effect="dots" data-cat="overlay">DOTS</button>
-                        <button class="fx-card" data-effect="grid" data-cat="overlay">GRID</button>
-                        <button class="fx-card" data-effect="scanlines" data-cat="overlay">SCAN</button>
-                        <button class="fx-card" data-effect="vignette" data-cat="overlay">VGNTE</button>
+                <div class="fx-category" data-cat="overlay">
+                    <div class="cat-label cat-toggle"><span class="cat-dot" style="background:#E17055"></span> Overlay <span class="cat-count" data-cat="overlay"></span><span class="cat-chevron">&#9662;</span></div>
+                    <div class="fx-cat-body">
+                        <div class="fx-strip">
+                            <button class="fx-card" data-effect="ascii" data-cat="overlay">ASCII</button>
+                            <button class="fx-card" data-effect="glitch" data-cat="overlay">GLITCH</button>
+                            <button class="fx-card" data-effect="noise" data-cat="overlay">NOISE</button>
+                            <button class="fx-card" data-effect="grain" data-cat="overlay">GRAIN</button>
+                            <button class="fx-card" data-effect="dots" data-cat="overlay">DOTS</button>
+                            <button class="fx-card" data-effect="grid" data-cat="overlay">GRID</button>
+                            <button class="fx-card" data-effect="scanlines" data-cat="overlay">SCAN</button>
+                            <button class="fx-card" data-effect="vignette" data-cat="overlay">VGNTE</button>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-ascii">
+                            <label>Cell Size <input type="number" class="value-input" id="val-ascii-cell" value="10"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-ascii-cell" min="4" max="24" value="10" step="1"></div>
+                            <label>Characters</label>
+                            <div class="selector-row" id="ascii-charset-buttons">
+                                <button class="selector-btn active" data-value="classic">CLASSIC</button>
+                                <button class="selector-btn" data-value="blocks">BLOCKS</button>
+                                <button class="selector-btn" data-value="dots">DOTS</button>
+                                <button class="selector-btn" data-value="binary">BINARY</button>
+                                <button class="selector-btn" data-value="braille">BRAILLE</button>
+                                <button class="selector-btn" data-value="symbols">SYMBOLS</button>
+                                <button class="selector-btn" data-value="katakana">KATA</button>
+                            </div>
+                            <label>Color</label>
+                            <div class="selector-row" id="ascii-color-buttons">
+                                <button class="selector-btn active" data-value="mono">MONO</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                                <button class="selector-btn" data-value="green">GREEN</button>
+                                <button class="selector-btn" data-value="amber">AMBER</button>
+                                <button class="selector-btn" data-value="cyan">CYAN</button>
+                            </div>
+                            <label>Invert</label>
+                            <div class="selector-row" id="ascii-invert-buttons">
+                                <button class="selector-btn active" data-value="off">OFF</button>
+                                <button class="selector-btn" data-value="on">ON</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-glitch">
+                            <label>Intensity <input type="number" class="value-input" id="val-glitch-intensity" value="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-glitch-intensity" min="5" max="100" value="30" step="1"></div>
+                            <label>Frequency <input type="number" class="value-input" id="val-glitch-freq" value="20"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-glitch-freq" min="1" max="100" value="20" step="1"></div>
+                            <label>Style</label>
+                            <div class="selector-row" id="glitch-mode-buttons">
+                                <button class="selector-btn active" data-value="shift">SHIFT</button>
+                                <button class="selector-btn" data-value="tear">TEAR</button>
+                                <button class="selector-btn" data-value="corrupt">CORRUPT</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-noise">
+                            <label>Intensity <input type="number" class="value-input" id="val-noise-intensity" value="25"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-noise-intensity" min="5" max="100" value="25" step="1"></div>
+                            <label>Scale <input type="number" class="value-input" id="val-noise-scale" value="1"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-noise-scale" min="1" max="10" value="1" step="1"></div>
+                            <label>Noise Color</label>
+                            <div class="selector-row" id="noise-color-buttons">
+                                <button class="selector-btn active" data-value="mono">MONO</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-grain">
+                            <label>Intensity <input type="number" class="value-input" id="val-grain-intensity" value="35"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-grain-intensity" min="5" max="100" value="35" step="1"></div>
+                            <label>Size <input type="number" class="value-input" id="val-grain-size" value="15"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-grain-size" min="5" max="40" value="15" step="1"></div>
+                            <label>Grain Color</label>
+                            <div class="selector-row" id="grain-color-buttons">
+                                <button class="selector-btn active" data-value="mono">MONO</button>
+                                <button class="selector-btn" data-value="color">COLOR</button>
+                            </div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-dots">
+                            <label>Angle <input type="number" class="value-input" id="val-dots-angle" value="45"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-dots-angle" min="0" max="360" value="45" step="1"></div>
+                            <label>Scale <input type="number" class="value-input" id="val-dots-scale" value="6"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-dots-scale" min="2" max="20" value="6" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-grid">
+                            <label>Scale <input type="number" class="value-input" id="val-grid-scale" value="20"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-grid-scale" min="5" max="50" value="20" step="1"></div>
+                            <label>Line Width <input type="number" class="value-input" id="val-grid-width" value="1"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-grid-width" min="1" max="5" value="1" step="0.5"></div>
+                            <label>Opacity <input type="number" class="value-input" id="val-grid-opacity" value="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-grid-opacity" min="5" max="100" value="30" step="1"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-scanlines">
+                            <label>Intensity <input type="number" class="value-input" id="val-scan-intensity" value="50"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-scan-intensity" min="5" max="100" value="50" step="1"></div>
+                            <label>Line Count <input type="number" class="value-input" id="val-scan-count" value="300"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-scan-count" min="50" max="800" value="300" step="10"></div>
+                        </div>
+                        <div class="fx-param-group" id="fx-params-vignette">
+                            <label>Intensity <input type="number" class="value-input" id="val-vig-intensity" value="50"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-vig-intensity" min="5" max="100" value="50" step="1"></div>
+                            <label>Radius <input type="number" class="value-input" id="val-vig-radius" value="70"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-vig-radius" min="20" max="100" value="70" step="1"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- FX Parameters (show when parent effect is active) -->
-            <div class="fx-param-group" id="fx-params-ascii">
-                <label>Cell Size <input type="number" class="value-input" id="val-ascii-cell" value="10"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-ascii-cell" min="4" max="24" value="10" step="1"></div>
-                <label>Characters</label>
-                <div class="selector-row" id="ascii-charset-buttons">
-                    <button class="selector-btn active" data-value="classic">CLASSIC</button>
-                    <button class="selector-btn" data-value="blocks">BLOCKS</button>
-                    <button class="selector-btn" data-value="dots">DOTS</button>
-                    <button class="selector-btn" data-value="binary">BINARY</button>
-                    <button class="selector-btn" data-value="braille">BRAILLE</button>
-                    <button class="selector-btn" data-value="symbols">SYMBOLS</button>
-                    <button class="selector-btn" data-value="katakana">KATA</button>
-                </div>
-                <label>Color</label>
-                <div class="selector-row" id="ascii-color-buttons">
-                    <button class="selector-btn active" data-value="mono">MONO</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                    <button class="selector-btn" data-value="green">GREEN</button>
-                    <button class="selector-btn" data-value="amber">AMBER</button>
-                    <button class="selector-btn" data-value="cyan">CYAN</button>
-                </div>
-                <label>Invert</label>
-                <div class="selector-row" id="ascii-invert-buttons">
-                    <button class="selector-btn active" data-value="off">OFF</button>
-                    <button class="selector-btn" data-value="on">ON</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-chroma">
-                <label>Offset <input type="number" class="value-input" id="val-chroma-offset" value="5"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-chroma-offset" min="1" max="25" value="5" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-atkinson">
-                <label>Atkinson Color</label>
-                <div class="selector-row" id="atkinson-color-buttons">
-                    <button class="selector-btn active" data-value="bw">B&W</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-scanlines">
-                <label>Intensity <input type="number" class="value-input" id="val-scan-intensity" value="50"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-scan-intensity" min="5" max="100" value="50" step="1"></div>
-                <label>Line Count <input type="number" class="value-input" id="val-scan-count" value="300"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-scan-count" min="50" max="800" value="300" step="10"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-vignette">
-                <label>Intensity <input type="number" class="value-input" id="val-vig-intensity" value="50"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-vig-intensity" min="5" max="100" value="50" step="1"></div>
-                <label>Radius <input type="number" class="value-input" id="val-vig-radius" value="70"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-vig-radius" min="20" max="100" value="70" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-grain">
-                <label>Intensity <input type="number" class="value-input" id="val-grain-intensity" value="35"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-grain-intensity" min="5" max="100" value="35" step="1"></div>
-                <label>Size <input type="number" class="value-input" id="val-grain-size" value="15"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-grain-size" min="5" max="40" value="15" step="1"></div>
-                <label>Grain Color</label>
-                <div class="selector-row" id="grain-color-buttons">
-                    <button class="selector-btn active" data-value="mono">MONO</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-bloom">
-                <label>Intensity <input type="number" class="value-input" id="val-bloom-intensity" value="40"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-bloom-intensity" min="5" max="100" value="40" step="1"></div>
-                <label>Radius <input type="number" class="value-input" id="val-bloom-radius" value="50"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-bloom-radius" min="10" max="100" value="50" step="1"></div>
-                <label>Threshold <input type="number" class="value-input" id="val-bloom-thresh" value="50"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-bloom-thresh" min="0" max="100" value="50" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-tint">
-                <label>Tint Preset</label>
-                <div class="selector-row" id="tint-preset-buttons">
-                    <button class="selector-btn active" data-value="green">GREEN</button>
-                    <button class="selector-btn" data-value="amber">AMBER</button>
-                    <button class="selector-btn" data-value="cyan">CYAN</button>
-                    <button class="selector-btn" data-value="blue">BLUE</button>
-                </div>
-                <label>Intensity <input type="number" class="value-input" id="val-tint-intensity" value="70"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-tint-intensity" min="5" max="100" value="70" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-sepia">
-                <label>Intensity <input type="number" class="value-input" id="val-sepia-intensity" value="70"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-sepia-intensity" min="5" max="100" value="70" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-pixel">
-                <label>Pixel Size <input type="number" class="value-input" id="val-pixel-size" value="8"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-pixel-size" min="2" max="50" value="8" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-halftone">
-                <label>Dot Size <input type="number" class="value-input" id="val-half-spacing" value="6"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-half-spacing" min="3" max="20" value="6" step="1"></div>
-                <label>Color</label>
-                <div class="selector-row" id="half-color-buttons">
-                    <button class="selector-btn active" data-value="bw">B&W</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-dither">
-                <label>Color</label>
-                <div class="selector-row" id="dither-color-buttons">
-                    <button class="selector-btn active" data-value="bw">B&W</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-pxsort">
-                <label>Threshold Low <input type="number" class="value-input" id="val-pxsort-lo" value="30"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-pxsort-lo" min="0" max="255" value="30" step="1"></div>
-                <label>Threshold High <input type="number" class="value-input" id="val-pxsort-hi" value="220"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-pxsort-hi" min="0" max="255" value="220" step="1"></div>
-                <label>Direction</label>
-                <div class="selector-row" id="pxsort-dir-buttons">
-                    <button class="selector-btn active" data-value="horizontal">HORIZ</button>
-                    <button class="selector-btn" data-value="vertical">VERT</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-wave">
-                <label>Amplitude <input type="number" class="value-input" id="val-wave-amp" value="20"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-wave-amp" min="1" max="100" value="20" step="1"></div>
-                <label>Frequency <input type="number" class="value-input" id="val-wave-freq" value="5"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-wave-freq" min="1" max="20" value="5" step="1"></div>
-                <label>Speed <input type="number" class="value-input" id="val-wave-speed" value="2"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-wave-speed" min="0" max="5" value="2" step="0.1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-glitch">
-                <label>Intensity <input type="number" class="value-input" id="val-glitch-intensity" value="30"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-glitch-intensity" min="5" max="100" value="30" step="1"></div>
-                <label>Frequency <input type="number" class="value-input" id="val-glitch-freq" value="20"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-glitch-freq" min="1" max="100" value="20" step="1"></div>
-                <label>Style</label>
-                <div class="selector-row" id="glitch-mode-buttons">
-                    <button class="selector-btn active" data-value="shift">SHIFT</button>
-                    <button class="selector-btn" data-value="tear">TEAR</button>
-                    <button class="selector-btn" data-value="corrupt">CORRUPT</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-jitter">
-                <label>Intensity <input type="number" class="value-input" id="val-jitter-intensity" value="20"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-jitter-intensity" min="1" max="100" value="20" step="1"></div>
-                <label>Block Size <input type="number" class="value-input" id="val-jitter-block" value="2"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-jitter-block" min="1" max="16" value="2" step="1"></div>
-                <label>Mode</label>
-                <div class="selector-row" id="jitter-mode-buttons">
-                    <button class="selector-btn active" data-value="random">RANDOM</button>
-                    <button class="selector-btn" data-value="perlin">PERLIN</button>
-                    <button class="selector-btn" data-value="shake">SHAKE</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-noise">
-                <label>Intensity <input type="number" class="value-input" id="val-noise-intensity" value="25"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-noise-intensity" min="5" max="100" value="25" step="1"></div>
-                <label>Scale <input type="number" class="value-input" id="val-noise-scale" value="1"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-noise-scale" min="1" max="10" value="1" step="1"></div>
-                <label>Noise Color</label>
-                <div class="selector-row" id="noise-color-buttons">
-                    <button class="selector-btn active" data-value="mono">MONO</button>
-                    <button class="selector-btn" data-value="color">COLOR</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-curve">
-                <label>Intensity <input type="number" class="value-input" id="val-curve-intensity" value="30"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-curve-intensity" min="5" max="100" value="30" step="1"></div>
-                <label>Direction</label>
-                <div class="selector-row" id="curve-dir-buttons">
-                    <button class="selector-btn active" data-value="barrel">BARREL</button>
-                    <button class="selector-btn" data-value="pincushion">PINCH</button>
-                </div>
-            </div>
-            <div class="fx-param-group" id="fx-params-bricon">
-                <label>Brightness <input type="number" class="value-input" id="val-bri" value="0"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-bri" min="-100" max="100" value="0" step="1"></div>
-                <label>Contrast <input type="number" class="value-input" id="val-con" value="100"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-con" min="0" max="200" value="100" step="1"></div>
-                <label>Saturation <input type="number" class="value-input" id="val-sat" value="100"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-sat" min="0" max="200" value="100" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-grid">
-                <label>Scale <input type="number" class="value-input" id="val-grid-scale" value="20"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-grid-scale" min="5" max="50" value="20" step="1"></div>
-                <label>Line Width <input type="number" class="value-input" id="val-grid-width" value="1"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-grid-width" min="1" max="5" value="1" step="0.5"></div>
-                <label>Opacity <input type="number" class="value-input" id="val-grid-opacity" value="30"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-grid-opacity" min="5" max="100" value="30" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-dots">
-                <label>Angle <input type="number" class="value-input" id="val-dots-angle" value="45"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-dots-angle" min="0" max="360" value="45" step="1"></div>
-                <label>Scale <input type="number" class="value-input" id="val-dots-scale" value="6"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-dots-scale" min="2" max="20" value="6" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-mblur">
-                <label>Intensity <input type="number" class="value-input" id="val-mblur-intensity" value="30"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-mblur-intensity" min="5" max="100" value="30" step="1"></div>
-                <label>Angle <input type="number" class="value-input" id="val-mblur-angle" value="0"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-mblur-angle" min="0" max="360" value="0" step="1"></div>
-            </div>
-            <div class="fx-param-group" id="fx-params-palette">
-                <label>Palette</label>
-                <div class="selector-row" id="palette-preset-buttons" style="flex-wrap:wrap;row-gap:1px;">
-                    <button class="selector-btn active" data-value="noir">NOIR</button>
-                    <button class="selector-btn" data-value="terminal">TERM</button>
-                    <button class="selector-btn" data-value="gameboy">GMBOY</button>
-                    <button class="selector-btn" data-value="synthwave">SYNTH</button>
-                    <button class="selector-btn" data-value="cyberpunk">CYBER</button>
-                    <button class="selector-btn" data-value="amber">AMBER</button>
-                    <button class="selector-btn" data-value="arctic">ARTIC</button>
-                    <button class="selector-btn" data-value="rose">ROSE</button>
-                    <button class="selector-btn" data-value="neon">NEON</button>
-                    <button class="selector-btn" data-value="forest">FORST</button>
-                    <button class="selector-btn" data-value="sunset">SUNST</button>
-                    <button class="selector-btn" data-value="ocean">OCEAN</button>
-                </div>
-                <label>Intensity <input type="number" class="value-input" id="val-palette-intensity" value="80"></label>
-                <div class="slider-wrapper"><input type="range" id="slider-palette-intensity" min="5" max="100" value="80" step="1"></div>
             </div>
 
             <!-- FX Layer toggle -->

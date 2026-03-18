@@ -1068,13 +1068,19 @@ function updateFxParamVisibility() {
 }
 
 function updateEffectCardStates() {
+    const catCounts = { color: 0, distortion: 0, pattern: 0, overlay: 0 };
     ui.fxCards.forEach(card => {
         let name = card.dataset.effect;
         let cat = card.dataset.cat;
         card.classList.remove('active-color', 'active-distortion', 'active-pattern', 'active-overlay');
         if (activeEffects.has(name)) {
             card.classList.add('active-' + cat);
+            catCounts[cat]++;
         }
+    });
+    document.querySelectorAll('.cat-count').forEach(badge => {
+        let count = catCounts[badge.dataset.cat] || 0;
+        badge.textContent = count > 0 ? count : '';
     });
 }
 

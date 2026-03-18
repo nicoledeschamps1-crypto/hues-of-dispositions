@@ -1029,6 +1029,15 @@ function setupFxUIListeners() {
         inp.addEventListener('keydown', (e) => { e.stopPropagation(); });
     }
 
+    // Collapsible FX categories
+    document.querySelectorAll('.cat-toggle').forEach(label => {
+        label.addEventListener('click', (e) => {
+            // Don't collapse if clicking on an fx-card inside (shouldn't happen, but safety)
+            if (e.target.closest('.fx-card')) return;
+            label.closest('.fx-category').classList.toggle('collapsed');
+        });
+    });
+
     // Effect cards — click to toggle, drag to timeline
     ui.fxCards.forEach(card => {
         card.addEventListener('mousedown', (e) => {
