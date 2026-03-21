@@ -33,6 +33,23 @@ const EFFECT_TYPES = {
 function applyActiveEffects() {
     if (!masterFxEnabled || activeEffects.size === 0) return;
 
+    // Temporarily remove effects handled by GPU shader pipeline
+    let _gpuHandled = [];
+    if (typeof shaderFX !== 'undefined' && shaderFX.ready && shaderFX.enabled &&
+        typeof SHADER_EFFECT_REGISTRY !== 'undefined') {
+        for (const name of activeEffects) {
+            if (SHADER_EFFECT_REGISTRY[name]) {
+                _gpuHandled.push(name);
+            }
+        }
+        for (const name of _gpuHandled) activeEffects.delete(name);
+        if (activeEffects.size === 0) {
+            // All effects handled by GPU — restore and return
+            for (const name of _gpuHandled) activeEffects.add(name);
+            return;
+        }
+    }
+
     let hasPixel = EFFECT_TYPES.pixel.some(e => activeEffects.has(e));
     let hasHybrid = EFFECT_TYPES.hybrid.some(e => activeEffects.has(e));
 
@@ -105,6 +122,9 @@ function applyActiveEffects() {
     if (activeEffects.has('scanlines')) applyScanlines();
     if (activeEffects.has('vignette')) applyVignette();
     if (activeEffects.has('stripe')) applyStripe();
+
+    // Restore GPU-handled effects to activeEffects
+    for (const name of _gpuHandled) activeEffects.add(name);
 }
 
 // Apply a single named effect (used by split view dual FX)
