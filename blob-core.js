@@ -378,6 +378,8 @@ let splitFxSide = 'both';        // which side effects apply to: 'left'|'right'|
 let splitShape = 'rect';         // zoom side clip shape: rect|rounded|circle|pill
 let _splitDrag = null;           // drag state for split divider
 let _asciiSampler = null;        // offscreen canvas for ASCII viz sampling
+let _thermoSampler = null;       // offscreen canvas for thermal viz sampling
+let _vizRecordQueue = [];        // viz mode render data for recording at native res
 let _splitBuf = null;            // offscreen canvas for dual FX compositing
 let depthBlurEnabled = false;    // depth-of-field vignette blur at edges
 let depthBlurStrength = 40;      // blur vignette width in pixels
@@ -1724,6 +1726,7 @@ function updateZoomUI() {
 
 function draw() {
     background(0);
+    _vizRecordQueue.length = 0;
     paramOwner.fill(PARAM_SRC_USER);
     handleContinuousInput();
     updateSmoothedAudio();
@@ -1997,67 +2000,79 @@ function draw() {
                 let bx = p.posicao.x - zW/2, by = p.posicao.y - zH/2;
                 image(videoEl, bx, by, zW, zH, sx, sy, sw, sh);
 
-                // THERMO: thermal heatmap on blob box (targeted region only)
+                // THERMO: thermal heatmap — sample from source video at high resolution
                 if (activeVizModes.has(11)) {
                     let _hm = [[0,0,128],[0,0,255],[0,128,255],[0,255,255],[0,255,128],
                                [0,255,0],[128,255,0],[255,255,0],[255,128,0],[255,0,0],[255,255,255]];
-                    let _pd = pixelDensity();
-                    let rx = Math.max(0, Math.floor(bx * _pd));
-                    let ry = Math.max(0, Math.floor(by * _pd));
-                    let rw = Math.min(Math.ceil(zW * _pd), drawingContext.canvas.width - rx);
-                    let rh = Math.min(Math.ceil(zH * _pd), drawingContext.canvas.height - ry);
-                    if (rw > 0 && rh > 0) {
-                        let imgData = drawingContext.getImageData(rx, ry, rw, rh);
-                        let d = imgData.data;
-                        for (let i = 0; i < d.length; i += 4) {
-                            let lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
-                            let pos = lum * (_hm.length - 1);
-                            let lo = Math.floor(pos), hi = Math.min(_hm.length-1, lo+1);
-                            let t = pos - lo;
-                            d[i]   = Math.round(_hm[lo][0]*(1-t) + _hm[hi][0]*t);
-                            d[i+1] = Math.round(_hm[lo][1]*(1-t) + _hm[hi][1]*t);
-                            d[i+2] = Math.round(_hm[lo][2]*(1-t) + _hm[hi][2]*t);
-                        }
-                        drawingContext.putImageData(imgData, rx, ry);
+                    // Sample at >= display size, using source resolution when available
+                    let tW = Math.min(Math.max(Math.ceil(zW), Math.ceil(sw), 128), 512);
+                    let tH = Math.min(Math.max(Math.ceil(zH), Math.ceil(sh), 128), 512);
+                    if (!_thermoSampler) _thermoSampler = document.createElement('canvas');
+                    if (_thermoSampler.width !== tW || _thermoSampler.height !== tH) {
+                        _thermoSampler.width = tW; _thermoSampler.height = tH;
                     }
+                    let tctx = _thermoSampler.getContext('2d', { willReadFrequently: true });
+                    tctx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, tW, tH);
+                    let imgData = tctx.getImageData(0, 0, tW, tH);
+                    let d = imgData.data;
+                    for (let i = 0; i < d.length; i += 4) {
+                        let lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
+                        let pos = lum * (_hm.length - 1);
+                        let lo = Math.floor(pos), hi = Math.min(_hm.length-1, lo+1);
+                        let t = pos - lo;
+                        d[i]   = Math.round(_hm[lo][0]*(1-t) + _hm[hi][0]*t);
+                        d[i+1] = Math.round(_hm[lo][1]*(1-t) + _hm[hi][1]*t);
+                        d[i+2] = Math.round(_hm[lo][2]*(1-t) + _hm[hi][2]*t);
+                    }
+                    tctx.putImageData(imgData, 0, 0);
+                    drawingContext.drawImage(_thermoSampler, bx, by, zW, zH);
+                    // Queue for recording at native resolution
+                    if (isRecording) _vizRecordQueue.push({ type: 'thermo', sx, sy, sw, sh, bx, by, zW, zH });
                 }
 
                 // ASCII: green terminal-style ASCII art inside blob box
                 if (activeVizModes.has(12)) {
                     let _chars = ASCII_CHARSETS[asciiCharSet] || ASCII_CHARSETS.classic;
-                    // Scale up the box so ASCII is actually readable
                     let asciiScale = 2.8;
                     let aW = Math.max(zW * asciiScale, 140);
                     let aH = Math.max(zH * asciiScale, 100);
                     let ax = p.posicao.x - aW/2, ay = p.posicao.y - aH/2;
-                    // Clamp to canvas
                     ax = constrain(ax, 0, width - aW);
                     ay = constrain(ay, 0, height - aH);
-                    let cellSz = 7;
-                    let cols = Math.floor(aW / cellSz);
-                    let rows = Math.floor(aH / (cellSz * 1.6));
+                    // Adaptive cell size: denser grid at higher viz zoom for sharper detail
+                    let cellSz = Math.max(3.5, 7 / Math.max(1, 1 + Math.max(0, vizZoomLevel) * 0.15));
+                    let cols = Math.min(Math.floor(aW / cellSz), 200);
+                    let rows = Math.min(Math.floor(aH / (cellSz * 1.6)), 120);
 
-                    // Sample video crop into offscreen canvas
+                    // Sample from source video at >= grid resolution for quality
+                    let sampleW = Math.min(Math.max(cols, Math.ceil(sw)), 400);
+                    let sampleH = Math.min(Math.max(rows, Math.ceil(sh)), 300);
                     if (!_asciiSampler) _asciiSampler = document.createElement('canvas');
-                    _asciiSampler.width = cols;
-                    _asciiSampler.height = rows;
+                    _asciiSampler.width = sampleW;
+                    _asciiSampler.height = sampleH;
                     let actx = _asciiSampler.getContext('2d');
-                    actx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, cols, rows);
-                    let sData = actx.getImageData(0, 0, cols, rows).data;
+                    actx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, sampleW, sampleH);
+                    // Downsample to grid resolution for character lookup
+                    let gridCanvas = _asciiSampler._grid;
+                    if (!gridCanvas) { gridCanvas = document.createElement('canvas'); _asciiSampler._grid = gridCanvas; }
+                    gridCanvas.width = cols; gridCanvas.height = rows;
+                    let gctx = gridCanvas.getContext('2d', { willReadFrequently: true });
+                    gctx.imageSmoothingEnabled = true;
+                    gctx.imageSmoothingQuality = 'high';
+                    gctx.drawImage(_asciiSampler, 0, 0, sampleW, sampleH, 0, 0, cols, rows);
+                    let sData = gctx.getImageData(0, 0, cols, rows).data;
 
-                    // Black background
                     push();
                     noStroke(); fill(0, 0, 0, 230);
                     rectMode(CORNER);
                     rect(ax, ay, aW, aH);
 
-                    // Draw ASCII with green phosphor look (no shadowBlur for perf)
                     drawingContext.save();
                     drawingContext.beginPath();
                     drawingContext.rect(ax, ay, aW, aH);
                     drawingContext.clip();
                     let ctx = drawingContext;
-                    ctx.font = (cellSz * 1.3) + 'px monospace';
+                    ctx.font = Math.round(cellSz * 1.3) + 'px monospace';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     let rowH = cellSz * 1.6;
@@ -2076,6 +2091,11 @@ function draw() {
                     }
                     drawingContext.restore();
                     pop();
+                    // Queue for recording at native resolution
+                    if (isRecording) _vizRecordQueue.push({
+                        type: 'ascii', sx, sy, sw, sh, ax, ay, aW, aH,
+                        cellSz, cols, rows, chars: _chars
+                    });
                 }
 
                 // Border
@@ -2167,6 +2187,88 @@ function draw() {
         recordingCtx.drawImage(p5Canvas,
             p5Sx, p5Sy, p5Sw, p5Sh,
             0, 0, rw, rh);
+
+        // 3. Re-render THERMO/ASCII at recording resolution (p5 canvas is display-res)
+        if (_vizRecordQueue.length > 0 && videoEl && videoEl.elt) {
+            let xScale = rw / (visRight - visLeft);
+            let yScale = rh / (visBottom - visTop);
+            for (let vd of _vizRecordQueue) {
+                if (vd.type === 'thermo') {
+                    let rx = (vd.bx - visLeft) * xScale;
+                    let ry = (vd.by - visTop) * yScale;
+                    let rdw = vd.zW * xScale;
+                    let rdh = vd.zH * yScale;
+                    // Render heatmap at recording resolution
+                    let tW = Math.min(Math.max(Math.ceil(rdw), 128), 512);
+                    let tH = Math.min(Math.max(Math.ceil(rdh), 128), 512);
+                    if (!_thermoSampler) _thermoSampler = document.createElement('canvas');
+                    if (_thermoSampler.width !== tW || _thermoSampler.height !== tH) {
+                        _thermoSampler.width = tW; _thermoSampler.height = tH;
+                    }
+                    let _hm = [[0,0,128],[0,0,255],[0,128,255],[0,255,255],[0,255,128],
+                                [0,255,0],[128,255,0],[255,255,0],[255,128,0],[255,0,0],[255,255,255]];
+                    let tctx = _thermoSampler.getContext('2d', { willReadFrequently: true });
+                    tctx.drawImage(videoEl.elt, vd.sx, vd.sy, vd.sw, vd.sh, 0, 0, tW, tH);
+                    let imgData = tctx.getImageData(0, 0, tW, tH);
+                    let d = imgData.data;
+                    for (let i = 0; i < d.length; i += 4) {
+                        let lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
+                        let pos = lum * (_hm.length - 1);
+                        let lo = Math.floor(pos), hi = Math.min(_hm.length-1, lo+1);
+                        let t = pos - lo;
+                        d[i]   = Math.round(_hm[lo][0]*(1-t) + _hm[hi][0]*t);
+                        d[i+1] = Math.round(_hm[lo][1]*(1-t) + _hm[hi][1]*t);
+                        d[i+2] = Math.round(_hm[lo][2]*(1-t) + _hm[hi][2]*t);
+                    }
+                    tctx.putImageData(imgData, 0, 0);
+                    recordingCtx.drawImage(_thermoSampler, rx, ry, rdw, rdh);
+                } else if (vd.type === 'ascii') {
+                    let rx = (vd.ax - visLeft) * xScale;
+                    let ry = (vd.ay - visTop) * yScale;
+                    let rdw = vd.aW * xScale;
+                    let rdh = vd.aH * yScale;
+                    let rCellW = rdw / vd.cols;
+                    let rCellH = rdh / vd.rows;
+                    // Black background at recording resolution
+                    recordingCtx.fillStyle = 'rgba(0,0,0,0.9)';
+                    recordingCtx.fillRect(rx, ry, rdw, rdh);
+                    // Sample from source video at recording-scaled grid
+                    let rCols = Math.min(Math.ceil(vd.cols * xScale), 400);
+                    let rRows = Math.min(Math.ceil(vd.rows * yScale), 250);
+                    if (!_asciiSampler) _asciiSampler = document.createElement('canvas');
+                    _asciiSampler.width = rCols; _asciiSampler.height = rRows;
+                    let actx = _asciiSampler.getContext('2d', { willReadFrequently: true });
+                    actx.drawImage(videoEl.elt, vd.sx, vd.sy, vd.sw, vd.sh, 0, 0, rCols, rRows);
+                    let sData = actx.getImageData(0, 0, rCols, rRows).data;
+                    // Render ASCII at recording resolution
+                    recordingCtx.save();
+                    recordingCtx.beginPath();
+                    recordingCtx.rect(rx, ry, rdw, rdh);
+                    recordingCtx.clip();
+                    let fontSize = Math.round(rCellW * 1.3);
+                    recordingCtx.font = fontSize + 'px monospace';
+                    recordingCtx.textAlign = 'center';
+                    recordingCtx.textBaseline = 'middle';
+                    let lastFill = '';
+                    for (let r = 0; r < rRows; r++) {
+                        for (let c = 0; c < rCols; c++) {
+                            let si = (r * rCols + c) * 4;
+                            let lum = (0.299*sData[si] + 0.587*sData[si+1] + 0.114*sData[si+2]) / 255;
+                            let ci = Math.floor(lum * (vd.chars.length - 1));
+                            if (ci === 0) continue;
+                            let g = Math.round(60 + lum * 195);
+                            let f = 'rgb(0,' + g + ',' + Math.round(lum * 30) + ')';
+                            if (f !== lastFill) { recordingCtx.fillStyle = f; lastFill = f; }
+                            recordingCtx.fillText(vd.chars[ci],
+                                rx + (c + 0.5) * (rdw / rCols),
+                                ry + (r + 0.5) * (rdh / rRows));
+                        }
+                    }
+                    recordingCtx.restore();
+                }
+            }
+            _vizRecordQueue = [];
+        }
 
         // Signal captureStream(0) that a new frame is ready
         if (recordingVideoTrack && recordingVideoTrack.requestFrame) {
