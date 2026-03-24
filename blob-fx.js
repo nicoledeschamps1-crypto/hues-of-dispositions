@@ -50,6 +50,15 @@ function getScratchFloat2(len) {
     }
     return _scratchFloat32_2;
 }
+let _scratchFloat32_3 = null;
+function getScratchFloat3(len) {
+    if (!_scratchFloat32_3 || _scratchFloat32_3.length < len) {
+        _scratchFloat32_3 = new Float32Array(len);
+    } else {
+        _scratchFloat32_3.fill(0, 0, len);
+    }
+    return _scratchFloat32_3;
+}
 
 // ---------------------------------------------------------------------------
 // EFFECT_TYPES — unified classification of all 23 effects by render method
@@ -247,9 +256,10 @@ function applyDithering() {
     if (algo === 'floyd') {
         // Floyd-Steinberg error diffusion
         let regionW = ex - sx, regionH = ey - sy;
-        let rCh = new Float32Array(regionW * regionH);
-        let gCh = new Float32Array(regionW * regionH);
-        let bCh = new Float32Array(regionW * regionH);
+        let sz = regionW * regionH;
+        let rCh = getScratchFloat(sz);
+        let gCh = getScratchFloat2(sz);
+        let bCh = getScratchFloat3(sz);
         for (let ry = 0; ry < regionH; ry += pxScale) {
             for (let rx = 0; rx < regionW; rx += pxScale) {
                 let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
@@ -604,7 +614,7 @@ function applyAtkinson() {
     }
 
     if (atkinsonColorMode === 'bw') {
-        let gray = new Float32Array(regionW * regionH);
+        let gray = getScratchFloat(regionW * regionH);
         for (let ry = 0; ry < regionH; ry++) {
             for (let rx = 0; rx < regionW; rx++) {
                 let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
@@ -622,9 +632,10 @@ function applyAtkinson() {
             }
         }
     } else {
-        let rCh = new Float32Array(regionW * regionH);
-        let gCh = new Float32Array(regionW * regionH);
-        let bCh = new Float32Array(regionW * regionH);
+        let sz = regionW * regionH;
+        let rCh = getScratchFloat(sz);
+        let gCh = getScratchFloat2(sz);
+        let bCh = getScratchFloat3(sz);
         for (let ry = 0; ry < regionH; ry++) {
             for (let rx = 0; rx < regionW; rx++) {
                 let idx = ((sx + rx) + (sy + ry) * totalW) * 4;
@@ -1798,9 +1809,9 @@ function applyEmboss() {
     let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
     let dx = Math.round(Math.cos(angleRad));
     let dy = Math.round(Math.sin(angleRad));
-    // Work on a copy
+    // Work on a copy (reuse scratch buffer)
     let regionW = ex - sx, regionH = ey - sy;
-    let buf = new Uint8Array(regionW * regionH * 3);
+    let buf = getScratchBuffer(regionW * regionH * 3);
     for (let ry = 0; ry < regionH; ry++) {
         for (let rx = 0; rx < regionW; rx++) {
             let idx = ((sx+rx) + (sy+ry) * totalW) * 4;
@@ -2229,7 +2240,7 @@ function buildFxPanel() {
     // ── EFFECT CARD GRID ──
     let cardGrid = document.getElementById('fx-card-grid');
     // Build cards for ALL effects (shown/hidden per category)
-    let fxFavorites = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]');
+    let fxFavorites; try { fxFavorites = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]'); } catch(e) { fxFavorites = []; }
     for (let [effectName, cfg] of Object.entries(FX_UI_CONFIG)) {
         let card = document.createElement('div');
         card.className = 'fx-card';
@@ -2298,7 +2309,7 @@ function buildFxPanel() {
     splitSideRow.id = 'fx-split-side-row';
     splitSideRow.style.cssText = 'display:none;margin:4px 0 2px;';
     let splitSideLabel = document.createElement('span');
-    splitSideLabel.style.cssText = 'font-size:9px;font-weight:600;color:var(--text-muted,#888);margin-right:6px;';
+    splitSideLabel.style.cssText = 'font-size:9px;font-weight:600;color:var(--text-muted,#A899C2);margin-right:6px;';
     splitSideLabel.textContent = 'Apply to';
     splitSideRow.appendChild(splitSideLabel);
     let splitSideBtns = document.createElement('div');
@@ -2660,7 +2671,7 @@ function updateCardHighlights() {
 }
 
 function toggleFxFavorite(effectName) {
-    let favs = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]');
+    let favs; try { favs = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]'); } catch(e) { favs = []; }
     let idx = favs.indexOf(effectName);
     if (idx >= 0) favs.splice(idx, 1);
     else favs.push(effectName);
@@ -2679,7 +2690,7 @@ function buildFxFavoritesRow() {
     let row = document.getElementById('fx-favorites-row');
     if (!row) return;
     row.innerHTML = '';
-    let favs = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]');
+    let favs; try { favs = JSON.parse(localStorage.getItem('blobfx-favorites') || '[]'); } catch(e) { favs = []; }
     favs.forEach(name => {
         let cfg = FX_UI_CONFIG[name];
         if (!cfg) return;
@@ -2989,7 +3000,7 @@ function updatePostProcessList() {
         let label = cfg ? cfg.label : name.toUpperCase();
         let item = document.createElement('div');
         item.className = 'fx-pp-item';
-        let catColor = FX_CAT_COLORS[FX_CATEGORIES[name]] || '#666';
+        let catColor = FX_CAT_COLORS[FX_CATEGORIES[name]] || '#4A3D60';
         item.style.setProperty('--pp-cat-color', catColor);
         item.innerHTML = `<span class="fx-pp-drag">⁞⁞</span>` +
             `<button class="fx-pp-settings" title="Settings" data-effect="${name}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>` +
@@ -3093,7 +3104,7 @@ function buildFxAudioSyncSection(effectName, group) {
     paramLabel.textContent = 'Target Parameter';
     let paramSelect = document.createElement('select');
     paramSelect.id = 'fx-async-param-' + effectName;
-    paramSelect.style.cssText = 'width:100%;background:var(--btn-bg);color:var(--text-primary);border:1px solid var(--btn-border);border-radius:4px;padding:3px 6px;font-size:9px;outline:none';
+    paramSelect.style.cssText = 'width:100%;background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:3px 6px;font-size:9px;outline:none';
     numericParams.forEach((p, idx) => {
         let opt = document.createElement('option');
         opt.value = idx;
@@ -3415,7 +3426,7 @@ function setupFxUIListeners() {
             fxDragState.dragging = true;
             ui.dragGhost.textContent = fxDragState.effect.toUpperCase();
             ui.dragGhost.style.display = 'block';
-            ui.dragGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#888';
+            ui.dragGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#A899C2';
         }
         if (fxDragState.dragging) {
             ui.dragGhost.style.left = (e.clientX + 12) + 'px';
@@ -3433,7 +3444,7 @@ function setupFxUIListeners() {
                 let segW = Math.min(5, vr.duration) / vr.duration * 100;
                 ui.tlGhost.style.left = (ratio * 100) + '%';
                 ui.tlGhost.style.width = segW + '%';
-                ui.tlGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#888';
+                ui.tlGhost.style.background = FX_CAT_COLORS[FX_CATEGORIES[fxDragState.effect]] || '#A899C2';
                 ui.tlGhost.style.opacity = '0.35';
                 ui.tlGhost.classList.add('visible');
             } else {
@@ -4763,7 +4774,7 @@ function _rebuildActiveEffectsList() {
     activeEffects.forEach(name => {
         let cfg = FX_UI_CONFIG[name];
         let label = cfg ? cfg.label : name.toUpperCase();
-        let catColor = FX_CAT_COLORS[FX_CATEGORIES[name]] || '#666';
+        let catColor = FX_CAT_COLORS[FX_CATEGORIES[name]] || '#4A3D60';
         let isHidden = hiddenEffects.has(name);
         let dimClass = isHidden ? ' layers-fx-hidden' : '';
         html += `<div class="layers-fx-item${dimClass}" style="--pp-cat-color:${catColor}">

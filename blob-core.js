@@ -722,7 +722,7 @@ const FX_DEFAULTS = {
 // Each preset: name, category, description, effects (which effects + parameter values)
 const FX_PRESET_CATEGORIES = ['all','film','retro','digital','creative','glitch'];
 const FX_PRESET_CAT_LABELS = {all:'All',film:'Film',retro:'Retro',digital:'Digital',creative:'Creative',glitch:'Glitch'};
-const FX_PRESET_CAT_COLORS = {all:'#888888',film:'#6C5CE7',retro:'#E17055',digital:'#00B894',creative:'#FDCB6E',glitch:'#FD79A8'};
+const FX_PRESET_CAT_COLORS = {all:'#A899C2',film:'#6C5CE7',retro:'#E17055',digital:'#00B894',creative:'#FDCB6E',glitch:'#FD79A8'};
 const FX_PRESETS = {
     // ── FILM ──
     noir: {
@@ -1745,6 +1745,8 @@ function setup() {
     resizeCanvas(windowWidth, windowHeight); // force 1x buffer
     p5Canvas = canvas.elt;
     p5Canvas.setAttribute('tabindex', '0');
+    p5Canvas.setAttribute('role', 'img');
+    p5Canvas.setAttribute('aria-label', 'Hues of Dispositions — live webcam effects canvas');
     canvas.elt.addEventListener('contextmenu', (e) => e.preventDefault());
     background(0);
     textFont('Helvetica Neue');
@@ -2768,6 +2770,7 @@ function setupCoreUIListeners() {
         panel.classList.add('drawer-open');
         panel.setAttribute('aria-hidden', 'false');
         if (overlay) overlay.classList.add('visible');
+        document.body.style.overflow = 'hidden';
         // Focus trap: focus first focusable element
         const first = panel.querySelector('button, input, select, [tabindex]');
         if (first) first.focus();
@@ -2776,11 +2779,13 @@ function setupCoreUIListeners() {
         panel.classList.remove('drawer-open');
         panel.setAttribute('aria-hidden', 'true');
         if (overlay) overlay.classList.remove('visible');
+        document.body.style.overflow = '';
     }
     function closeAllDrawers() {
         if (leftPanel) closeDrawer(leftPanel);
         if (rightPanel) closeDrawer(rightPanel);
     }
+    window._closeAllDrawers = closeAllDrawers;
 
     const toggleLeft = document.getElementById('drawer-toggle-left');
     const toggleRight = document.getElementById('drawer-toggle-right');
@@ -2891,7 +2896,7 @@ function setupCoreUIListeners() {
             modeDragState.dragging = true;
             ui.dragGhost.textContent = MODE_NAMES[modeDragState.mode] || 'MODE';
             ui.dragGhost.style.display = 'block';
-            ui.dragGhost.style.background = '#aaa';
+            ui.dragGhost.style.background = '#A899C2';
         }
         if (modeDragState.dragging) {
             ui.dragGhost.style.left = (e.clientX + 12) + 'px';
@@ -2908,7 +2913,7 @@ function setupCoreUIListeners() {
                 let segW = Math.min(5, vr.duration) / vr.duration * 100;
                 ui.tlGhost.style.left = (ratio * 100) + '%';
                 ui.tlGhost.style.width = segW + '%';
-                ui.tlGhost.style.background = '#aaa';
+                ui.tlGhost.style.background = '#A899C2';
                 ui.tlGhost.style.opacity = '0.35';
                 ui.tlGhost.classList.add('visible');
             } else {
@@ -3804,6 +3809,17 @@ function startWebcam() {
         updateButtonStates();
         syncPlayIcon(true);
     });
+    // Handle webcam permission denial / errors
+    if (videoEl && videoEl.elt) {
+        videoEl.elt.addEventListener('error', () => {
+            usingWebcam = false;
+            videoLoaded = false;
+            videoPlaying = false;
+            ui.webcamBtn.classList.remove('active');
+            ui.fileName.innerText = 'webcam failed — check permissions';
+            syncPlayIcon(false);
+        });
+    }
 }
 
 function stopWebcam() {
@@ -3892,6 +3908,14 @@ function handleFile(event) {
                 showTimeline();
             }
         });
+        // Handle video load errors (unsupported format, corrupt file)
+        if (videoEl && videoEl.elt) {
+            videoEl.elt.addEventListener('error', () => {
+                videoLoaded = false; videoPlaying = false;
+                ui.fileName.innerText = 'video failed to load';
+                syncPlayIcon(false);
+            }, { once: true });
+        }
     }
 }
 
@@ -4071,6 +4095,17 @@ function keyPressed(event) {
     if (key === '?') { toggleHelp(); return false; }
     if (keyCode === ESCAPE && _helpVisible) { toggleHelp(); return false; }
     if (keyCode === ESCAPE && _settingsVisible) { toggleSettings(); return false; }
+    if (keyCode === ESCAPE && window._closeAllDrawers) { window._closeAllDrawers(); return false; }
+    // Undo accidental click-to-track color pick
+    if (keyCode === ESCAPE && currentMode === 5 && window._prevModeBeforeColorPick != null) {
+        currentMode = window._prevModeBeforeColorPick;
+        _userMode = window._prevUserModeBeforeColorPick;
+        window._prevModeBeforeColorPick = null;
+        window._prevUserModeBeforeColorPick = null;
+        if (currentMode !== 5) document.getElementById('custom-color-group').style.display = 'none';
+        updateButtonStates();
+        return false;
+    }
 
     // Block all other keys while help or settings is open
     if (_helpVisible || _settingsVisible) return false;
@@ -4366,7 +4401,7 @@ function mouseDragged() {
 function mousePressed() {
     // Don't handle clicks that landed on UI elements (buttons, inputs, panels)
     let el = document.elementFromPoint(mouseX, mouseY);
-    if (el && el.closest('.panel, #tl-container, .modal-overlay, .settings-modal')) return;
+    if (el && el.closest('.panel, #timeline-container, .modal-overlay, .settings-modal')) return;
     if (mouseButton === RIGHT) { lastX = mouseX; return; }
     if (currentMode === 14 && mouseButton === LEFT) {
         if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {
@@ -4387,6 +4422,9 @@ function mousePressed() {
                 let splitX = Math.round(width * splitPosition / 100);
                 if (Math.abs(mouseX - splitX) < 10) return;
             }
+            // Store previous mode so user can undo with Escape
+            window._prevModeBeforeColorPick = currentMode;
+            window._prevUserModeBeforeColorPick = _userMode;
             let c = get(Math.round(mouseX), Math.round(mouseY));
             let h = hue(c);
             customHue = h;

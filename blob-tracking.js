@@ -3,6 +3,15 @@
 // Point tracking, line drawing, point info display
 // ══════════════════════════════════════════
 
+// Fisher-Yates shuffle — O(n), unbiased (replaces sort(() => Math.random() - 0.5))
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        let tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+}
+
 function trackPoints() {
     trackedPoints = [];
     if (currentMode === 0 || !videoLoaded || !videoPlaying) return;
@@ -149,7 +158,7 @@ function trackPoints() {
             candidates.push(...extras);
         }
 
-        candidates.sort(() => Math.random() - 0.5);
+        shuffleArray(candidates);
         let quantityLevel = paramValues[0];
         let numPoints = (quantityLevel <= 10) ? floor(quantityLevel) : floor(map(quantityLevel, 11, 100, 11, candidates.length));
         numPoints = min(numPoints, candidates.length);
@@ -199,7 +208,7 @@ function trackPoints() {
             }
         }
 
-        candidates.sort(() => Math.random() - 0.5);
+        shuffleArray(candidates);
         let quantityLevel = paramValues[0];
         let numPoints = (quantityLevel <= 10) ? floor(quantityLevel) : floor(map(quantityLevel, 11, 100, 11, candidates.length));
         numPoints = min(numPoints, candidates.length);
@@ -342,7 +351,7 @@ function trackPoints() {
         }
     }
     prevGridPixels = newGridPixels;
-    candidates.sort(() => Math.random() - 0.5);
+    shuffleArray(candidates);
     let quantityLevel = paramValues[0];
     let numPoints = (quantityLevel <= 10) ? floor(quantityLevel) : floor(map(quantityLevel, 11, 100, 11, candidates.length));
     numPoints = min(numPoints, candidates.length);

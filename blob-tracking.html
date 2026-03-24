@@ -32,6 +32,7 @@
             --gray-100: #F0ECF8;  /* hsl(278,30%,95%) — purple-white */
             --purple-600: rgba(139, 69, 232, 0.35);
             --purple-500: #8B45E8;  /* hsl(275,77%,60%) — vivid purple */
+            --purple-indigo: #6C5CE7; /* hsl(245,75%,66%) — UI accent indigo */
             --purple-400: #A966FF;  /* hsl(278,100%,70%) — bright purple */
             --purple-300: #CC99FF;  /* hsl(278,100%,80%) — glow purple */
             --magenta-500: #D4187A; /* hsl(328,78%,47%) — hot magenta */
@@ -139,6 +140,7 @@
             background-color: var(--bg-color);
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             overflow: hidden;
+            overscroll-behavior: none;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
@@ -166,9 +168,10 @@
             flex-direction: column;
             gap: 16px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            transition: all 0.3s ease;
-            max-height: 90vh;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-height: calc(100vh - 60px - var(--tl-height) - 30px);
             overflow-y: auto;
+            overscroll-behavior: contain;
         }
         #left-panel { left: 24px; }
         #right-panel { right: 24px; overflow-x: hidden; }
@@ -346,7 +349,7 @@
         /* Selector Buttons Row */
         .selector-wrap { flex-wrap: wrap; gap: 4px; }
         .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer; }
-        .checkbox-label input[type="checkbox"] { accent-color: #8B45E8; }
+        .checkbox-label input[type="checkbox"] { accent-color: var(--color-accent); }
         .selector-row {
             display: flex;
             flex-wrap: wrap;
@@ -589,7 +592,7 @@
             box-shadow: 0 0 12px rgba(108,92,231,0.1);
         }
 
-        input[type="file"] { display: none; }
+        input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 
         .upload-label {
             display: flex;
@@ -811,7 +814,7 @@
             transition: 0.2s;
         }
         .fx-toggle-switch input:checked + .toggle-slider {
-            background: #6C5CE7;
+            background: var(--purple-indigo);
         }
         .fx-toggle-switch input:checked + .toggle-slider:before {
             transform: translateX(16px);
@@ -850,7 +853,7 @@
             text-transform: uppercase;
         }
         .sync-label.active {
-            color: #8B45E8;
+            color: var(--color-accent);
         }
         .fx-audio-sync.collapsed .fx-audio-sync-body {
             max-height: 0;
@@ -877,7 +880,7 @@
         }
         .fx-audio-sync-meter-fill {
             height: 100%;
-            background: #8B45E8;
+            background: var(--color-accent);
             border-radius: 2px;
             transition: width 50ms linear;
         }
@@ -1273,7 +1276,7 @@
             background: rgba(108,92,231,0.15);
             border: 1px solid rgba(108,92,231,0.3);
             border-radius: 4px;
-            color: #6C5CE7;
+            color: var(--purple-indigo);
             font-family: inherit;
             font-size: var(--font-xs);
             font-weight: 700;
@@ -1285,7 +1288,7 @@
         }
         .fx-preset-save-btn:hover {
             background: rgba(108,92,231,0.25);
-            border-color: #6C5CE7;
+            border-color: var(--purple-indigo);
         }
 
         /* (FX categories now use tabs + cards, old accordion CSS removed) */
@@ -1398,7 +1401,7 @@
         .audio-meter-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #666, #e5e5e5);
+            background: linear-gradient(90deg, var(--gray-500), var(--gray-300));
             transition: width 0.05s;
         }
 
@@ -1602,7 +1605,7 @@
             width: 100%;
             box-sizing: border-box;
             background: rgba(255,255,255,0.05);
-            border: 1px solid #2a2a2a;
+            border: 1px solid var(--color-border);
             color: var(--text-main);
             font-family: inherit;
             font-size: var(--font-sm);
@@ -1614,7 +1617,7 @@
             border-color: var(--text-muted);
         }
         .text-input::placeholder {
-            color: #444;
+            color: var(--color-text-muted);
             text-transform: uppercase;
         }
         .debug-bar {
@@ -1636,7 +1639,7 @@
             backdrop-filter: blur(14px);
             border: 1px solid rgba(169,102,255,0.1);
             border-radius: var(--panel-radius);
-            z-index: 10;
+            z-index: 8;
             display: flex;
             flex-direction: column;
             padding: var(--tl-padding-v) var(--tl-padding-h);
@@ -1863,7 +1866,7 @@
         }
         /* Timeline drag-over state */
         #tl-track-inner.drag-over {
-            background: #1e1a2e;
+            background: var(--gray-800);
             box-shadow: inset 0 0 16px rgba(108, 92, 231, 0.25);
         }
         .tl-zoom-controls {
@@ -1881,7 +1884,7 @@
         #tl-zoom-slider {
             width: var(--tl-zoom-width);
             height: 12px;
-            accent-color: #6C5CE7;
+            accent-color: var(--purple-indigo);
         }
         /* Drag ghost (follows cursor) */
         #drag-ghost {
@@ -1933,7 +1936,7 @@
         #tl-tooltip {
             position: fixed;
             display: none;
-            background: rgba(20, 20, 20, 0.95);
+            background: rgba(17, 14, 22, 0.95);
             border: 1px solid rgba(255,255,255,0.15);
             color: var(--text-main);
             font-size: var(--font-xs);
@@ -1949,7 +1952,7 @@
         .tl-offset-label {
             font-size: var(--font-xs);
             font-weight: 700;
-            color: #6C5CE7;
+            color: var(--purple-indigo);
             font-family: 'Commit Mono', 'Roboto Mono', monospace;
             white-space: nowrap;
         }
@@ -1958,7 +1961,7 @@
         .tl-audio-section {
             font-size: var(--font-xs);
             font-weight: 600;
-            color: #6C5CE7;
+            color: var(--purple-indigo);
             font-family: 'Commit Mono', 'Roboto Mono', monospace;
             white-space: nowrap;
             cursor: pointer;
@@ -1974,7 +1977,7 @@
         .tl-audio-start-input {
             width: 38px;
             background: rgba(108, 92, 231, 0.2);
-            border: 1px solid #6C5CE7;
+            border: 1px solid var(--purple-indigo);
             border-radius: 3px;
             color: #fff;
             font-size: var(--font-xs);
@@ -2132,7 +2135,7 @@
         #tl-btn-add-blob:hover { background: #00E0D9; box-shadow: 0 0 14px rgba(0, 206, 201, 0.5); }
         /* SYNC button — primary action emphasis */
         #tl-btn-sync {
-            background: #6C5CE7;
+            background: var(--purple-indigo);
             color: #fff;
             font-weight: 700;
             font-size: var(--font-sm);
@@ -2171,10 +2174,10 @@
         }
         .tl-sync-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 10px; height: 10px;
-            border-radius: 50%; background: #6C5CE7; cursor: pointer;
+            border-radius: 50%; background: var(--purple-indigo); cursor: pointer;
         }
         .tl-sync-btn {
-            background: #6C5CE7;
+            background: var(--purple-indigo);
             color: #fff;
             font-weight: 700;
             font-size: var(--font-xs);
@@ -2205,7 +2208,7 @@
         }
         #blob-edit-banner.visible { display: block; }
         #tl-drag-hint.drop-active {
-            color: #6C5CE7;
+            color: var(--purple-indigo);
             opacity: 1;
         }
 
@@ -2547,7 +2550,7 @@
         }
         #help-overlay.visible { display: flex; }
         #help-content {
-            background: rgba(18, 18, 18, 0.98);
+            background: rgba(17, 14, 22, 0.98);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 16px;
             max-width: 720px;
@@ -2559,7 +2562,7 @@
         }
         #help-content::-webkit-scrollbar { width: 4px; }
         #help-content::-webkit-scrollbar-track { background: transparent; }
-        #help-content::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        #help-content::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 2px; }
         .help-header {
             display: flex;
             justify-content: space-between;
@@ -2598,7 +2601,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #6C5CE7;
+            color: var(--purple-indigo);
             margin: 0 0 8px;
         }
         .help-section dl {
@@ -2966,7 +2969,7 @@
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 9;
+            z-index: 1000;
         }
         .panel-overlay.visible { display: block; }
 
@@ -2976,14 +2979,14 @@
             position: absolute;
             top: var(--sp-2);
             right: var(--sp-2);
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(139,69,232,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
             border-radius: var(--radius-md);
             color: var(--color-text);
-            width: 28px;
-            height: 28px;
+            width: 36px;
+            height: 36px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
             line-height: 1;
             z-index: 11;
         }
@@ -2999,16 +3002,16 @@
 
             .panel {
                 position: fixed;
-                top: 0;
+                top: 36px;
                 bottom: 0;
                 width: 280px;
                 max-height: none;
-                height: 100vh;
+                height: calc(100vh - 36px);
                 padding: var(--sp-4);
-                padding-top: 48px;
+                padding-top: var(--sp-5);
                 border-radius: 0;
                 transition: transform 0.3s ease;
-                z-index: 10;
+                z-index: 1001;
             }
             #left-panel {
                 left: 0;
@@ -3031,6 +3034,7 @@
             .action-btn,
             .tb-btn,
             .panel-tab,
+            .panel-close-btn,
             .fx-card,
             .fx-view-btn {
                 min-height: 44px;
@@ -3038,14 +3042,25 @@
             }
         }
         @media (max-width: 700px) {
+            :root { --tl-height: 180px; }
             /* Hide non-essential top bar items */
             #top-bar .tb-fps,
             #top-bar #tb-source,
             #top-bar #tb-mode,
-            #top-bar .tb-zone-right .tb-divider {
+            #top-bar .tb-zone-right .tb-divider,
+            #top-bar .tb-saturn,
+            #top-bar #tb-settings-btn,
+            #top-bar #tb-help-btn,
+            #top-bar .tb-rec-dot,
+            #top-bar #tb-rec-time,
+            #top-bar #btn-save-rec {
                 display: none;
             }
-            #top-bar { padding: 0 var(--sp-2); gap: var(--sp-1); }
+            #top-bar { padding: 0 var(--sp-1); gap: 2px; overflow: hidden; }
+            #top-bar .tb-zone { gap: 2px; }
+            #top-bar .tb-zone-right { gap: 2px; }
+            #top-bar .tb-btn { padding: 4px 4px; min-height: 28px; }
+            .drawer-toggle { padding: 4px 6px; min-width: 36px; }
             .panel { width: 280px; padding: var(--sp-3); font-size: var(--font-sm); }
             #timeline-container { left: 10px; right: 10px; }
         }
@@ -3106,7 +3121,7 @@
         }
         #settings-overlay.visible { display: flex; }
         #settings-content {
-            background: rgba(18, 18, 18, 0.98);
+            background: rgba(17, 14, 22, 0.98);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 16px;
             max-width: 360px;
@@ -3118,7 +3133,7 @@
         }
         #settings-content::-webkit-scrollbar { width: 4px; }
         #settings-content::-webkit-scrollbar-track { background: transparent; }
-        #settings-content::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        #settings-content::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 2px; }
         .settings-header {
             display: flex;
             justify-content: space-between;
@@ -3329,7 +3344,7 @@
             cursor: pointer;
         }
         .overlay-select:focus {
-            border-color: #8B45E8;
+            border-color: var(--color-accent);
             outline: none;
         }
         #fx-overlay-panel .slider-row {
@@ -3492,10 +3507,10 @@
             <span class="tb-status" id="tb-rec-time"></span>
         </div>
         <!-- Right zone -->
-        <div class="tb-zone tb-zone-right" aria-live="polite">
-            <span class="tb-fx-badge" id="tb-fx-badge" title="Active effects"></span>
+        <div class="tb-zone tb-zone-right">
+            <span class="tb-fx-badge" id="tb-fx-badge" title="Active effects" aria-live="polite"></span>
             <div class="tb-divider"></div>
-            <span class="tb-status tb-fps" id="tb-fps"></span>
+            <span class="tb-status tb-fps" id="tb-fps" aria-hidden="true"></span>
             <span class="tb-status no-source" id="tb-source">NO SOURCE</span>
             <div class="tb-divider"></div>
             <span class="tb-status" id="tb-mode">OFF</span>
@@ -3569,7 +3584,7 @@
                         Upload
                     </div>
                     <div id="file-name">mp4 or mov</div>
-                    <input type="file" id="videoUpload" accept="video/mp4,video/quicktime">
+                    <input type="file" id="videoUpload" accept="video/*">
                 </div>
                 <button id="webcam-btn" title="Use Webcam" aria-label="Toggle webcam">
                     <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>

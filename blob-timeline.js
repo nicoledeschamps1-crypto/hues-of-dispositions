@@ -227,7 +227,7 @@ function addModeSegmentAt(modeValue, startTime) {
         fadeOut: TL_DEFAULT_FADE,
         params: [...paramBaseline],
         lane: 0,
-        color: '#aaaaaa'
+        color: '#A899C2'
     };
     tlSaveState();
     timelineSegments.push(seg);
