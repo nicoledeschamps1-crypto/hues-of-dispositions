@@ -25,6 +25,11 @@ let showLines = false;
 let lineColor = '#ffffff';
 let lineWeight = 1;
 let lineStraight = false;
+let lineDashed = false;
+let connectionMode = 'chain'; // chain, hub, web
+let blobStyle = 'box'; // box, lframe, xframe, scope, win2k, grid, dash, glow, particle
+let _blobParticles = [];
+const _MAX_PARTICLES = 500;
 let trackBoxColor = '#969696'; // default gray tracking box color
 let trackBoxWeight = 1.2;      // box stroke weight
 let currentMode = 1;
@@ -355,6 +360,31 @@ let ledShape = 'square';
 let scanVertical = false;
 let pixelMode = 'square';
 
+// ── CONSTRAINT SYSTEMS-INSPIRED EFFECTS ──
+// Sift (Light Prism)
+let siftLayers = 8;
+let siftOffsetX = 4;
+let siftOffsetY = 2;
+let siftIntensity = 50;
+// Smart Pixelate (content-aware)
+let smartpxThreshold = 15;
+let smartpxSize = 8;
+// Slide Stretch
+let slideDividers = 3;
+let slideStretch = 40;
+let slideAngle = 0; // 0=vertical, 90=horizontal
+// Corner Pin
+let cornerpinPreset = 'perspective';
+let cornerpinIntensity = 50;
+// Cellular Automata
+let automataRule = 'decay';
+let automataSpeed = 5;
+let automataThreshold = 128;
+// Pixel Flow
+let flowAngle = 0;
+let flowSpeed = 3;
+let flowDecay = 70;
+
 let videoX, videoY, videoW, videoH;
 let currentVideoUrl = null;
 
@@ -505,7 +535,8 @@ const FX_CATEGORIES = {
     bloom:'pattern', dither:'pattern', atkinson:'pattern', halftone:'pattern', pxsort:'pattern', pixel:'pattern', led:'pattern',
     printstamp:'pattern', y2kblue:'pattern', pxsortgpu:'pattern',
     ascii:'overlay', glitch:'overlay', noise:'overlay', grain:'overlay', dots:'overlay', grid:'overlay', scanlines:'overlay', vignette:'overlay', crt:'overlay',
-    ntsc:'overlay', stripe:'overlay', paperscan:'overlay', xerox:'overlay', grunge:'overlay', datamosh:'overlay'
+    ntsc:'overlay', stripe:'overlay', paperscan:'overlay', xerox:'overlay', grunge:'overlay', datamosh:'overlay',
+    sift:'overlay', smartpixel:'pattern', slidestretch:'distortion', cornerpin:'distortion', automata:'overlay', pixelflow:'distortion'
 };
 const FX_CAT_COLORS = { color:'#6C5CE7', distortion:'#00B894', pattern:'#FDCB6E', overlay:'#E17055' };
 const FX_PARAM_MAP = {
@@ -567,7 +598,13 @@ const FX_PARAM_MAP = {
     stripe: [{v:'stripeDensity',g:()=>stripeDensity,s:v=>stripeDensity=v},{v:'stripeAngle',g:()=>stripeAngle,s:v=>stripeAngle=v},{v:'stripeThickness',g:()=>stripeThickness,s:v=>stripeThickness=v},{v:'stripeOpacity',g:()=>stripeOpacity,s:v=>stripeOpacity=v},{v:'stripeMode',g:()=>stripeMode,s:v=>stripeMode=v}],
     paperscan: [{v:'paperscanIntensity',g:()=>paperscanIntensity,s:v=>paperscanIntensity=v},{v:'paperscanFiber',g:()=>paperscanFiber,s:v=>paperscanFiber=v},{v:'paperscanWarmth',g:()=>paperscanWarmth,s:v=>paperscanWarmth=v}],
     xerox: [{v:'xeroxContrast',g:()=>xeroxContrast,s:v=>xeroxContrast=v},{v:'xeroxNoise',g:()=>xeroxNoise,s:v=>xeroxNoise=v},{v:'xeroxDarkness',g:()=>xeroxDarkness,s:v=>xeroxDarkness=v}],
-    grunge: [{v:'grungeTint',g:()=>grungeTint,s:v=>grungeTint=v},{v:'grungePosterize',g:()=>grungePosterize,s:v=>grungePosterize=v},{v:'grungeGrain',g:()=>grungeGrain,s:v=>grungeGrain=v}]
+    grunge: [{v:'grungeTint',g:()=>grungeTint,s:v=>grungeTint=v},{v:'grungePosterize',g:()=>grungePosterize,s:v=>grungePosterize=v},{v:'grungeGrain',g:()=>grungeGrain,s:v=>grungeGrain=v}],
+    sift: [{v:'siftLayers',g:()=>siftLayers,s:v=>siftLayers=v},{v:'siftOffsetX',g:()=>siftOffsetX,s:v=>siftOffsetX=v},{v:'siftOffsetY',g:()=>siftOffsetY,s:v=>siftOffsetY=v},{v:'siftIntensity',g:()=>siftIntensity,s:v=>siftIntensity=v}],
+    smartpixel: [{v:'smartpxThreshold',g:()=>smartpxThreshold,s:v=>smartpxThreshold=v},{v:'smartpxSize',g:()=>smartpxSize,s:v=>smartpxSize=v}],
+    slidestretch: [{v:'slideDividers',g:()=>slideDividers,s:v=>slideDividers=v},{v:'slideStretch',g:()=>slideStretch,s:v=>slideStretch=v},{v:'slideAngle',g:()=>slideAngle,s:v=>slideAngle=v}],
+    cornerpin: [{v:'cornerpinPreset',g:()=>cornerpinPreset,s:v=>cornerpinPreset=v},{v:'cornerpinIntensity',g:()=>cornerpinIntensity,s:v=>cornerpinIntensity=v}],
+    automata: [{v:'automataRule',g:()=>automataRule,s:v=>automataRule=v},{v:'automataSpeed',g:()=>automataSpeed,s:v=>automataSpeed=v},{v:'automataThreshold',g:()=>automataThreshold,s:v=>automataThreshold=v}],
+    pixelflow: [{v:'flowAngle',g:()=>flowAngle,s:v=>flowAngle=v},{v:'flowSpeed',g:()=>flowSpeed,s:v=>flowSpeed=v},{v:'flowDecay',g:()=>flowDecay,s:v=>flowDecay=v}]
 };
 const EFFECT_FN_MAP = {
     sepia:()=>applySepia(), tint:()=>applyTint(), palette:()=>applyPalette(), bricon:()=>applyBriCon(),
@@ -582,7 +619,9 @@ const EFFECT_FN_MAP = {
     radblur:()=>applyRadialBlur(), zoomblur:()=>applyZoomBlur(), circblur:()=>applyCircBlur(), elgrid:()=>applyElasticGrid(),
     printstamp:()=>applyPrintStamp(), y2kblue:()=>applyY2KBlue(),
     ntsc:()=>applyNTSC(), stripe:()=>applyStripe(), paperscan:()=>applyPaperScan(), xerox:()=>applyXerox(), grunge:()=>applyGrunge(),
-    datamosh:()=>{}, pxsortgpu:()=>{}
+    datamosh:()=>{}, pxsortgpu:()=>{},
+    sift:()=>applySift(), smartpixel:()=>applySmartPixel(), slidestretch:()=>applySlideStretch(),
+    cornerpin:()=>applyCornerPin(), automata:()=>applyCellularAutomata(), pixelflow:()=>applyPixelFlow()
 };
 
 // ── SHARED PALETTES (used by Palette, Dither, Gradient effects) ──
@@ -670,7 +709,13 @@ const FX_DEFAULTS = {
     xerox: {xeroxContrast:60,xeroxNoise:40,xeroxDarkness:50},
     grunge: {grungeTint:'#cc6677',grungePosterize:3,grungeGrain:50},
     datamosh: {datamoshDecay:20,datamoshThreshold:40,datamoshIntensity:75,datamoshMode:'melt'},
-    pxsortgpu: {pxsortgpuLo:30,pxsortgpuHi:220,pxsortgpuDir:'horizontal'}
+    pxsortgpu: {pxsortgpuLo:30,pxsortgpuHi:220,pxsortgpuDir:'horizontal'},
+    sift: {siftLayers:8,siftOffsetX:4,siftOffsetY:2,siftIntensity:50},
+    smartpixel: {smartpxThreshold:15,smartpxSize:8},
+    slidestretch: {slideDividers:3,slideStretch:40,slideAngle:0},
+    cornerpin: {cornerpinPreset:'perspective',cornerpinIntensity:50},
+    automata: {automataRule:'decay',automataSpeed:5,automataThreshold:128},
+    pixelflow: {flowAngle:0,flowSpeed:3,flowDecay:70}
 };
 
 // ── FX_PRESETS — Built-in preset definitions (inspired by effect.app) ──
@@ -1456,6 +1501,38 @@ const FX_UI_CONFIG = {
         {type:'slider',sid:'slider-pxsortgpu-hi',vid:'val-pxsortgpu-hi',label:'High',min:0,max:255,step:1,setter:v=>pxsortgpuHi=v},
         {type:'selector',cid:'pxsortgpu-dir-buttons',label:'Direction',setter:v=>pxsortgpuDir=v,
          opts:[{v:'horizontal',l:'HORIZ'},{v:'vertical',l:'VERT'}]}
+    ]},
+    sift: { label:'Sift', controls:[
+        {type:'slider',sid:'slider-sift-layers',vid:'val-sift-layers',label:'Layers',min:2,max:20,step:1,setter:v=>siftLayers=v},
+        {type:'slider',sid:'slider-sift-offsetx',vid:'val-sift-offsetx',label:'X Offset',min:-30,max:30,step:1,setter:v=>siftOffsetX=v},
+        {type:'slider',sid:'slider-sift-offsety',vid:'val-sift-offsety',label:'Y Offset',min:-30,max:30,step:1,setter:v=>siftOffsetY=v},
+        {type:'slider',sid:'slider-sift-intensity',vid:'val-sift-intensity',label:'Intensity',min:5,max:100,step:1,setter:v=>siftIntensity=v}
+    ]},
+    smartpixel: { label:'Smart Pixel', controls:[
+        {type:'slider',sid:'slider-smartpx-threshold',vid:'val-smartpx-threshold',label:'Threshold',min:1,max:60,step:1,setter:v=>smartpxThreshold=v},
+        {type:'slider',sid:'slider-smartpx-size',vid:'val-smartpx-size',label:'Cell Size',min:4,max:32,step:2,setter:v=>smartpxSize=v}
+    ]},
+    slidestretch: { label:'Slide Stretch', controls:[
+        {type:'slider',sid:'slider-slide-dividers',vid:'val-slide-dividers',label:'Dividers',min:1,max:12,step:1,setter:v=>slideDividers=v},
+        {type:'slider',sid:'slider-slide-stretch',vid:'val-slide-stretch',label:'Stretch',min:5,max:200,step:1,setter:v=>slideStretch=v},
+        {type:'selector',cid:'slide-angle-buttons',label:'Direction',setter:v=>slideAngle=(v==='horizontal'?90:0),
+         opts:[{v:'vertical',l:'VERT'},{v:'horizontal',l:'HORIZ'}]}
+    ]},
+    cornerpin: { label:'Corner Pin', controls:[
+        {type:'selector',cid:'cornerpin-preset-buttons',label:'Preset',setter:v=>cornerpinPreset=v,
+         opts:[{v:'perspective',l:'PERSP'},{v:'squeeze',l:'SQUEEZE'},{v:'twist',l:'TWIST'},{v:'trapezoid',l:'TRAPEZ'}]},
+        {type:'slider',sid:'slider-cornerpin-intensity',vid:'val-cornerpin-intensity',label:'Intensity',min:0,max:100,step:1,setter:v=>cornerpinIntensity=v}
+    ]},
+    automata: { label:'Automata', controls:[
+        {type:'selector',cid:'automata-rule-buttons',label:'Rule',setter:v=>automataRule=v,
+         opts:[{v:'decay',l:'DECAY'},{v:'crystal',l:'CRYSTAL'},{v:'conway',l:'CONWAY'},{v:'growth',l:'GROWTH'}]},
+        {type:'slider',sid:'slider-automata-speed',vid:'val-automata-speed',label:'Speed',min:1,max:10,step:1,setter:v=>automataSpeed=v},
+        {type:'slider',sid:'slider-automata-threshold',vid:'val-automata-threshold',label:'Threshold',min:20,max:230,step:5,setter:v=>automataThreshold=v}
+    ]},
+    pixelflow: { label:'Pixel Flow', controls:[
+        {type:'slider',sid:'slider-flow-angle',vid:'val-flow-angle',label:'Angle',min:0,max:360,step:5,setter:v=>flowAngle=v},
+        {type:'slider',sid:'slider-flow-speed',vid:'val-flow-speed',label:'Speed',min:1,max:20,step:1,setter:v=>flowSpeed=v},
+        {type:'slider',sid:'slider-flow-decay',vid:'val-flow-decay',label:'Trail',min:10,max:95,step:1,setter:v=>flowDecay=v}
     ]}
 };
 
@@ -2182,23 +2259,17 @@ function draw() {
                     });
                 }
 
-                // Border
-                noFill(); rectMode(CENTER);
-                if (vizZoomBox) {
-                    stroke(red(_tbc), green(_tbc), blue(_tbc));
-                    strokeWeight(trackBoxWeight);
-                } else {
-                    stroke(red(_tbc), green(_tbc), blue(_tbc), 80);
-                    strokeWeight(trackBoxWeight * 0.67);
-                }
-                rect(p.posicao.x, p.posicao.y, zW, zH);
+                // Border — blob style
+                let _vizA = vizZoomBox ? 255 : 80;
+                let _vizWt = vizZoomBox ? trackBoxWeight : trackBoxWeight * 0.67;
+                drawBlobStyle(p, zW, zH, _tbc, _vizA, _vizWt);
                 pop();
             } else {
-                stroke(red(_tbc), green(_tbc), blue(_tbc)); noFill(); strokeWeight(trackBoxWeight); rectMode(CENTER);
-                rect(p.posicao.x, p.posicao.y, pw, ph);
+                drawBlobStyle(p, pw, ph, _tbc, 255, trackBoxWeight);
             }
             drawPointInfo(p);
         }
+        if (blobStyle === 'particle') _updateBlobParticles();
 
         drawingContext.restore(); // end clip
         if (blobsOpacity < 1.0) {
@@ -3147,6 +3218,29 @@ function setupCoreUIListeners() {
         btn.addEventListener('click', (e) => {
             lineStraight = (e.target.dataset.value === 'straight');
             document.querySelectorAll('#line-style-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Line dashed toggle
+    const lineDashedCb = document.getElementById('line-dashed');
+    if (lineDashedCb) lineDashedCb.addEventListener('change', (e) => { lineDashed = e.target.checked; });
+
+    // Connection mode (chain/hub/web)
+    document.querySelectorAll('#connection-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            connectionMode = e.target.dataset.value;
+            document.querySelectorAll('#connection-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+
+    // Blob style selector (in Visualize tab of left panel)
+    document.querySelectorAll('#blob-style-buttons-viz .selector-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            blobStyle = e.target.dataset.value;
+            if (blobStyle !== 'particle') _blobParticles.length = 0;
+            document.querySelectorAll('#blob-style-buttons-viz .selector-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
         });
     });

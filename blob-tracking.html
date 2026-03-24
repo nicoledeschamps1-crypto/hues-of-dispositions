@@ -344,6 +344,9 @@
         /* Focus handled by global :focus-visible rule */
 
         /* Selector Buttons Row */
+        .selector-wrap { flex-wrap: wrap; gap: 4px; }
+        .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer; }
+        .checkbox-label input[type="checkbox"] { accent-color: #8B45E8; }
         .selector-row {
             display: flex;
             flex-wrap: wrap;
@@ -2367,6 +2370,8 @@
         .fx-on-btn.active .eye-open { display: inline; }
         .fx-on-btn:not(.active) .eye-closed { display: inline; }
         .fx-on-btn:not(.active) .eye-open { display: none; }
+        .fx-remove-btn { color: rgba(255,100,100,0.5); }
+        .fx-remove-btn:hover { color: #ff4444; border-color: rgba(255,68,68,0.4); }
 
         /* Post Process list */
         .fx-postprocess {
@@ -3685,6 +3690,18 @@
                         <button class="selector-btn viz-action" data-value="11" title="Heat-map style blob density">THERMO</button>
                         <button class="selector-btn viz-action" data-value="12" title="ASCII character art conversion">ASCII</button>
                     </div>
+                    <label id="label-blob-style-viz" style="margin-top:8px;">Blob Style</label>
+                    <div class="selector-row selector-wrap" id="blob-style-buttons-viz" aria-labelledby="label-blob-style-viz">
+                        <button class="selector-btn active" data-value="box" title="Standard rectangle outline around each blob">BOX</button>
+                        <button class="selector-btn" data-value="lframe" title="Corner brackets only — camera viewfinder style">L-FRAME</button>
+                        <button class="selector-btn" data-value="xframe" title="Diagonal cross with center diamond marker">X-FRAME</button>
+                        <button class="selector-btn" data-value="scope" title="Crosshair reticle with circle and tick marks">SCOPE</button>
+                        <button class="selector-btn" data-value="win2k" title="Retro Windows 2000 window frame with title bar">WIN2K</button>
+                        <button class="selector-btn" data-value="grid" title="Rule-of-thirds grid overlay inside each blob">GRID</button>
+                        <button class="selector-btn" data-value="dash" title="Dashed rectangle outline around each blob">DASH</button>
+                        <button class="selector-btn" data-value="glow" title="Soft glowing halo around each blob">GLOW</button>
+                        <button class="selector-btn" data-value="particle" title="Particles emit and drift from blob positions">PARTICLE</button>
+                    </div>
                     <div id="product-info-group" style="display:none;margin-top:8px;">
                         <label style="font-size:9px;font-weight:600;color:var(--text-muted,#888);display:block;margin-bottom:4px;">Tag Text</label>
                         <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
@@ -4347,19 +4364,26 @@
                 <button class="selector-btn active" data-value="curved">CURVED</button>
                 <button class="selector-btn" data-value="straight">STRAIGHT</button>
             </div>
+            <label class="checkbox-label"><input type="checkbox" id="line-dashed" title="Apply dashed stroke to connection lines"> Dashed</label>
+            <label id="label-connection">Connection</label>
+            <div class="selector-row" id="connection-buttons" aria-labelledby="label-connection">
+                <button class="selector-btn active" data-value="chain" title="Connect blobs in sequential order">CHAIN</button>
+                <button class="selector-btn" data-value="hub" title="Route all lines through canvas center — starburst pattern">HUB</button>
+                <button class="selector-btn" data-value="web" title="Connect nearby blobs with distance-faded lines — constellation pattern">WEB</button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260325"></script>
-<script src="blob-fx.js?v=20260325b"></script>
+<script src="blob-core.js?v=20260325c"></script>
+<script src="blob-fx.js?v=20260325c"></script>
 <script src="blob-shader-fx.js?v=20260325b"></script>
 <script src="blob-overlay.js?v=20260324"></script>
 <script src="blob-audio.js?v=20260325"></script>
 <script src="blob-timeline.js?v=20260325"></script>
 <script src="blob-mask.js?v=20260324"></script>
-<script src="blob-tracking.js?v=20260324"></script>
+<script src="blob-tracking.js?v=20260325b"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">

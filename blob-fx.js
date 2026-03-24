@@ -59,12 +59,13 @@ const EFFECT_TYPES = {
         'threshold','exposure','colortemp','rgbgain','levels','colorbal','colmatrix',
         'emboss','chroma','rgbshift','curve','wave','jitter','mblur',
         'blursharp','modulate','ripple','swirl','reedglass','polar2rect','rect2polar','radblur','zoomblur','circblur','elgrid',
-        'bloom','dither','atkinson','pxsort','pixel',
+        'bloom','dither','atkinson','pxsort','pixel','smartpixel',
         'y2kblue',
         'glitch','noise','grain','crt',
-        'ntsc','paperscan','xerox','grunge','datamosh','pxsortgpu'],
+        'ntsc','paperscan','xerox','grunge','datamosh','pxsortgpu',
+        'automata','pixelflow'],
     hybrid: ['halftone','ascii','dots','led','printstamp'],
-    draw: ['grid','scanlines','vignette','stripe']
+    draw: ['grid','scanlines','vignette','stripe','sift','slidestretch','cornerpin']
 };
 
 // ---------------------------------------------------------------------------
@@ -140,6 +141,7 @@ function applyActiveEffects() {
     if (_fxActive('atkinson')) applyAtkinson();
     if (_fxActive('pxsort')) applyPixelSort();
     if (_fxActive('pixel')) applyPixelate();
+    if (_fxActive('smartpixel')) applySmartPixel();
     if (_fxActive('y2kblue')) applyY2KBlue();
     // Overlay tier (pixel)
     if (_fxActive('glitch')) applyGlitch();
@@ -150,6 +152,8 @@ function applyActiveEffects() {
     if (_fxActive('paperscan')) applyPaperScan();
     if (_fxActive('xerox')) applyXerox();
     if (_fxActive('grunge')) applyGrunge();
+    if (_fxActive('automata')) applyCellularAutomata();
+    if (_fxActive('pixelflow')) applyPixelFlow();
 
     // Commit pixel changes before hybrid/draw effects
     if (hasPixel || hasHybrid) updatePixels();
@@ -166,6 +170,9 @@ function applyActiveEffects() {
     if (_fxActive('scanlines')) applyScanlines();
     if (_fxActive('vignette')) applyVignette();
     if (_fxActive('stripe')) applyStripe();
+    if (_fxActive('sift')) applySift();
+    if (_fxActive('slidestretch')) applySlideStretch();
+    if (_fxActive('cornerpin')) applyCornerPin();
 
     // Restore GPU-handled effects to activeEffects
     for (const name of _gpuHandled) activeEffects.add(name);
@@ -2278,7 +2285,13 @@ function buildFxPanel() {
     let nameLabel = document.createElement('span');
     nameLabel.id = 'fx-effect-name-label';
     nameLabel.style.cssText = 'flex:1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-text)';
-    selRow.append(nameLabel, onBtn, dragH);
+    let removeBtn = document.createElement('button');
+    removeBtn.className = 'fx-on-btn fx-remove-btn';
+    removeBtn.id = 'fx-remove-btn';
+    removeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+    removeBtn.title = 'Remove effect';
+    removeBtn.addEventListener('click', () => removeCurrentFxEffect());
+    selRow.append(nameLabel, onBtn, removeBtn, dragH);
 
     // ── Split side toggle (visible only when split view is on) ──
     let splitSideRow = document.createElement('div');
@@ -2558,7 +2571,8 @@ function selectFxEffect(name) {
     // Switch to the correct category if needed
     let cat = FX_CATEGORIES[name];
     if (cat && cat !== currentFxCat) switchFxCategory(cat);
-    // Browsing does NOT auto-enable — user must explicitly toggle via eye button
+    // Auto-activate on select (click-to-apply)
+    if (!activeEffects.has(name)) activeEffects.add(name);
     showFxParams(name);
     updateFxOnButton();
     updateCardHighlights();
@@ -2609,6 +2623,17 @@ function showFxParams(effectName) {
     document.querySelectorAll('#fx-params-container .fx-param-group').forEach(g => {
         g.classList.toggle('visible', g.id === 'fx-params-' + effectName);
     });
+}
+
+function removeCurrentFxEffect() {
+    if (!currentViewedEffect) return;
+    activeEffects.delete(currentViewedEffect);
+    hiddenEffects.delete(currentViewedEffect);
+    updateEffectCardStates();
+    updateFxOnButton();
+    updateDropdownMarkers();
+    updatePostProcessList();
+    updateCardHighlights();
 }
 
 function updateFxOnButton() {
@@ -4288,6 +4313,310 @@ function applyGrunge() {
             pixels[idx+1] = Math.round(tint[1] * lumN);
             pixels[idx+2] = Math.round(tint[2] * lumN);
         }
+    }
+}
+
+// ══════════════════════════════════════════
+// CONSTRAINT SYSTEMS-INSPIRED EFFECTS
+// ══════════════════════════════════════════
+
+// Scratch canvas for draw-based effects (sift, slidestretch, cornerpin)
+let _fxDrawBuf = null;
+function _getFxDrawBuf(w, h) {
+    if (!_fxDrawBuf || _fxDrawBuf.width !== w || _fxDrawBuf.height !== h) {
+        _fxDrawBuf = document.createElement('canvas');
+        _fxDrawBuf.width = w; _fxDrawBuf.height = h;
+    }
+    return _fxDrawBuf;
+}
+
+// ── Sift (Light Prism) ─────────────────────────
+// Additive-blend offset copies for optical interference
+function applySift() {
+    let ctx = drawingContext;
+    let cw = ctx.canvas.width, ch = ctx.canvas.height;
+    let buf = _getFxDrawBuf(cw, ch);
+    buf.getContext('2d').drawImage(ctx.canvas, 0, 0);
+
+    ctx.save();
+    // Clip to video region
+    ctx.beginPath(); ctx.rect(videoX, videoY, videoW, videoH); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    let alpha = (siftIntensity / 100) / siftLayers;
+    ctx.globalAlpha = Math.min(alpha, 0.5);
+    for (let i = 1; i <= siftLayers; i++) {
+        ctx.drawImage(buf, i * siftOffsetX, i * siftOffsetY);
+    }
+    ctx.restore();
+}
+
+// ── Smart Pixel (content-aware pixelation) ──────
+// Only pixelates low-detail cells; preserves edges/faces
+function applySmartPixel() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let sz = Math.max(4, smartpxSize) * d;
+    let thresh = smartpxThreshold;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+
+    for (let by = sy; by < ey; by += sz) {
+        for (let bx = sx; bx < ex; bx += sz) {
+            let maxY = Math.min(by + sz, ey);
+            let maxX = Math.min(bx + sz, ex);
+            let sumR = 0, sumG = 0, sumB = 0, count = 0;
+            let minL = 255, maxL = 0;
+            for (let y = by; y < maxY; y++) {
+                for (let x = bx; x < maxX; x++) {
+                    let idx = (x + y * totalW) * 4;
+                    let r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+                    sumR += r; sumG += g; sumB += b;
+                    let l = (r + g + b) / 3;
+                    if (l < minL) minL = l;
+                    if (l > maxL) maxL = l;
+                    count++;
+                }
+            }
+            if (count === 0) continue;
+            // Variance proxy: range of luminance in cell
+            let range = maxL - minL;
+            if (range < thresh) {
+                // Low detail — replace with average
+                let aR = sumR / count, aG = sumG / count, aB = sumB / count;
+                for (let y = by; y < maxY; y++) {
+                    for (let x = bx; x < maxX; x++) {
+                        let idx = (x + y * totalW) * 4;
+                        pixels[idx] = aR; pixels[idx+1] = aG; pixels[idx+2] = aB;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Slide Stretch ───────────────────────────────
+// Edge-pixel-repeat stretching at virtual divider positions
+function applySlideStretch() {
+    let ctx = drawingContext;
+    let cw = ctx.canvas.width, ch = ctx.canvas.height;
+    let buf = _getFxDrawBuf(cw, ch);
+    buf.getContext('2d').drawImage(ctx.canvas, 0, 0);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(videoX, videoY, videoW, videoH); ctx.clip();
+
+    let isVert = slideAngle === 0; // vertical dividers = horizontal stretch
+    let totalLen = isVert ? videoW : videoH;
+    let numSegs = slideDividers + 1;
+    let segLen = totalLen / numSegs;
+    let stretchPx = slideStretch;
+
+    // Clear video region
+    ctx.clearRect(videoX, videoY, videoW, videoH);
+
+    let outPos = isVert ? videoX : videoY;
+    for (let i = 0; i < numSegs; i++) {
+        let srcPos = (isVert ? videoX : videoY) + i * segLen;
+        // Alternate segments get stretched/compressed
+        let destLen = segLen + ((i % 2 === 0) ? stretchPx : -stretchPx * 0.5);
+        destLen = Math.max(destLen, 2);
+        if (isVert) {
+            ctx.drawImage(buf, srcPos, videoY, segLen, videoH, outPos, videoY, destLen, videoH);
+        } else {
+            ctx.drawImage(buf, videoX, srcPos, videoW, segLen, videoX, outPos, videoW, destLen);
+        }
+        outPos += destLen;
+    }
+    ctx.restore();
+}
+
+// ── Corner Pin ──────────────────────────────────
+// Perspective distortion via strip-based drawImage
+function applyCornerPin() {
+    let ctx = drawingContext;
+    let cw = ctx.canvas.width, ch = ctx.canvas.height;
+    let buf = _getFxDrawBuf(cw, ch);
+    buf.getContext('2d').drawImage(ctx.canvas, 0, 0);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(videoX, videoY, videoW, videoH); ctx.clip();
+    ctx.clearRect(videoX, videoY, videoW, videoH);
+
+    let strips = 50;
+    let intensity = cornerpinIntensity / 100;
+    for (let i = 0; i < strips; i++) {
+        let t = i / strips;
+        let srcY = videoY + t * videoH;
+        let srcH = videoH / strips + 1;
+        let offset = 0;
+
+        if (cornerpinPreset === 'perspective') {
+            offset = (t - 0.5) * videoW * 0.3 * intensity;
+        } else if (cornerpinPreset === 'squeeze') {
+            offset = Math.sin(t * Math.PI) * videoW * 0.25 * intensity;
+        } else if (cornerpinPreset === 'twist') {
+            offset = Math.sin(t * Math.PI * 2) * videoW * 0.15 * intensity;
+        } else if (cornerpinPreset === 'trapezoid') {
+            offset = t * videoW * 0.25 * intensity;
+        }
+
+        let destX = videoX + offset;
+        let destW = videoW - 2 * Math.abs(offset);
+        if (destW < 2) destW = 2;
+        ctx.drawImage(buf, videoX, srcY, videoW, srcH, destX, srcY, destW, srcH);
+    }
+    ctx.restore();
+}
+
+// ── Cellular Automata ───────────────────────────
+// Pixels evolve based on neighbor rules (decay, crystal, conway, growth)
+let _caBuffer = null;
+
+function applyCellularAutomata() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let len = pixels.length;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+
+    if (!_caBuffer || _caBuffer.length !== len) {
+        _caBuffer = new Uint8Array(len);
+        _caBuffer.set(pixels);
+    }
+
+    let evolve = (frameCount % Math.max(1, 11 - automataSpeed)) === 0;
+    let thresh = automataThreshold;
+
+    if (evolve) {
+        let buf = getScratchBuffer(len);
+        buf.set(_caBuffer);
+
+        // Step every 2px for performance
+        for (let y = sy + 1; y < ey - 1; y += 2) {
+            for (let x = sx + 1; x < ex - 1; x += 2) {
+                let idx = (x + y * totalW) * 4;
+                let lum = (buf[idx] + buf[idx+1] + buf[idx+2]) / 3;
+
+                if (automataRule === 'decay') {
+                    let diff = Math.abs(pixels[idx] - buf[idx]) + Math.abs(pixels[idx+1] - buf[idx+1]) + Math.abs(pixels[idx+2] - buf[idx+2]);
+                    if (diff > 30) {
+                        _caBuffer[idx] = pixels[idx]; _caBuffer[idx+1] = pixels[idx+1]; _caBuffer[idx+2] = pixels[idx+2];
+                    } else {
+                        _caBuffer[idx] = Math.max(0, buf[idx] - 3);
+                        _caBuffer[idx+1] = Math.max(0, buf[idx+1] - 3);
+                        _caBuffer[idx+2] = Math.max(0, buf[idx+2] - 3);
+                    }
+                } else if (automataRule === 'crystal') {
+                    let avgR = 0, avgG = 0, avgB = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            let ni = ((x+dx) + (y+dy) * totalW) * 4;
+                            avgR += buf[ni]; avgG += buf[ni+1]; avgB += buf[ni+2];
+                        }
+                    }
+                    _caBuffer[idx] = Math.round(avgR / 9 / 32) * 32;
+                    _caBuffer[idx+1] = Math.round(avgG / 9 / 32) * 32;
+                    _caBuffer[idx+2] = Math.round(avgB / 9 / 32) * 32;
+                } else if (automataRule === 'conway') {
+                    let alive = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            let ni = ((x+dx) + (y+dy) * totalW) * 4;
+                            if ((buf[ni] + buf[ni+1] + buf[ni+2]) / 3 > thresh) alive++;
+                        }
+                    }
+                    let isAlive = lum > thresh;
+                    if (isAlive && (alive < 2 || alive > 3)) {
+                        _caBuffer[idx] = Math.round(buf[idx] * 0.85 + pixels[idx] * 0.15);
+                        _caBuffer[idx+1] = Math.round(buf[idx+1] * 0.85 + pixels[idx+1] * 0.15);
+                        _caBuffer[idx+2] = Math.round(buf[idx+2] * 0.85 + pixels[idx+2] * 0.15);
+                    } else if (!isAlive && alive === 3) {
+                        _caBuffer[idx] = pixels[idx]; _caBuffer[idx+1] = pixels[idx+1]; _caBuffer[idx+2] = pixels[idx+2];
+                    }
+                } else if (automataRule === 'growth') {
+                    let alive = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            let ni = ((x+dx) + (y+dy) * totalW) * 4;
+                            if ((buf[ni] + buf[ni+1] + buf[ni+2]) / 3 > thresh) alive++;
+                        }
+                    }
+                    if (alive >= 4 && lum < thresh) {
+                        _caBuffer[idx] = Math.min(255, buf[idx] + 12);
+                        _caBuffer[idx+1] = Math.min(255, buf[idx+1] + 12);
+                        _caBuffer[idx+2] = Math.min(255, buf[idx+2] + 12);
+                    } else if (alive < 2) {
+                        _caBuffer[idx] = Math.round(buf[idx] * 0.95 + pixels[idx] * 0.05);
+                        _caBuffer[idx+1] = Math.round(buf[idx+1] * 0.95 + pixels[idx+1] * 0.05);
+                        _caBuffer[idx+2] = Math.round(buf[idx+2] * 0.95 + pixels[idx+2] * 0.05);
+                    }
+                }
+                // Copy to 2x2 block for stride-2 fill
+                _caBuffer[idx+4] = _caBuffer[idx]; _caBuffer[idx+5] = _caBuffer[idx+1]; _caBuffer[idx+6] = _caBuffer[idx+2];
+                let idx2 = (x + (y+1) * totalW) * 4;
+                _caBuffer[idx2] = _caBuffer[idx]; _caBuffer[idx2+1] = _caBuffer[idx+1]; _caBuffer[idx2+2] = _caBuffer[idx+2];
+                _caBuffer[idx2+4] = _caBuffer[idx]; _caBuffer[idx2+5] = _caBuffer[idx+1]; _caBuffer[idx2+6] = _caBuffer[idx+2];
+            }
+        }
+    }
+
+    // Write CA buffer to pixels
+    for (let y = sy; y < ey; y++) {
+        let rowStart = (sx + y * totalW) * 4;
+        let rowLen = (ex - sx) * 4;
+        pixels.set(_caBuffer.subarray(rowStart, rowStart + rowLen), rowStart);
+    }
+}
+
+// ── Pixel Flow ──────────────────────────────────
+// Pixels stream in a direction with persistent trails
+let _flowBuffer = null;
+
+function applyPixelFlow() {
+    let d = pixelDensity();
+    let totalW = width * d;
+    let len = pixels.length;
+    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
+    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
+
+    if (!_flowBuffer || _flowBuffer.length !== len) {
+        _flowBuffer = new Uint8Array(len);
+        _flowBuffer.set(pixels);
+    }
+
+    let angle = flowAngle * Math.PI / 180;
+    let spd = Math.max(1, flowSpeed);
+    let dx = Math.round(Math.cos(angle) * spd);
+    let dy = Math.round(Math.sin(angle) * spd);
+    let decay = flowDecay / 100;
+    let fresh = 1 - decay;
+
+    let buf = getScratchBuffer(len);
+
+    // Shift flow buffer by direction
+    for (let y = sy; y < ey; y++) {
+        for (let x = sx; x < ex; x++) {
+            let srcX = x - dx, srcY = y - dy;
+            let di = (x + y * totalW) * 4;
+            if (srcX >= sx && srcX < ex && srcY >= sy && srcY < ey) {
+                let si = (srcX + srcY * totalW) * 4;
+                buf[di]   = Math.round(_flowBuffer[si] * decay + pixels[di] * fresh);
+                buf[di+1] = Math.round(_flowBuffer[si+1] * decay + pixels[di+1] * fresh);
+                buf[di+2] = Math.round(_flowBuffer[si+2] * decay + pixels[di+2] * fresh);
+            } else {
+                buf[di] = pixels[di]; buf[di+1] = pixels[di+1]; buf[di+2] = pixels[di+2];
+            }
+        }
+    }
+
+    // Update persistent buffer and write to pixels
+    for (let y = sy; y < ey; y++) {
+        let rowStart = (sx + y * totalW) * 4;
+        let rowLen = (ex - sx) * 4;
+        _flowBuffer.set(buf.subarray(rowStart, rowStart + rowLen), rowStart);
+        pixels.set(buf.subarray(rowStart, rowStart + rowLen), rowStart);
     }
 }
 

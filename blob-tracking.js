@@ -358,37 +358,66 @@ function trackPoints() {
 function drawLines() {
     if (trackedPoints.length < 2) return;
     let opacity = map(paramValues[2], 0, 100, 0, 255);
-    let curvatureLevel = lineStraight ? 0 : paramValues[3];
-    // Parse line color and apply opacity
     let c = color(lineColor);
-    stroke(red(c), green(c), blue(c), opacity);
+    let lr = red(c), lg = green(c), lb = blue(c);
+    stroke(lr, lg, lb, opacity);
     strokeWeight(lineWeight);
     noFill();
+    if (lineDashed) drawingContext.setLineDash([8, 4]);
 
-    beginShape();
-    if (curvatureLevel === 0) {
-        for (let p of trackedPoints) vertex(p.posicao.x, p.posicao.y);
-    } else {
-        let expFactor = pow(curvatureLevel / 100.0, 2.5);
-        let chaosAmp = map(expFactor, 0, 1, 0, 120);
-        let breakAmp = map(curvatureLevel, 60, 100, 0, 40);
-        let timeFactor = frameCount * 0.01;
-        curveVertex(trackedPoints[0].posicao.x, trackedPoints[0].posicao.y);
+    if (connectionMode === 'hub') {
+        // All lines route through canvas center
+        let cx = width / 2, cy = height / 2;
         for (let p of trackedPoints) {
-            let nX1 = noise(p.posicao.x * 0.005, p.posicao.y * 0.005, timeFactor);
-            let nY1 = noise(p.posicao.x * 0.005, p.posicao.y * 0.005, timeFactor + 100);
-            let oX1 = map(nX1, 0, 1, -chaosAmp, chaosAmp);
-            let oY1 = map(nY1, 0, 1, -chaosAmp, chaosAmp);
-            let nX2 = noise(p.posicao.x * 0.1, p.posicao.y * 0.1, timeFactor + 200);
-            let nY2 = noise(p.posicao.x * 0.1, p.posicao.y * 0.1, timeFactor + 300);
-            let oX2 = map(nX2, 0, 1, -breakAmp, breakAmp);
-            let oY2 = map(nY2, 0, 1, -breakAmp, breakAmp);
-            curveVertex(p.posicao.x + oX1 + oX2, p.posicao.y + oY1 + oY2);
+            line(p.posicao.x, p.posicao.y, cx, cy);
         }
-        let last = trackedPoints[trackedPoints.length - 1];
-        curveVertex(last.posicao.x, last.posicao.y);
+    } else if (connectionMode === 'web') {
+        // Connect nearby blobs (constellation/web look)
+        let maxD = Math.min(width, height) * 0.3;
+        let pts = trackedPoints;
+        let len = Math.min(pts.length, 80); // cap for perf
+        for (let i = 0; i < len; i++) {
+            for (let j = i + 1; j < len; j++) {
+                let dx = pts[i].posicao.x - pts[j].posicao.x;
+                let dy = pts[i].posicao.y - pts[j].posicao.y;
+                let d = Math.sqrt(dx*dx + dy*dy);
+                if (d < maxD) {
+                    let a = map(d, 0, maxD, opacity, 0);
+                    stroke(lr, lg, lb, a);
+                    line(pts[i].posicao.x, pts[i].posicao.y, pts[j].posicao.x, pts[j].posicao.y);
+                }
+            }
+        }
+    } else {
+        // Chain mode (default — connect in point order)
+        let curvatureLevel = lineStraight ? 0 : paramValues[3];
+        beginShape();
+        if (curvatureLevel === 0) {
+            for (let p of trackedPoints) vertex(p.posicao.x, p.posicao.y);
+        } else {
+            let expFactor = pow(curvatureLevel / 100.0, 2.5);
+            let chaosAmp = map(expFactor, 0, 1, 0, 120);
+            let breakAmp = map(curvatureLevel, 60, 100, 0, 40);
+            let timeFactor = frameCount * 0.01;
+            curveVertex(trackedPoints[0].posicao.x, trackedPoints[0].posicao.y);
+            for (let p of trackedPoints) {
+                let nX1 = noise(p.posicao.x * 0.005, p.posicao.y * 0.005, timeFactor);
+                let nY1 = noise(p.posicao.x * 0.005, p.posicao.y * 0.005, timeFactor + 100);
+                let oX1 = map(nX1, 0, 1, -chaosAmp, chaosAmp);
+                let oY1 = map(nY1, 0, 1, -chaosAmp, chaosAmp);
+                let nX2 = noise(p.posicao.x * 0.1, p.posicao.y * 0.1, timeFactor + 200);
+                let nY2 = noise(p.posicao.x * 0.1, p.posicao.y * 0.1, timeFactor + 300);
+                let oX2 = map(nX2, 0, 1, -breakAmp, breakAmp);
+                let oY2 = map(nY2, 0, 1, -breakAmp, breakAmp);
+                curveVertex(p.posicao.x + oX1 + oX2, p.posicao.y + oY1 + oY2);
+            }
+            let last = trackedPoints[trackedPoints.length - 1];
+            curveVertex(last.posicao.x, last.posicao.y);
+        }
+        endShape();
     }
-    endShape();
+
+    if (lineDashed) drawingContext.setLineDash([]);
 }
 
 function drawPointInfo(p) {
@@ -466,5 +495,224 @@ function drawPointInfo(p) {
             pop();
             curY += chipSize + 16;
         }
+    }
+}
+
+// ── BLOB STYLE RENDERING ──────────────────────────
+
+function drawBlobStyle(p, w, h, tbc, alpha, weight) {
+    let r = red(tbc), g = green(tbc), b = blue(tbc);
+    let a = alpha !== undefined ? alpha : 255;
+    let wt = weight || trackBoxWeight;
+    let px = p.posicao.x, py = p.posicao.y;
+
+    switch (blobStyle) {
+        case 'lframe':   _drawLFrame(px, py, w, h, r, g, b, a, wt); break;
+        case 'xframe':   _drawXFrame(px, py, w, h, r, g, b, a, wt); break;
+        case 'scope':    _drawScope(px, py, w, h, r, g, b, a, wt); break;
+        case 'win2k':    _drawWin2K(px, py, w, h, r, g, b, a, wt, p); break;
+        case 'grid':     _drawGrid(px, py, w, h, r, g, b, a, wt); break;
+        case 'dash':     _drawDash(px, py, w, h, r, g, b, a, wt); break;
+        case 'glow':     _drawGlow(px, py, w, h, r, g, b, a, wt); break;
+        case 'particle': _drawParticleSpawn(px, py, r, g, b); break;
+        default: // box
+            stroke(r, g, b, a); noFill(); strokeWeight(wt); rectMode(CENTER);
+            rect(px, py, w, h);
+    }
+}
+
+function _drawLFrame(px, py, w, h, r, g, b, a, wt) {
+    let x1 = px - w/2, y1 = py - h/2;
+    let x2 = px + w/2, y2 = py + h/2;
+    let len = Math.min(w, h) * 0.25;
+    stroke(r, g, b, a); strokeWeight(wt); noFill();
+    // Top-left
+    line(x1, y1, x1 + len, y1); line(x1, y1, x1, y1 + len);
+    // Top-right
+    line(x2, y1, x2 - len, y1); line(x2, y1, x2, y1 + len);
+    // Bottom-left
+    line(x1, y2, x1 + len, y2); line(x1, y2, x1, y2 - len);
+    // Bottom-right
+    line(x2, y2, x2 - len, y2); line(x2, y2, x2, y2 - len);
+}
+
+function _drawXFrame(px, py, w, h, r, g, b, a, wt) {
+    let hw = w/2, hh = h/2;
+    stroke(r, g, b, a); strokeWeight(wt); noFill();
+    // Diagonals from corners
+    line(px - hw, py - hh, px + hw, py + hh);
+    line(px + hw, py - hh, px - hw, py + hh);
+    // Center diamond
+    let d = Math.min(w, h) * 0.15;
+    line(px - d, py, px, py - d); line(px, py - d, px + d, py);
+    line(px + d, py, px, py + d); line(px, py + d, px - d, py);
+}
+
+function _drawScope(px, py, w, h, r, g, b, a, wt) {
+    let rad = Math.min(w, h) / 2;
+    stroke(r, g, b, a); strokeWeight(wt); noFill();
+    ellipse(px, py, rad * 2, rad * 2);
+    // Crosshair with gap
+    let ext = rad * 1.3, gap = rad * 0.3;
+    line(px - ext, py, px - gap, py); line(px + gap, py, px + ext, py);
+    line(px, py - ext, px, py - gap); line(px, py + gap, px, py + ext);
+    // Tick marks
+    let tk = rad * 0.1;
+    strokeWeight(wt * 0.6);
+    line(px - rad, py - tk, px - rad, py + tk);
+    line(px + rad, py - tk, px + rad, py + tk);
+    line(px - tk, py - rad, px + tk, py - rad);
+    line(px - tk, py + rad, px + tk, py + rad);
+    // Center dot
+    fill(r, g, b, a); noStroke(); circle(px, py, 3);
+}
+
+function _drawWin2K(px, py, w, h, r, g, b, a, wt, pt) {
+    // Enforce minimum size for Win2K chrome
+    w = Math.max(w, 80); h = Math.max(h, 50);
+    let ctx = drawingContext;
+    let x = px - w/2, y = py - h/2;
+    let titleH = Math.min(20, Math.max(14, h * 0.18));
+    ctx.save();
+
+    // Outer 3D raised border
+    ctx.lineWidth = 1;
+    // Highlight (top-left)
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
+    // Shadow (bottom-right)
+    ctx.strokeStyle = '#404040';
+    ctx.beginPath(); ctx.moveTo(x + w, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.stroke();
+    // Inner highlight
+    ctx.strokeStyle = '#D4D0C8';
+    ctx.beginPath(); ctx.moveTo(x+1, y+h-1); ctx.lineTo(x+1, y+1); ctx.lineTo(x+w-1, y+1); ctx.stroke();
+    // Inner shadow
+    ctx.strokeStyle = '#808080';
+    ctx.beginPath(); ctx.moveTo(x+w-1, y+1); ctx.lineTo(x+w-1, y+h-1); ctx.lineTo(x+1, y+h-1); ctx.stroke();
+
+    // Title bar gradient (classic Windows 2000 blue)
+    let grad = ctx.createLinearGradient(x+2, 0, x+w-2, 0);
+    grad.addColorStop(0, '#0A246A');
+    grad.addColorStop(1, '#A6CAF0');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x+2, y+2, w-4, titleH);
+
+    // Title text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold ' + Math.round(titleH * 0.65) + 'px Tahoma, "MS Sans Serif", sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    let title = pt.dynamicWord || ('blob_' + Math.round(px) + '.exe');
+    ctx.fillText(title, x+4, y+2+titleH/2, w-50);
+
+    // Window buttons: close, maximize, minimize
+    let bs = Math.min(titleH - 4, 14);
+    let by = y + 2 + (titleH - bs) / 2;
+    // Close (X)
+    let bx = x + w - 4 - bs;
+    _win2kButton(ctx, bx, by, bs);
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(bx+3, by+3); ctx.lineTo(bx+bs-3, by+bs-3);
+    ctx.moveTo(bx+bs-3, by+3); ctx.lineTo(bx+3, by+bs-3);
+    ctx.stroke();
+    // Maximize
+    bx -= bs + 2;
+    _win2kButton(ctx, bx, by, bs);
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx+3, by+3, bs-6, bs-6);
+    ctx.fillStyle = '#000000'; ctx.fillRect(bx+3, by+3, bs-6, 2);
+    // Minimize
+    bx -= bs + 2;
+    _win2kButton(ctx, bx, by, bs);
+    ctx.fillStyle = '#000000'; ctx.fillRect(bx+3, by+bs-5, bs-6, 2);
+
+    // Client area background (semi-transparent gray)
+    ctx.fillStyle = 'rgba(192,192,192,0.15)';
+    ctx.fillRect(x+2, y+2+titleH, w-4, h-4-titleH);
+
+    ctx.restore();
+}
+
+function _win2kButton(ctx, x, y, sz) {
+    ctx.fillStyle = '#C0C0C0';
+    ctx.fillRect(x, y, sz, sz);
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, y+sz); ctx.lineTo(x, y); ctx.lineTo(x+sz, y); ctx.stroke();
+    ctx.strokeStyle = '#808080';
+    ctx.beginPath(); ctx.moveTo(x+sz, y); ctx.lineTo(x+sz, y+sz); ctx.lineTo(x, y+sz); ctx.stroke();
+}
+
+function _drawGrid(px, py, w, h, r, g, b, a, wt) {
+    let x1 = px - w/2, y1 = py - h/2;
+    stroke(r, g, b, a); strokeWeight(wt); noFill(); rectMode(CORNER);
+    rect(x1, y1, w, h);
+    // 3×3 grid lines
+    stroke(r, g, b, a * 0.4); strokeWeight(wt * 0.5);
+    for (let i = 1; i < 3; i++) {
+        let gx = x1 + (w * i / 3);
+        let gy = y1 + (h * i / 3);
+        line(gx, y1, gx, y1 + h);
+        line(x1, gy, x1 + w, gy);
+    }
+    // Center crosshair
+    stroke(r, g, b, a * 0.6); strokeWeight(wt * 0.3);
+    let cx = px, cy = py, m = Math.min(w, h) * 0.08;
+    line(cx - m, cy, cx + m, cy); line(cx, cy - m, cx, cy + m);
+}
+
+function _drawDash(px, py, w, h, r, g, b, a, wt) {
+    let ctx = drawingContext;
+    ctx.save();
+    ctx.setLineDash([8, 4]);
+    ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+    ctx.lineWidth = wt;
+    ctx.strokeRect(px - w/2, py - h/2, w, h);
+    ctx.restore();
+}
+
+function _drawGlow(px, py, w, h, r, g, b, a, wt) {
+    let ctx = drawingContext;
+    ctx.save();
+    ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+    ctx.shadowBlur = Math.max(15, Math.min(w, h) * 0.3);
+    ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
+    ctx.lineWidth = wt;
+    // Draw twice for stronger glow
+    ctx.strokeRect(px - w/2, py - h/2, w, h);
+    ctx.strokeRect(px - w/2, py - h/2, w, h);
+    ctx.restore();
+}
+
+function _drawParticleSpawn(px, py, r, g, b) {
+    if (_blobParticles.length < _MAX_PARTICLES) {
+        for (let i = 0; i < 2; i++) {
+            let angle = Math.random() * Math.PI * 2;
+            let speed = 0.5 + Math.random() * 2;
+            _blobParticles.push({
+                x: px, y: py,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1.0,
+                decay: 0.008 + Math.random() * 0.02,
+                r: r, g: g, b: b,
+                sz: 2 + Math.random() * 4
+            });
+        }
+    }
+}
+
+function _updateBlobParticles() {
+    let ctx = drawingContext;
+    for (let i = _blobParticles.length - 1; i >= 0; i--) {
+        let pt = _blobParticles[i];
+        pt.x += pt.vx; pt.y += pt.vy;
+        pt.vy += 0.02; // slight gravity
+        pt.life -= pt.decay;
+        if (pt.life <= 0) { _blobParticles.splice(i, 1); continue; }
+        ctx.fillStyle = 'rgba(' + pt.r + ',' + pt.g + ',' + pt.b + ',' + (pt.life * 0.8) + ')';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.sz * pt.life, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
