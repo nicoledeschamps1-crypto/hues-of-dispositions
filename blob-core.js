@@ -384,6 +384,13 @@ let automataThreshold = 128;
 let flowAngle = 0;
 let flowSpeed = 3;
 let flowDecay = 70;
+// Phase 3 effects
+let kaleidSegments = 6, kaleidRotation = 0;
+let feedbackDecay = 85, feedbackZoom = 2, feedbackRotation = 0, feedbackHueShift = 0;
+let timewarpSpeed = 30, timewarpDir = 'horizontal';
+let flowfieldScale = 4, flowfieldStrength = 30, flowfieldSpeed = 1;
+let freezeRate = 15;
+let _freezeCounter = 0;
 
 let videoX, videoY, videoW, videoH;
 let currentVideoUrl = null;
@@ -536,7 +543,8 @@ const FX_CATEGORIES = {
     printstamp:'pattern', y2kblue:'pattern', pxsortgpu:'pattern',
     ascii:'overlay', glitch:'overlay', noise:'overlay', grain:'overlay', dots:'overlay', grid:'overlay', scanlines:'overlay', vignette:'overlay', crt:'overlay',
     ntsc:'overlay', stripe:'overlay', paperscan:'overlay', xerox:'overlay', grunge:'overlay', datamosh:'overlay',
-    sift:'overlay', smartpixel:'pattern', slidestretch:'distortion', cornerpin:'distortion', automata:'overlay', pixelflow:'distortion'
+    sift:'overlay', smartpixel:'pattern', slidestretch:'distortion', cornerpin:'distortion', automata:'overlay', pixelflow:'distortion',
+    kaleid:'distortion', feedback:'overlay', timewarp:'overlay', flowfield:'distortion', freeze:'overlay'
 };
 const FX_CAT_COLORS = { color:'#6C5CE7', distortion:'#00B894', pattern:'#FDCB6E', overlay:'#E17055' };
 const FX_PARAM_MAP = {
@@ -604,7 +612,12 @@ const FX_PARAM_MAP = {
     slidestretch: [{v:'slideDividers',g:()=>slideDividers,s:v=>slideDividers=v},{v:'slideStretch',g:()=>slideStretch,s:v=>slideStretch=v},{v:'slideAngle',g:()=>slideAngle,s:v=>slideAngle=v}],
     cornerpin: [{v:'cornerpinPreset',g:()=>cornerpinPreset,s:v=>cornerpinPreset=v},{v:'cornerpinIntensity',g:()=>cornerpinIntensity,s:v=>cornerpinIntensity=v}],
     automata: [{v:'automataRule',g:()=>automataRule,s:v=>automataRule=v},{v:'automataSpeed',g:()=>automataSpeed,s:v=>automataSpeed=v},{v:'automataThreshold',g:()=>automataThreshold,s:v=>automataThreshold=v}],
-    pixelflow: [{v:'flowAngle',g:()=>flowAngle,s:v=>flowAngle=v},{v:'flowSpeed',g:()=>flowSpeed,s:v=>flowSpeed=v},{v:'flowDecay',g:()=>flowDecay,s:v=>flowDecay=v}]
+    pixelflow: [{v:'flowAngle',g:()=>flowAngle,s:v=>flowAngle=v},{v:'flowSpeed',g:()=>flowSpeed,s:v=>flowSpeed=v},{v:'flowDecay',g:()=>flowDecay,s:v=>flowDecay=v}],
+    kaleid: [{v:'kaleidSegments',g:()=>kaleidSegments,s:v=>kaleidSegments=v},{v:'kaleidRotation',g:()=>kaleidRotation,s:v=>kaleidRotation=v}],
+    feedback: [{v:'feedbackDecay',g:()=>feedbackDecay,s:v=>feedbackDecay=v},{v:'feedbackZoom',g:()=>feedbackZoom,s:v=>feedbackZoom=v},{v:'feedbackRotation',g:()=>feedbackRotation,s:v=>feedbackRotation=v},{v:'feedbackHueShift',g:()=>feedbackHueShift,s:v=>feedbackHueShift=v}],
+    timewarp: [{v:'timewarpSpeed',g:()=>timewarpSpeed,s:v=>timewarpSpeed=v},{v:'timewarpDir',g:()=>timewarpDir,s:v=>timewarpDir=v}],
+    flowfield: [{v:'flowfieldScale',g:()=>flowfieldScale,s:v=>flowfieldScale=v},{v:'flowfieldStrength',g:()=>flowfieldStrength,s:v=>flowfieldStrength=v},{v:'flowfieldSpeed',g:()=>flowfieldSpeed,s:v=>flowfieldSpeed=v}],
+    freeze: [{v:'freezeRate',g:()=>freezeRate,s:v=>freezeRate=v}]
 };
 const EFFECT_FN_MAP = {
     sepia:()=>applySepia(), tint:()=>applyTint(), palette:()=>applyPalette(), bricon:()=>applyBriCon(),
@@ -619,7 +632,7 @@ const EFFECT_FN_MAP = {
     radblur:()=>applyRadialBlur(), zoomblur:()=>applyZoomBlur(), circblur:()=>applyCircBlur(), elgrid:()=>applyElasticGrid(),
     printstamp:()=>applyPrintStamp(), y2kblue:()=>applyY2KBlue(),
     ntsc:()=>applyNTSC(), stripe:()=>applyStripe(), paperscan:()=>applyPaperScan(), xerox:()=>applyXerox(), grunge:()=>applyGrunge(),
-    datamosh:()=>{}, pxsortgpu:()=>{},
+    datamosh:()=>{}, pxsortgpu:()=>{}, kaleid:()=>{}, feedback:()=>{}, timewarp:()=>{}, flowfield:()=>{}, freeze:()=>{},
     sift:()=>applySift(), smartpixel:()=>applySmartPixel(), slidestretch:()=>applySlideStretch(),
     cornerpin:()=>applyCornerPin(), automata:()=>applyCellularAutomata(), pixelflow:()=>applyPixelFlow()
 };
@@ -715,7 +728,12 @@ const FX_DEFAULTS = {
     slidestretch: {slideDividers:3,slideStretch:40,slideAngle:0},
     cornerpin: {cornerpinPreset:'perspective',cornerpinIntensity:50},
     automata: {automataRule:'decay',automataSpeed:5,automataThreshold:128},
-    pixelflow: {flowAngle:0,flowSpeed:3,flowDecay:70}
+    pixelflow: {flowAngle:0,flowSpeed:3,flowDecay:70},
+    kaleid: {kaleidSegments:6,kaleidRotation:0},
+    feedback: {feedbackDecay:85,feedbackZoom:2,feedbackRotation:0,feedbackHueShift:0},
+    timewarp: {timewarpSpeed:30,timewarpDir:'horizontal'},
+    flowfield: {flowfieldScale:4,flowfieldStrength:30,flowfieldSpeed:1},
+    freeze: {freezeRate:15}
 };
 
 // ── FX_PRESETS — Built-in preset definitions (inspired by effect.app) ──
@@ -1533,8 +1551,34 @@ const FX_UI_CONFIG = {
         {type:'slider',sid:'slider-flow-angle',vid:'val-flow-angle',label:'Angle',min:0,max:360,step:5,setter:v=>flowAngle=v},
         {type:'slider',sid:'slider-flow-speed',vid:'val-flow-speed',label:'Speed',min:1,max:20,step:1,setter:v=>flowSpeed=v},
         {type:'slider',sid:'slider-flow-decay',vid:'val-flow-decay',label:'Trail',min:10,max:95,step:1,setter:v=>flowDecay=v}
+    ]},
+    kaleid: { label:'Kaleidoscope', hasRandomize:true, controls:[
+        {type:'slider',sid:'slider-kaleid-seg',vid:'val-kaleid-seg',label:'Segments',min:2,max:32,step:1,setter:v=>kaleidSegments=v},
+        {type:'slider',sid:'slider-kaleid-rot',vid:'val-kaleid-rot',label:'Rotation',min:0,max:360,step:1,setter:v=>kaleidRotation=v}
+    ]},
+    feedback: { label:'Feedback', hasRandomize:true, controls:[
+        {type:'slider',sid:'slider-feedback-decay',vid:'val-feedback-decay',label:'Trail',min:10,max:98,step:1,setter:v=>feedbackDecay=v},
+        {type:'slider',sid:'slider-feedback-zoom',vid:'val-feedback-zoom',label:'Zoom',min:0,max:20,step:1,setter:v=>feedbackZoom=v},
+        {type:'slider',sid:'slider-feedback-rot',vid:'val-feedback-rot',label:'Spin',min:-10,max:10,step:1,setter:v=>feedbackRotation=v},
+        {type:'slider',sid:'slider-feedback-hue',vid:'val-feedback-hue',label:'Hue Shift',min:0,max:360,step:5,setter:v=>feedbackHueShift=v}
+    ]},
+    timewarp: { label:'Time Warp', controls:[
+        {type:'slider',sid:'slider-timewarp-speed',vid:'val-timewarp-speed',label:'Speed',min:5,max:100,step:5,setter:v=>timewarpSpeed=v},
+        {type:'selector',cid:'timewarp-dir-buttons',label:'Direction',setter:v=>timewarpDir=v,
+         opts:[{v:'horizontal',l:'HORIZ'},{v:'vertical',l:'VERT'}]}
+    ]},
+    flowfield: { label:'Flow Field', hasRandomize:true, controls:[
+        {type:'slider',sid:'slider-flowfield-scale',vid:'val-flowfield-scale',label:'Scale',min:1,max:20,step:1,setter:v=>flowfieldScale=v},
+        {type:'slider',sid:'slider-flowfield-str',vid:'val-flowfield-str',label:'Strength',min:5,max:100,step:5,setter:v=>flowfieldStrength=v},
+        {type:'slider',sid:'slider-flowfield-speed',vid:'val-flowfield-speed',label:'Speed',min:0,max:10,step:1,setter:v=>flowfieldSpeed=v}
+    ]},
+    freeze: { label:'Freeze', controls:[
+        {type:'slider',sid:'slider-freeze-rate',vid:'val-freeze-rate',label:'Hold Frames',min:2,max:60,step:1,setter:v=>freezeRate=v}
     ]}
 };
+
+// Section nav state
+let currentSection = 'create';
 
 // FX panel state
 let currentFxCat = 'color';
@@ -2803,6 +2847,93 @@ function setupCoreUIListeners() {
     if (closeLeft) closeLeft.addEventListener('click', () => closeDrawer(leftPanel));
     if (closeRight) closeRight.addEventListener('click', () => closeDrawer(rightPanel));
     if (overlay) overlay.addEventListener('click', closeAllDrawers);
+
+    // ── Section nav ──
+    let previousSection = 'create';
+    function switchSection(section) {
+        // Toggle: clicking Timeline again returns to previous section
+        if (section === 'timeline' && currentSection === 'timeline') {
+            section = previousSection;
+        }
+        const prev = currentSection;
+        if (prev !== 'timeline') previousSection = prev;
+        currentSection = section;
+        document.body.dataset.section = section;
+
+        document.querySelectorAll('.section-tab').forEach(t => {
+            const isActive = t.dataset.section === section;
+            t.classList.toggle('active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('.section-content').forEach(el => {
+            const sections = (el.dataset.sectionContent || '').split(' ');
+            el.classList.toggle('section-active', sections.includes(section));
+        });
+
+        // Timeline section: show/hide timeline container
+        if (section === 'timeline' && prev !== 'timeline') {
+            // Remember if timeline was already visible before we force-show it
+            window._timelineWasVisible = ui.tlContainer && !ui.tlContainer.classList.contains('hidden');
+            if (ui.tlContainer) ui.tlContainer.classList.remove('hidden');
+            if (typeof renderTimelineSegments === 'function') renderTimelineSegments();
+            if (typeof renderTimelineRuler === 'function') renderTimelineRuler();
+            updateSlimEffectsList();
+        } else if (prev === 'timeline' && section !== 'timeline') {
+            // Leaving timeline section: restore to previous hidden state
+            if (ui.tlContainer && !window._timelineWasVisible) ui.tlContainer.classList.add('hidden');
+        }
+
+        // Audio section: update sync summary
+        if (section === 'audio' && typeof buildAudioSyncSummaryPanel === 'function') {
+            buildAudioSyncSummaryPanel();
+        }
+
+        // Recalculate layout after CSS changes
+        requestAnimationFrame(() => {
+            if (typeof windowResized === 'function') windowResized();
+        });
+    }
+    window.switchSection = switchSection;
+
+    // Update slim effects list for Timeline section
+    function updateSlimEffectsList() {
+        const el = document.getElementById('tl-slim-effects-list');
+        if (!el) return;
+        if (!activeEffects || activeEffects.size === 0) {
+            el.innerHTML = '<span class="hint-text">No effects active</span>';
+            return;
+        }
+        let html = '';
+        for (const name of activeEffects) {
+            const cfg = FX_UI_CONFIG[name];
+            if (!cfg) continue;
+            const hidden = hiddenEffects && hiddenEffects.has(name);
+            html += `<div class="slim-list-item"><span class="slim-dot"></span>${cfg.label}${hidden ? ' (off)' : ''}</div>`;
+        }
+        el.innerHTML = html;
+    }
+    window.updateSlimEffectsList = updateSlimEffectsList;
+
+    document.querySelectorAll('.section-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchSection(tab.dataset.section));
+    });
+
+    // ── Export section button wiring ──
+    const exportRecBtn = document.getElementById('export-record-btn');
+    const exportScreenBtn = document.getElementById('export-screenshot-btn');
+    const exportSaveBtn = document.getElementById('export-save-btn');
+    if (exportRecBtn) exportRecBtn.addEventListener('click', () => {
+        if (typeof toggleRecording === 'function') toggleRecording();
+    });
+    if (exportScreenBtn) exportScreenBtn.addEventListener('click', () => {
+        if (typeof takeScreenshot === 'function') takeScreenshot();
+    });
+    if (exportSaveBtn) exportSaveBtn.addEventListener('click', () => {
+        if (typeof saveRecording === 'function') saveRecording();
+    });
+
+    // Default section set via HTML (body data-section="create" + section-active classes)
 
     [0, 1, 2, 3, 4, 5, 6, 7].forEach(idx => {
         ui.sliders[idx] = document.getElementById(`slider-${idx}`);

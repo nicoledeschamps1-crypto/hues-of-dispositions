@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // blob-shader-fx.js — WebGL2 GPU Shader Effects Pipeline
-// Phase 2.5: 31 effects, per-effect opacity, blend modes
+// Phase 3: 36 effects, per-effect opacity, blend modes
 // ═══════════════════════════════════════════════════════════════
 
 'use strict';
@@ -1367,6 +1367,164 @@ void main() {
     }
 }`;
 
+// ── Kaleidoscope shader ──────────────────────────────────────
+const FRAG_KALEID = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform float u_segments;
+uniform float u_rotation;
+uniform float u_opacity;
+out vec4 fragColor;
+void main() {
+    vec2 uv = v_texCoord - 0.5;
+    float angle = atan(uv.y, uv.x) + u_rotation;
+    float r = length(uv);
+    float segAngle = 6.28318530718 / max(u_segments, 2.0);
+    angle = mod(angle + segAngle * 100.0, segAngle);
+    if (angle > segAngle * 0.5) angle = segAngle - angle;
+    vec2 kaleidUV = clamp(vec2(cos(angle), sin(angle)) * r + 0.5, 0.0, 1.0);
+    vec4 orig = texture(u_texture, v_texCoord);
+    vec4 kaleid = texture(u_texture, kaleidUV);
+    fragColor = mix(orig, kaleid, u_opacity);
+}`;
+
+// ── Feedback / Echo Trail shader ─────────────────────────────
+const FRAG_FEEDBACK = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform sampler2D u_history;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_opacity;
+uniform float u_decay;
+uniform float u_zoom;
+uniform float u_rotation;
+uniform float u_hueShift;
+out vec4 fragColor;
+vec3 rgb2hsv(vec3 c) {
+    vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+void main() {
+    vec4 current = texture(u_texture, v_texCoord);
+    vec2 uv = v_texCoord - 0.5;
+    float cs = cos(u_rotation); float sn = sin(u_rotation);
+    uv = mat2(cs, -sn, sn, cs) * uv;
+    uv /= (1.0 + u_zoom);
+    uv += 0.5;
+    vec4 history = texture(u_history, clamp(uv, 0.0, 1.0));
+    if (u_hueShift > 0.001) {
+        vec3 hsv = rgb2hsv(history.rgb);
+        hsv.x = fract(hsv.x + u_hueShift);
+        history.rgb = hsv2rgb(hsv);
+    }
+    vec3 result = mix(current.rgb, history.rgb, u_decay);
+    fragColor = mix(current, vec4(result, 1.0), u_opacity);
+}`;
+
+// ── Time Warp Scan shader ────────────────────────────────────
+const FRAG_TIMEWARP = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform sampler2D u_history;
+uniform float u_time;
+uniform float u_speed;
+uniform float u_direction;
+uniform float u_opacity;
+out vec4 fragColor;
+void main() {
+    vec4 current = texture(u_texture, v_texCoord);
+    vec4 history = texture(u_history, v_texCoord);
+    float scanPos = fract(u_time * u_speed * 0.02);
+    float coord = u_direction < 0.5 ? v_texCoord.x : v_texCoord.y;
+    float edge = smoothstep(scanPos - 0.003, scanPos + 0.003, coord);
+    vec3 result = mix(history.rgb, current.rgb, edge);
+    float lineDist = abs(coord - scanPos);
+    float line = smoothstep(0.004, 0.0, lineDist);
+    result = mix(result, vec3(1.0), line * 0.4);
+    fragColor = mix(current, vec4(result, 1.0), u_opacity);
+}`;
+
+// ── Flow Field (curl noise displacement) shader ──────────────
+const FRAG_FLOWFIELD = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_scale;
+uniform float u_strength;
+uniform float u_speed;
+uniform float u_opacity;
+out vec4 fragColor;
+vec3 mod289v3(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec2 mod289v2(vec2 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec3 permute(vec3 x){return mod289v3(((x*34.0)+1.0)*x);}
+float snoise(vec2 v){
+    const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+    vec2 i=floor(v+dot(v,C.yy));
+    vec2 x0=v-i+dot(i,C.xx);
+    vec2 i1=(x0.x>x0.y)?vec2(1.0,0.0):vec2(0.0,1.0);
+    vec4 x12=x0.xyxy+C.xxzz;x12.xy-=i1;
+    i=mod289v2(i);
+    vec3 p=permute(permute(i.y+vec3(0.0,i1.y,1.0))+i.x+vec3(0.0,i1.x,1.0));
+    vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.0);
+    m=m*m;m=m*m;
+    vec3 x=2.0*fract(p*C.www)-1.0;
+    vec3 h=abs(x)-0.5;
+    vec3 ox=floor(x+0.5);
+    vec3 a0=x-ox;
+    m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+    vec3 g;g.x=a0.x*x0.x+h.x*x0.y;g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+    return 130.0*dot(m,g);
+}
+vec2 curlNoise(vec2 p){
+    float eps=0.01;
+    float dx=snoise(p+vec2(0.0,eps))-snoise(p-vec2(0.0,eps));
+    float dy=snoise(p+vec2(eps,0.0))-snoise(p-vec2(eps,0.0));
+    return vec2(dx,-dy)/(2.0*eps);
+}
+void main(){
+    vec2 uv=v_texCoord;
+    float t=u_time*u_speed*0.3;
+    vec2 nc=uv*u_scale+vec2(t*0.1,t*0.07);
+    vec2 d=curlNoise(nc);
+    d+=curlNoise(nc*2.0+5.0)*0.5;
+    d+=curlNoise(nc*4.0+10.0)*0.25;
+    vec2 displaced=clamp(uv+d*u_strength*0.003,0.0,1.0);
+    vec4 orig=texture(u_texture,v_texCoord);
+    vec4 flowed=texture(u_texture,displaced);
+    fragColor=mix(orig,flowed,u_opacity);
+}`;
+
+// ── Freeze / Stutter shader ─────────────────────────────────
+const FRAG_FREEZE = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform sampler2D u_history;
+uniform float u_hold;
+uniform float u_opacity;
+out vec4 fragColor;
+void main() {
+    vec4 current = texture(u_texture, v_texCoord);
+    vec4 frozen = texture(u_history, v_texCoord);
+    vec3 result = mix(current.rgb, frozen.rgb, u_hold);
+    fragColor = mix(current, vec4(result, 1.0), u_opacity);
+}`;
+
 // Blend mode constants
 const BLEND_NORMAL = 0;
 const BLEND_MULTIPLY = 1;
@@ -1405,6 +1563,7 @@ class ShaderFXPipeline {
         this._historyFBO = null;         // datamosh persistent history
         this._historyTexture = null;
         this._historyValid = false;
+        this._persistFBOs = new Map();   // named persistent FBOs for feedback/timewarp/freeze
     }
 
     init(width, height) {
@@ -1711,6 +1870,88 @@ class ShaderFXPipeline {
         gl.activeTexture(gl.TEXTURE0);
     }
 
+    // ── Generic persistent FBO for feedback/timewarp/freeze ──
+    _getPersistFBO(name) {
+        if (this._persistFBOs.has(name)) return this._persistFBOs.get(name);
+        const gl = this.gl;
+        const tex = this._createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        const entry = { fbo, texture: tex, valid: false };
+        this._persistFBOs.set(name, entry);
+        return entry;
+    }
+
+    _renderPersistentFX(effectName, inputTexture, targetFBO, opacity) {
+        const gl = this.gl;
+        const entry = this.programs.get(effectName);
+        if (!entry) return;
+        const persist = this._getPersistFBO(effectName);
+
+        // Seed on first frame
+        if (!persist.valid) {
+            const pt = this.programs.get('passthrough');
+            if (pt) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, persist.fbo);
+                gl.viewport(0, 0, this.width, this.height);
+                gl.useProgram(pt.program);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, inputTexture);
+                if (pt.uniforms['u_texture']) gl.uniform1i(pt.uniforms['u_texture'].location, 0);
+                gl.bindVertexArray(this.quadVAO);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.bindVertexArray(null);
+            }
+            persist.valid = true;
+        }
+
+        // Render: current (TEXTURE0) + history (TEXTURE1)
+        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO);
+        gl.viewport(0, 0, this.width, this.height);
+        gl.useProgram(entry.program);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, inputTexture);
+        if (entry.uniforms['u_texture']) gl.uniform1i(entry.uniforms['u_texture'].location, 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, persist.texture);
+        if (entry.uniforms['u_history']) gl.uniform1i(entry.uniforms['u_history'].location, 1);
+
+        if (entry.uniforms['u_resolution']) gl.uniform2f(entry.uniforms['u_resolution'].location, this.width, this.height);
+        if (entry.uniforms['u_time']) gl.uniform1f(entry.uniforms['u_time'].location, performance.now() / 1000.0);
+        if (entry.uniforms['u_opacity']) gl.uniform1f(entry.uniforms['u_opacity'].location, opacity);
+
+        // Sync effect-specific params
+        if (SHADER_EFFECT_REGISTRY[effectName]) SHADER_EFFECT_REGISTRY[effectName].sync();
+
+        gl.bindVertexArray(this.quadVAO);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.bindVertexArray(null);
+
+        // Write-back: copy result to persistent FBO for next frame
+        const resultTexture = targetFBO ? this.fbTextures[this._pingPongIdx] : null;
+        const pt = this.programs.get('passthrough');
+        if (pt) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, persist.fbo);
+            gl.viewport(0, 0, this.width, this.height);
+            gl.useProgram(pt.program);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, resultTexture || inputTexture);
+            if (pt.uniforms['u_texture']) gl.uniform1i(pt.uniforms['u_texture'].location, 0);
+            gl.bindVertexArray(this.quadVAO);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            gl.bindVertexArray(null);
+        }
+
+        gl.activeTexture(gl.TEXTURE0);
+    }
+
     process(sourceCanvas) {
         if (!this.ready || !this.enabled) return;
         const gl = this.gl;
@@ -1740,6 +1981,17 @@ class ShaderFXPipeline {
             if (effectName === 'datamosh') {
                 const targetFBO = isLast ? null : this.framebuffers[this._pingPongIdx];
                 this._renderDatamosh(inputTexture, targetFBO, opacity);
+                if (!isLast) {
+                    inputTexture = this.fbTextures[this._pingPongIdx];
+                    this._pingPongIdx = 1 - this._pingPongIdx;
+                }
+                continue;
+            }
+
+            // Persistent FBO effects (feedback, timewarp, freeze)
+            if (effectName === 'feedback' || effectName === 'timewarp' || effectName === 'freeze') {
+                const targetFBO = isLast ? null : this.framebuffers[this._pingPongIdx];
+                this._renderPersistentFX(effectName, inputTexture, targetFBO, opacity);
                 if (!isLast) {
                     inputTexture = this.fbTextures[this._pingPongIdx];
                     this._pingPongIdx = 1 - this._pingPongIdx;
@@ -1834,6 +2086,16 @@ class ShaderFXPipeline {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             this._historyValid = false;
         }
+        // Resize persistent FBOs
+        for (const [name, entry] of this._persistFBOs) {
+            gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, entry.fbo);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, entry.texture, 0);
+            gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            entry.valid = false;
+        }
         console.log('[ShaderFX] Resized to', w, 'x', h);
     }
 
@@ -1856,6 +2118,8 @@ class ShaderFXPipeline {
             gl.deleteFramebuffer(this.framebuffers[i]);
         }
         if (this._historyFBO) { gl.deleteTexture(this._historyTexture); gl.deleteFramebuffer(this._historyFBO); }
+        for (const [, entry] of this._persistFBOs) { gl.deleteTexture(entry.texture); gl.deleteFramebuffer(entry.fbo); }
+        this._persistFBOs.clear();
         gl.deleteBuffer(this.quadVBO);
         gl.deleteVertexArray(this.quadVAO);
         this.glCanvas.remove();
@@ -1880,8 +2144,10 @@ const SHADER_CHAIN_ORDER = [
     'bloom', 'pixel', 'dither', 'pxsortgpu',
     // Overlay tier
     'glitch', 'noise', 'grain', 'crt', 'ntsc',
-    // Datamosh (post-overlay, needs history from fully-processed frame)
-    'datamosh',
+    // Phase 3 — new effects
+    'kaleid', 'flowfield',
+    // Persistent-FBO effects (post-overlay, need history from fully-processed frame)
+    'datamosh', 'feedback', 'timewarp', 'freeze',
     // Hybrid → shader
     'halftone',
     // Draw → shader
@@ -2081,6 +2347,31 @@ function registerCoreShaderEffects() {
             shaderFX.setUniform('pxsortgpu','u_hi',pxsortgpuHi/255);
             shaderFX.setUniform('pxsortgpu','u_direction',pxsortgpuDir==='vertical'?1:0);
         }},
+        // Phase 3 — 5 new effects
+        { name:'kaleid', frag:FRAG_KALEID, sync:()=>{
+            shaderFX.setUniform('kaleid','u_segments',kaleidSegments);
+            shaderFX.setUniform('kaleid','u_rotation',kaleidRotation*Math.PI/180);
+        }},
+        { name:'feedback', frag:FRAG_FEEDBACK, sync:()=>{
+            shaderFX.setUniform('feedback','u_decay',feedbackDecay/100);
+            shaderFX.setUniform('feedback','u_zoom',feedbackZoom*0.005);
+            shaderFX.setUniform('feedback','u_rotation',feedbackRotation*Math.PI/180*0.1);
+            shaderFX.setUniform('feedback','u_hueShift',feedbackHueShift/360);
+        }},
+        { name:'timewarp', frag:FRAG_TIMEWARP, sync:()=>{
+            shaderFX.setUniform('timewarp','u_speed',timewarpSpeed/100);
+            shaderFX.setUniform('timewarp','u_direction',timewarpDir==='vertical'?1:0);
+        }},
+        { name:'flowfield', frag:FRAG_FLOWFIELD, sync:()=>{
+            shaderFX.setUniform('flowfield','u_scale',flowfieldScale);
+            shaderFX.setUniform('flowfield','u_strength',flowfieldStrength);
+            shaderFX.setUniform('flowfield','u_speed',flowfieldSpeed);
+        }},
+        { name:'freeze', frag:FRAG_FREEZE, sync:()=>{
+            _freezeCounter++;
+            let hold = (_freezeCounter % Math.max(1,freezeRate)) !== 0 ? 1.0 : 0.0;
+            shaderFX.setUniform('freeze','u_hold',hold);
+        }},
     ];
 
     let count = 0;
@@ -2096,7 +2387,7 @@ function registerCoreShaderEffects() {
         shaderFX._blendProgram = shaderFX.programs.get('_blend');
     }
 
-    console.log('[ShaderFX] Registered ' + count + '/31 core effects + blend pass');
+    console.log('[ShaderFX] Registered ' + count + '/36 core effects + blend pass');
     return count;
 }
 

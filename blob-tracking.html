@@ -2832,6 +2832,91 @@
         }
         .highlight-pulse { animation: pulse-highlight 0.5s ease-out; }
 
+        /* ═══ SECTION NAV ═══ */
+        .tb-section-nav {
+            display: flex;
+            gap: 2px;
+            margin: 0 6px;
+            background: rgba(139, 69, 232, 0.08);
+            border-radius: var(--radius-md);
+            padding: 2px;
+            flex-shrink: 0;
+        }
+        .section-tab {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--color-text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: inherit;
+            border-radius: 4px;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+        .section-tab:hover {
+            color: var(--color-text);
+            background: rgba(169, 102, 255, 0.1);
+        }
+        .section-tab.active {
+            background: rgba(108, 92, 231, 0.28);
+            color: #c4b8ff;
+            border-color: rgba(108, 92, 231, 0.4);
+        }
+
+        /* Section content visibility — desktop only */
+        @media (min-width: 901px) {
+            .section-content { display: none !important; }
+            .section-content.section-active { display: flex !important; flex-direction: column; gap: 14px; }
+            body[data-section] .panel-tabs[aria-label="Left panel tabs"] { display: none; }
+            body[data-section] #tab-track,
+            body[data-section] #tab-audio { display: block !important; }
+        }
+        /* Mobile: section-content wrappers transparent — show everything */
+        @media (max-width: 900px) {
+            .section-content { display: flex !important; flex-direction: column; gap: 14px; }
+        }
+
+        /* Timeline section: slim panels */
+        body[data-section="timeline"] .panel {
+            width: 150px !important;
+            min-width: 150px;
+        }
+        body[data-section="timeline"] .panel .header-section { display: none; }
+        body[data-section="timeline"] #timeline-container {
+            left: 198px;
+            right: 198px;
+        }
+
+        /* Slim list items */
+        .slim-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: var(--font-xs);
+        }
+        .slim-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 3px 6px;
+            background: rgba(139,69,232,0.08);
+            border-radius: 4px;
+            color: var(--color-text-muted);
+        }
+        .slim-list-item .slim-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
         /* ═══ EMPTY STATE HINT ═══ */
         #tl-empty-hint {
             position: absolute;
@@ -3005,6 +3090,8 @@
             #timeline-container { left: 318px; right: 318px; } /* 240+40+2+24+12 */
         }
         @media (max-width: 900px) {
+            /* Hide section nav on mobile — use drawers instead */
+            .tb-section-nav { display: none; }
             /* Off-canvas drawer mode */
             .drawer-toggle { display: flex; background: rgba(139,69,232,0.15); border-color: rgba(255,255,255,0.15); touch-action: manipulation; }
             .panel-close-btn { display: flex; align-items: center; justify-content: center; }
@@ -3521,7 +3608,7 @@
         }
     </style>
 </head>
-<body>
+<body data-section="create">
 
     <!-- Red→Purple gradient accent bar -->
     <div id="accent-bar"></div>
@@ -3531,6 +3618,14 @@
         <button class="drawer-toggle" id="drawer-toggle-left" title="Open tracking panel" aria-label="Open tracking panel">&#9776;</button>
         <!-- Saturn icon -->
         <svg class="tb-saturn" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="11" ry="3.5" transform="rotate(-25 12 12)"/></svg>
+        <!-- Section Nav -->
+        <nav class="tb-section-nav" id="section-nav" role="tablist" aria-label="Workspace sections">
+            <button class="section-tab active" data-section="create" role="tab" aria-selected="true">Create</button>
+            <button class="section-tab" data-section="audio" role="tab" aria-selected="false">Audio</button>
+            <button class="section-tab" data-section="track" role="tab" aria-selected="false">Track</button>
+            <button class="section-tab" data-section="timeline" role="tab" aria-selected="false">Timeline</button>
+            <button class="section-tab" data-section="export" role="tab" aria-selected="false">Export</button>
+        </nav>
         <div class="tb-divider"></div>
         <!-- Transport -->
         <div class="tb-zone">
@@ -3624,6 +3719,9 @@
 
             <div class="tab-content active" data-tab="track" id="tab-track" role="tabpanel" aria-label="Track controls">
 
+            <!-- ═══ CREATE SECTION: Source + Zoom ═══ -->
+            <div data-section-content="create" class="section-content section-active">
+
             <!-- Source (Upload + Camera) -->
             <div class="source-row">
                 <label id="file-input-container" for="videoUpload">
@@ -3666,6 +3764,11 @@
                 </div>
                 <span class="hint-text">Interpolates zoom transitions for less jitter</span>
             </div>
+
+            </div><!-- /section-content create -->
+
+            <!-- ═══ TRACK SECTION: Tracking + Blob Params ═══ -->
+            <div data-section-content="track" class="section-content">
 
             <!-- ═══ TRACKING ═══ -->
             <div class="control-group tracking-section" id="group-modes">
@@ -3882,12 +3985,16 @@
 
             <!-- (Bottom transport controls removed — top bar is the sole source) -->
 
+            </div><!-- /section-content track -->
 
             </div><!-- /tab-content track -->
 
             <!-- FX content moved to right panel -->
 
             <div class="tab-content" data-tab="audio" id="tab-audio" role="tabpanel" aria-label="Audio controls">
+
+            <!-- ═══ AUDIO SECTION ═══ -->
+            <div data-section-content="audio" class="section-content">
 
             <!-- Audio Upload -->
             <div class="control-group">
@@ -4017,7 +4124,48 @@
                 </div>
             </div>
 
+            </div><!-- /section-content audio -->
+
             </div><!-- /tab-content audio -->
+
+            <!-- ═══ TIMELINE SECTION: Slim left panel ═══ -->
+            <div data-section-content="timeline" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Active Effects</div>
+                    <div id="tl-slim-effects-list" class="slim-list">
+                        <span class="hint-text">No effects active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ EXPORT SECTION: Render settings ═══ -->
+            <div data-section-content="export" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Render Settings</div>
+                    <label id="label-export-res">Resolution</label>
+                    <div class="selector-row" id="export-res-buttons" aria-labelledby="label-export-res">
+                        <button class="selector-btn active" data-value="source">SOURCE</button>
+                        <button class="selector-btn" data-value="1080">1080p</button>
+                        <button class="selector-btn" data-value="720">720p</button>
+                        <button class="selector-btn" data-value="4k">4K</button>
+                    </div>
+                    <label id="label-export-fmt">Format</label>
+                    <div class="selector-row" id="export-format-buttons" aria-labelledby="label-export-fmt">
+                        <button class="selector-btn active" data-value="webm">WEBM</button>
+                        <button class="selector-btn" data-value="mp4">MP4</button>
+                    </div>
+                    <label>FPS <input type="number" class="value-input" id="val-export-fps" value="30"></label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="slider-export-fps" min="15" max="60" value="30" step="5">
+                    </div>
+                    <label id="label-export-quality">Quality</label>
+                    <div class="selector-row" id="export-quality-buttons" aria-labelledby="label-export-quality">
+                        <button class="selector-btn" data-value="draft">DRAFT</button>
+                        <button class="selector-btn active" data-value="high">HIGH</button>
+                        <button class="selector-btn" data-value="max">MAX</button>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </aside>
@@ -4037,6 +4185,8 @@
         </div>
 
         <div id="ui-controls-right">
+            <!-- ═══ CREATE SECTION: Effects ═══ -->
+            <div data-section-content="create" class="section-content section-active">
             <div class="control-group" id="group-fx">
                 <div class="fx-master-row">
                     <span>Effects</span>
@@ -4175,6 +4325,72 @@
             </div>
 
             <!-- Camera controls now inside #group-fx as CAMERA tab -->
+
+            </div><!-- /section-content create (right panel) -->
+
+            <!-- ═══ TRACK SECTION: Appearance settings ═══ -->
+            <div data-section-content="track" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Blob Appearance</div>
+                    <label>Box Color</label>
+                    <input type="color" id="track-box-color" value="#00CEC9" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
+                    <label>Box Weight <input type="number" class="value-input" id="val-track-weight" value="2"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-track-weight" min="1" max="8" value="2" step="0.5"></div>
+                    <label>Opacity <input type="number" class="value-input" id="val-track-opacity" value="100"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-track-opacity" min="0" max="100" value="100" step="1"></div>
+                    <label>Curvature <input type="number" class="value-input" id="val-track-curve" value="0"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-track-curve" min="0" max="50" value="0" step="1"></div>
+                </div>
+                <div class="control-group">
+                    <div class="slider-card-label">Connection Lines</div>
+                    <label id="label-track-lines">Lines</label>
+                    <div class="selector-row" id="track-line-buttons" aria-labelledby="label-track-lines">
+                        <button class="selector-btn" data-value="on">ON</button>
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                    </div>
+                    <label id="label-track-linemode">Mode</label>
+                    <div class="selector-row" id="track-linemode-buttons" aria-labelledby="label-track-linemode">
+                        <button class="selector-btn active" data-value="chain">CHAIN</button>
+                        <button class="selector-btn" data-value="hub">HUB</button>
+                        <button class="selector-btn" data-value="web">WEB</button>
+                    </div>
+                    <label id="label-track-linedash">Style</label>
+                    <div class="selector-row" id="track-linedash-buttons" aria-labelledby="label-track-linedash">
+                        <button class="selector-btn active" data-value="solid">SOLID</button>
+                        <button class="selector-btn" data-value="dash">DASH</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ AUDIO SECTION: Per-effect sync summary ═══ -->
+            <div data-section-content="audio" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Per-Effect Audio Sync</div>
+                    <span class="hint-text">Map audio bands to individual effect parameters</span>
+                    <div id="audio-sync-summary"></div>
+                </div>
+            </div>
+
+            <!-- ═══ TIMELINE SECTION: Slim right panel ═══ -->
+            <div data-section-content="timeline" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Scene Layers</div>
+                    <div id="tl-slim-layers-list" class="slim-list">
+                        <span class="hint-text">Switch to Create to manage layers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ EXPORT SECTION: Output controls ═══ -->
+            <div data-section-content="export" class="section-content">
+                <div class="control-group">
+                    <div class="slider-card-label">Output</div>
+                    <button class="selector-btn" id="export-record-btn" style="width:100%;margin:8px 0;background:rgba(139,69,232,0.3);border-color:rgba(139,69,232,0.5)">RECORD</button>
+                    <button class="selector-btn" id="export-screenshot-btn" style="width:100%;margin:4px 0">SCREENSHOT</button>
+                    <button class="selector-btn" id="export-save-btn" style="width:100%;margin:4px 0" disabled>SAVE RECORDING</button>
+                    <span class="hint-text">Record captures the canvas at the selected resolution and format</span>
+                </div>
+            </div>
 
         </div>
     </aside>
@@ -4440,14 +4656,14 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260327"></script>
-<script src="blob-fx.js?v=20260327"></script>
-<script src="blob-shader-fx.js?v=20260327"></script>
-<script src="blob-overlay.js?v=20260327"></script>
-<script src="blob-audio.js?v=20260327"></script>
-<script src="blob-timeline.js?v=20260327"></script>
-<script src="blob-mask.js?v=20260327"></script>
-<script src="blob-tracking.js?v=20260327"></script>
+<script src="blob-core.js?v=20260328"></script>
+<script src="blob-fx.js?v=20260328"></script>
+<script src="blob-shader-fx.js?v=20260328"></script>
+<script src="blob-overlay.js?v=20260328"></script>
+<script src="blob-audio.js?v=20260328"></script>
+<script src="blob-timeline.js?v=20260328"></script>
+<script src="blob-mask.js?v=20260328"></script>
+<script src="blob-tracking.js?v=20260328"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">
