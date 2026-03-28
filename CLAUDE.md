@@ -25,32 +25,20 @@
 - File inputs use `<label for>` pattern (not `.click()`) for iOS Safari compatibility
 - Cache busting: use `?v=YYYYMMDD` on script tags in HTML
 
-## Current State (2026-03-26)
-**Last committed**: `24021cd` (2026-03-24) — Full UI/UX audit
-**Uncommitted changes** in 4 files (blob-core.js, blob-overlay.js, blob-shader-fx.js, blob-tracking.html):
-- Fixed `mousePressed()` file chooser cascade (return false)
-- iOS Safari file input fixes (label pattern, extension fallback)
-- Mobile responsive improvements (drawer toggles, timeline compact)
-- `window.shaderFX` exposed for DevTools/Playwright
+## Current State (2026-03-27)
+**Last committed**: `b86b173` (2026-03-27) — Harness extraction + QA fixes
+**All changes committed.** No uncommitted work.
 
 **What's built**: 63 effects (14 Color, 20 Distortion, 11 Pattern, 18 Overlay), 40 presets, 18 tracking modes, 9 blob styles, 3 connection modes, AI Magic Mask v2, face tracking (eyes/lips/face), audio sync v2 with beat detection, timeline editor with segments/undo/zoom, video overlay with blend modes, datamosh (melt/shatter), layer system (Model C), responsive UI with purple design system.
 
-**What's in progress**: Mobile UI (iOS upload still broken), QA audit fixes (26 bugs found, not yet addressed).
+**What's in progress**: Mobile UI (iOS upload still broken), remaining QA bugs (~18 unfixed from 2026-03-26 audit).
 
 ## Active Work Threads
 
-### 1. QA Bug Fixes (26 items from 2026-03-26 audit)
-12 critical bugs identified by 4-agent code review. Top priority:
-- `maskSegInFlight` never reset on mode exit (blob-mask.js)
-- InteractiveSegmenter no GPU→CPU fallback on Safari
-- `audioContext.resume()` not awaited (Chrome autoplay)
-- Blob URL memory leak on failed video load
-- `activeEffects` set mutation mid-iteration (blob-fx.js)
-- Split view 'both' mode never handled
+### 1. QA Bug Fixes (~18 remaining from 2026-03-26 audit)
+8 critical bugs FIXED in `f9420a3`: maskSegInFlight reset, MediaPipe CPU fallback, audioContext.resume(), blob URL leak, activeEffects mutation, shader null guard, timeline event leaks, iOS file type fallback.
+Remaining items: split view 'both' mode, innerHTML XSS patterns, debug logging always on, MediaPipe `.close()` cleanup, dead paramOwner code, and ~12 lower-priority items.
 See: `~/.claude/projects/-Users-nicoledeschamps/memory/blobfx-session-2026-03-26.md` for full list
-
-### 2. Uncommitted Changes Need Committing
-4 files modified with iOS fixes, mousePressed fix, mobile CSS, window.shaderFX. All tested via Playwright. Ready to commit.
 
 ### 3. Mobile UI Polish
 iOS file upload still broken despite label+extension fix. Drawer toggles and timeline compact done. Remaining: touch-friendly FX cards, portrait canvas sizing, touch timeline scrub, full <500px audit. See: `project-blobfx-mobile.md` in memory.
