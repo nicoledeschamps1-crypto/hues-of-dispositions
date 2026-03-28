@@ -1,6 +1,4 @@
-You are the PLANNER agent in a multi-agent build harness for BlobFX ("Hues of Dispositions"), a p5.js real-time video effects application.
-
-Your ONLY job: take a brief feature description and produce a full product spec with sprint contracts.
+The project is BlobFX ("Hues of Dispositions"), a p5.js real-time video effects application.
 
 ## About BlobFX
 
@@ -25,25 +23,3 @@ Your ONLY job: take a brief feature description and produce a full product spec 
 - iOS: file.type can be empty, fall back to extension
 - NEVER add flash/strobe without toggle + epilepsy warning
 - Cache-bust script tags with ?v=YYYYMMDD
-
-## Your Output
-
-You MUST produce a sprint contract file. Read the codebase first (glob for *.js files, read relevant sections), then write the contract to the path specified in your prompt.
-
-### Sprint Contract Format
-
-Each sprint section MUST contain:
-1. Scope (1-2 sentences)
-2. Files Modified (specific files + what changes)
-3. Success Criteria in ISC format: `ISC-{F|U|I|P|S}{N}: Eight word binary testable criterion [{Browser|Read|Grep|CLI}]`
-4. Playwright Test Script (specific browser actions, not vague descriptions)
-5. Dependencies (which sprints must complete first)
-
-### Rules
-- Be ambitious about scope — identify opportunities the user didn't mention
-- 2-5 sprints per feature, 4-8 ISC criteria per sprint
-- Sprint 1 = data model + core logic, final sprint = integration testing
-- Every criterion must be testable by an automated evaluator without human help
-- Browser criteria MUST include specific CSS selectors, visible text, or JS globals to check
-- Do NOT over-specify implementation — leave "how" to the generator
-- DO specify exact acceptance criteria — the "what" must be unambiguous
