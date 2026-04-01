@@ -3547,18 +3547,18 @@ function setupCoreUIListeners() {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBtn.click(); }
     });
 
-    // Hints toggle
+    // Hints toggle — hints hidden by default, toggle shows them
     const hintsBtn = document.getElementById('hints-btn');
     if (hintsBtn) {
-        const hintsOff = localStorage.getItem('blobfx-hints') === 'off';
-        if (hintsOff) {
-            document.body.classList.add('hints-off');
-            hintsBtn.classList.remove('active');
+        const hintsOn = localStorage.getItem('blobfx-hints') === 'on';
+        if (hintsOn) {
+            document.body.classList.add('hints-on');
+            hintsBtn.classList.add('active');
         }
         hintsBtn.addEventListener('click', () => {
-            const isOff = document.body.classList.toggle('hints-off');
-            hintsBtn.classList.toggle('active', !isOff);
-            localStorage.setItem('blobfx-hints', isOff ? 'off' : 'on');
+            const isOn = document.body.classList.toggle('hints-on');
+            hintsBtn.classList.toggle('active', isOn);
+            localStorage.setItem('blobfx-hints', isOn ? 'on' : 'off');
         });
     }
 
