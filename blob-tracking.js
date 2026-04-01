@@ -15,10 +15,8 @@ function shuffleArray(arr) {
 function trackPoints() {
     trackedPoints = [];
     if (currentMode === 0 || !videoLoaded || !videoPlaying) return;
-    videoEl.loadPixels();
-    if (videoEl.pixels.length === 0) return;
 
-    // FACE LANDMARK modes (EYES=15, LIPS=16, FACE=17)
+    // FACE LANDMARK modes (EYES=15, LIPS=16, FACE=17) — skip loadPixels (uses MediaPipe, not pixel data)
     if (currentMode >= 15 && currentMode <= 17) {
         if (!window.mpFaceLandmarkerReady || !window.mpFaceLandmarker) {
             if (!window._faceWarnThrottle || Date.now() - window._faceWarnThrottle > 3000) {
@@ -54,14 +52,8 @@ function trackPoints() {
                 window._mpFaceCtx.drawImage(vid, 0, 0);
                 const ts = performance.now();
                 const result = window.mpFaceLandmarker.detectForVideo(fc, ts);
-                // Log first few detection results for debugging
                 if (!window._faceDetectCount) window._faceDetectCount = 0;
                 window._faceDetectCount++;
-                if (window._faceDetectCount <= 5 || window._faceDetectCount % 60 === 0) {
-                    const faces = result?.faceLandmarks?.length || 0;
-                    console.log('[FaceTrack] Frame ' + window._faceDetectCount +
-                        ': ' + faces + ' face(s), canvas=' + fc.width + 'x' + fc.height);
-                }
                 if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
                     window._faceDetectErrors = 0; // Reset error counter on success
                     if (window.mpFaceInitError && window.mpFaceInitError.startsWith('Detection failing')) {
@@ -220,6 +212,10 @@ function trackPoints() {
         }
         return;
     }
+
+    // Pixel-based tracking modes (1-13) need pixel data
+    videoEl.loadPixels();
+    if (videoEl.pixels.length === 0) return;
 
     let candidates = [];
     let spectrum = map(paramValues[1], 0, 100, 0, 70);

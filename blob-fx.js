@@ -703,6 +703,12 @@ function applyVignette() {
     pop();
 }
 
+// Deterministic hash for static grain (position-based, no per-frame change)
+function _grainHash(x, y, seed) {
+    let h = (x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+    return (h - Math.floor(h)) - 0.5;
+}
+
 function applyGrain() {
     let intensity = grainIntensity / 100;
     let sz = Math.max(1, Math.round(map(grainSize, 5, 40, 1, 8)));
@@ -713,6 +719,9 @@ function applyGrain() {
     let sy = Math.floor(videoY * d);
     let ey = Math.floor((videoY + videoH) * d);
     let amp = intensity * 80;
+    // Animate grain only when audio sync is active
+    const hasAudio = typeof fxAudioSync !== 'undefined' && fxAudioSync && fxAudioSync.has && fxAudioSync.has('grain');
+    const seed = hasAudio ? Math.floor(millis() * 0.024) : 0;
     for (let y = sy; y < ey; y += sz) {
         for (let x = sx; x < ex; x += sz) {
             // Luminance-dependent grain: strongest in midtones
@@ -721,12 +730,12 @@ function applyGrain() {
             let grainMask = 1.0 - Math.abs(lum - 0.5) * 2.0;
             grainMask = 0.3 + grainMask * 0.7; // never fully zero
             let localAmp = amp * grainMask;
-            let noise = (Math.random() - 0.5) * localAmp;
+            let noise = _grainHash(x, y, seed) * localAmp;
             let nr = 0, ng = 0, nb = 0;
             if (grainColorMode === 'color') {
-                nr = (Math.random() - 0.5) * localAmp;
-                ng = (Math.random() - 0.5) * localAmp;
-                nb = (Math.random() - 0.5) * localAmp;
+                nr = _grainHash(x, y, seed + 1) * localAmp;
+                ng = _grainHash(x, y, seed + 2) * localAmp;
+                nb = _grainHash(x, y, seed + 3) * localAmp;
             } else {
                 nr = ng = nb = noise;
             }
@@ -1610,7 +1619,7 @@ function applyDots() {
     // BUG FIX: removed redundant loadPixels() — batch pipeline handles it
     let d = pixelDensity();
     let totalW = width * d;
-    fill(255, 200);
+    fill(255, dotsOpacity / 100 * 255);
     rectMode(CORNER);
     rect(videoX, videoY, videoW, videoH);
     for (let gy = -maxDim / 2; gy < maxDim / 2; gy += sc) {
@@ -2353,9 +2362,24 @@ function buildFxPanel() {
         if (cfg.hasRandomize) {
             let hdr = document.createElement('div');
             hdr.className = 'fx-param-header';
-            hdr.innerHTML = `<span class="fx-param-title">${cfg.label}</span>` +
-                `<button class="fx-action-btn" data-action="randomize" data-effect="${effectName}" title="Randomize">&#x1F3B2;</button>` +
-                `<button class="fx-action-btn" data-action="reset" data-effect="${effectName}" title="Reset">&#x21BB;</button>`;
+            let titleSpan = document.createElement('span');
+            titleSpan.className = 'fx-param-title';
+            titleSpan.textContent = cfg.label;
+            hdr.appendChild(titleSpan);
+            let randBtn = document.createElement('button');
+            randBtn.className = 'fx-action-btn';
+            randBtn.dataset.action = 'randomize';
+            randBtn.dataset.effect = effectName;
+            randBtn.title = 'Randomize';
+            randBtn.innerHTML = '&#x1F3B2;';
+            hdr.appendChild(randBtn);
+            let resetBtn = document.createElement('button');
+            resetBtn.className = 'fx-action-btn';
+            resetBtn.dataset.action = 'reset';
+            resetBtn.dataset.effect = effectName;
+            resetBtn.title = 'Reset';
+            resetBtn.innerHTML = '&#x21BB;';
+            hdr.appendChild(resetBtn);
             group.appendChild(hdr);
         }
 
@@ -2364,9 +2388,24 @@ function buildFxPanel() {
             if (ctrl.type === 'slider') {
                 let row = document.createElement('div');
                 row.className = 'fx-inline-slider';
-                row.innerHTML = `<span class="fx-slider-label">${ctrl.label}</span>` +
-                    `<input type="range" id="${ctrl.sid}" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${ctrl.min}">` +
-                    `<input type="number" class="value-input" id="${ctrl.vid}" value="${ctrl.min}">`;
+                let sliderLabel = document.createElement('span');
+                sliderLabel.className = 'fx-slider-label';
+                sliderLabel.textContent = ctrl.label;
+                row.appendChild(sliderLabel);
+                let rangeInput = document.createElement('input');
+                rangeInput.type = 'range';
+                rangeInput.id = ctrl.sid;
+                rangeInput.min = ctrl.min;
+                rangeInput.max = ctrl.max;
+                rangeInput.step = ctrl.step;
+                rangeInput.value = ctrl.min;
+                row.appendChild(rangeInput);
+                let numInput = document.createElement('input');
+                numInput.type = 'number';
+                numInput.className = 'value-input';
+                numInput.id = ctrl.vid;
+                numInput.value = ctrl.min;
+                row.appendChild(numInput);
                 group.appendChild(row);
             } else if (ctrl.type === 'selector') {
                 let lbl = document.createElement('label');
@@ -2457,8 +2496,14 @@ function buildFxPanel() {
             } else if (ctrl.type === 'toggle') {
                 let row = document.createElement('div');
                 row.className = 'fx-toggle-row';
-                row.innerHTML = `<label style="font-size:9px;font-weight:600;color:var(--text-muted)">${ctrl.label}</label>` +
-                    `<label class="fx-toggle-switch"><input type="checkbox" id="${ctrl.tid}"><span class="toggle-slider"></span></label>`;
+                let toggleLabel = document.createElement('label');
+                toggleLabel.style.cssText = 'font-size:9px;font-weight:600;color:var(--text-muted)';
+                toggleLabel.textContent = ctrl.label;
+                row.appendChild(toggleLabel);
+                let switchLabel = document.createElement('label');
+                switchLabel.className = 'fx-toggle-switch';
+                switchLabel.innerHTML = `<input type="checkbox" id="${ctrl.tid}"><span class="toggle-slider"></span>`;
+                row.appendChild(switchLabel);
                 group.appendChild(row);
             }
         });
@@ -2717,7 +2762,7 @@ function applyPreset(presetKey, isCustom) {
     if (!preset) return;
 
     // 1. Clear all active effects and reset them
-    activeEffects.forEach(name => resetEffect(name));
+    [...activeEffects].forEach(name => resetEffect(name));
     activeEffects.clear();
 
     // 2. Apply each effect in the preset
@@ -2757,7 +2802,7 @@ function applyPreset(presetKey, isCustom) {
 
 function clearPreset() {
     // Reset all active effects to defaults, then deactivate
-    activeEffects.forEach(name => resetEffect(name));
+    [...activeEffects].forEach(name => resetEffect(name));
     activeEffects.clear();
     currentPreset = null;
     updateEffectCardStates();
@@ -2785,6 +2830,7 @@ function saveCustomPreset(name) {
     if (!name || activeEffects.size === 0) return;
     let presets = getCustomPresets();
     let key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    if (presets[key] && !confirm(`Preset "${presets[key].name}" already exists. Overwrite?`)) return;
     presets[key] = {
         name: name,
         category: 'custom',

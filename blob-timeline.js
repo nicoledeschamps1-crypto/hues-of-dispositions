@@ -1299,8 +1299,9 @@ function setupSegmentDrag(el, seg) {
     });
 
     function startDrag() {
-        tlSaveState();
+        let _dragStateSaved = false;
         function onMove(e) {
+            if (!_dragStateSaved) { tlSaveState(); _dragStateSaved = true; }
             let container = ui.tlTrackInner || ui.tlTrack;
             let rect = container.getBoundingClientRect();
             let vr = getVisibleTimeRange();

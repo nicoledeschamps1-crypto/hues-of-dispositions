@@ -32,8 +32,8 @@ let _blobParticles = [];
 const _MAX_PARTICLES = 500;
 let trackBoxColor = '#969696'; // default gray tracking box color
 let trackBoxWeight = 1.2;      // box stroke weight
-let currentMode = 1;
-let _userMode = 1;        // user's UI-selected mode (survives timeline overrides)
+let currentMode = 0;      // start with tracking OFF — user enables explicitly
+let _userMode = 0;        // user's UI-selected mode (survives timeline overrides)
 let _userCustomHue = 195; // user's UI-selected custom hue
 let currentParam = 0;
 
@@ -90,7 +90,7 @@ let scanIntensity = 50;
 let scanCount = 300;
 let vigIntensity = 50;
 let vigRadius = 70;
-let grainIntensity = 35;
+let grainIntensity = 50;
 let grainSize = 15;
 let grainColorMode = 'mono';
 let bloomIntensity = 40;
@@ -117,8 +117,8 @@ let pxsortHi = 220;
 let pxsortDir = 'horizontal';
 let datamoshDecay = 20, datamoshThreshold = 40, datamoshIntensity = 75, datamoshMode = 'melt';
 let pxsortgpuLo = 30, pxsortgpuHi = 220, pxsortgpuDir = 'horizontal';
-let noiseIntensity = 25;
-let noiseScale = 1;
+let noiseIntensity = 35;
+let noiseScale = 3;
 let noiseColorMode = 'mono';
 let curveIntensity = 30;
 let curveDirection = 'barrel';
@@ -127,10 +127,11 @@ let briValue = 0;
 let conValue = 100;
 let satValue = 100;
 let gridScale = 20;
-let gridWidth = 1;
-let gridOpacity = 30;
+let gridWidth = 2;
+let gridOpacity = 50;
 let dotsAngle = 45;
-let dotsScale = 6;
+let dotsScale = 10;
+let dotsOpacity = 100;
 let mblurIntensity = 30;
 let mblurAngle = 0;
 let palettePreset = 'noir';
@@ -386,8 +387,8 @@ let flowSpeed = 3;
 let flowDecay = 70;
 // Phase 3 effects
 let kaleidSegments = 6, kaleidRotation = 0;
-let feedbackDecay = 85, feedbackZoom = 2, feedbackRotation = 0, feedbackHueShift = 0;
-let timewarpSpeed = 30, timewarpDir = 'horizontal';
+let feedbackDecay = 85, feedbackZoom = 8, feedbackRotation = 2, feedbackHueShift = 15;
+let timewarpSpeed = 50, timewarpDir = 'horizontal';
 let flowfieldScale = 4, flowfieldStrength = 30, flowfieldSpeed = 1;
 let freezeRate = 15;
 let _freezeCounter = 0;
@@ -569,7 +570,7 @@ const FX_PARAM_MAP = {
     glitch: [{v:'glitchIntensity',g:()=>glitchIntensity,s:v=>glitchIntensity=v},{v:'glitchFreq',g:()=>glitchFreq,s:v=>glitchFreq=v},{v:'glitchMode',g:()=>glitchMode,s:v=>glitchMode=v},{v:'glitchChannelShift',g:()=>glitchChannelShift,s:v=>glitchChannelShift=v},{v:'glitchBlockSize',g:()=>glitchBlockSize,s:v=>glitchBlockSize=v},{v:'glitchSeed',g:()=>glitchSeed,s:v=>glitchSeed=v},{v:'glitchSpeed',g:()=>glitchSpeed,s:v=>glitchSpeed=v}],
     noise: [{v:'noiseIntensity',g:()=>noiseIntensity,s:v=>noiseIntensity=v},{v:'noiseScale',g:()=>noiseScale,s:v=>noiseScale=v},{v:'noiseColorMode',g:()=>noiseColorMode,s:v=>noiseColorMode=v},{v:'noiseAlgo',g:()=>noiseAlgo,s:v=>noiseAlgo=v}],
     grain: [{v:'grainIntensity',g:()=>grainIntensity,s:v=>grainIntensity=v},{v:'grainSize',g:()=>grainSize,s:v=>grainSize=v},{v:'grainColorMode',g:()=>grainColorMode,s:v=>grainColorMode=v}],
-    dots: [{v:'dotsAngle',g:()=>dotsAngle,s:v=>dotsAngle=v},{v:'dotsScale',g:()=>dotsScale,s:v=>dotsScale=v}],
+    dots: [{v:'dotsAngle',g:()=>dotsAngle,s:v=>dotsAngle=v},{v:'dotsScale',g:()=>dotsScale,s:v=>dotsScale=v},{v:'dotsOpacity',g:()=>dotsOpacity,s:v=>dotsOpacity=v}],
     grid: [{v:'gridScale',g:()=>gridScale,s:v=>gridScale=v},{v:'gridWidth',g:()=>gridWidth,s:v=>gridWidth=v},{v:'gridOpacity',g:()=>gridOpacity,s:v=>gridOpacity=v}],
     scanlines: [{v:'scanIntensity',g:()=>scanIntensity,s:v=>scanIntensity=v},{v:'scanCount',g:()=>scanCount,s:v=>scanCount=v},{v:'scanVertical',g:()=>scanVertical,s:v=>scanVertical=v}],
     vignette: [{v:'vigIntensity',g:()=>vigIntensity,s:v=>vigIntensity=v},{v:'vigRadius',g:()=>vigRadius,s:v=>vigRadius=v},{v:'vigColor',g:()=>vigColor,s:v=>vigColor=v}],
@@ -683,10 +684,10 @@ const FX_DEFAULTS = {
     pixel: {pixelSize:8,pixelMode:'square'},
     ascii: {asciiCellSize:10,asciiColorMode:'mono',asciiCharSet:'classic',asciiInvert:false},
     glitch: {glitchIntensity:30,glitchFreq:20,glitchMode:'shift',glitchChannelShift:50,glitchBlockSize:50,glitchSeed:0,glitchSpeed:50},
-    noise: {noiseIntensity:25,noiseScale:1,noiseColorMode:'mono',noiseAlgo:'random'},
-    grain: {grainIntensity:35,grainSize:15,grainColorMode:'mono'},
-    dots: {dotsAngle:45,dotsScale:6},
-    grid: {gridScale:20,gridWidth:1,gridOpacity:30},
+    noise: {noiseIntensity:35,noiseScale:3,noiseColorMode:'mono',noiseAlgo:'random'},
+    grain: {grainIntensity:50,grainSize:15,grainColorMode:'mono'},
+    dots: {dotsAngle:45,dotsScale:10,dotsOpacity:100},
+    grid: {gridScale:20,gridWidth:2,gridOpacity:50},
     scanlines: {scanIntensity:50,scanCount:300,scanVertical:false},
     vignette: {vigIntensity:50,vigRadius:70,vigColor:'#000000'},
     thermal: {thermalIntensity:80,thermalPalette:'default'},
@@ -730,8 +731,8 @@ const FX_DEFAULTS = {
     automata: {automataRule:'decay',automataSpeed:5,automataThreshold:128},
     pixelflow: {flowAngle:0,flowSpeed:3,flowDecay:70},
     kaleid: {kaleidSegments:6,kaleidRotation:0},
-    feedback: {feedbackDecay:85,feedbackZoom:2,feedbackRotation:0,feedbackHueShift:0},
-    timewarp: {timewarpSpeed:30,timewarpDir:'horizontal'},
+    feedback: {feedbackDecay:85,feedbackZoom:8,feedbackRotation:2,feedbackHueShift:15},
+    timewarp: {timewarpSpeed:50,timewarpDir:'horizontal'},
     flowfield: {flowfieldScale:4,flowfieldStrength:30,flowfieldSpeed:1},
     freeze: {freezeRate:15}
 };
@@ -1357,7 +1358,8 @@ const FX_UI_CONFIG = {
     ]},
     dots: { label:'Dots', controls:[
         {type:'slider',sid:'slider-dots-angle',vid:'val-dots-angle',label:'Angle',min:0,max:360,step:1,setter:v=>dotsAngle=v},
-        {type:'slider',sid:'slider-dots-scale',vid:'val-dots-scale',label:'Scale',min:2,max:20,step:1,setter:v=>dotsScale=v}
+        {type:'slider',sid:'slider-dots-scale',vid:'val-dots-scale',label:'Scale',min:2,max:20,step:1,setter:v=>dotsScale=v},
+        {type:'slider',sid:'slider-dots-opacity',vid:'val-dots-opacity',label:'Opacity',min:0,max:100,step:1,setter:v=>dotsOpacity=v}
     ]},
     grid: { label:'Grid', controls:[
         {type:'slider',sid:'slider-grid-scale',vid:'val-grid-scale',label:'Scale',min:5,max:50,step:1,setter:v=>gridScale=v},
@@ -2746,10 +2748,12 @@ function setupCoreUIListeners() {
         });
     });
 
-    // Tracking category tab switching
+    // Tracking category tab switching — user click sets manual flag to prevent auto-override
+    window._trackTabUserSelected = false;
     document.querySelectorAll('.tracking-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             const tabId = tab.dataset.trackTab;
+            window._trackTabUserSelected = true;
             document.querySelectorAll('.tracking-tab').forEach(t => {
                 t.classList.remove('active');
                 t.setAttribute('aria-selected', 'false');
@@ -2998,6 +3002,7 @@ function setupCoreUIListeners() {
             if (isNaN(newMode)) return;
             currentMode = newMode;
             _userMode = currentMode;
+            window._trackTabUserSelected = false; // allow auto-tab-switch to match new mode
             if (currentMode === 3) prevGridPixels = {};
             if (currentMode === 12) flickerScores = {};
             if (currentMode < 15 || currentMode > 17) { faceLandmarkCache = null; smoothedLandmarks = null; }
@@ -3397,10 +3402,63 @@ function setupCoreUIListeners() {
     ui.fileInput.addEventListener('change', handleFile, false);
     ui.webcamBtn.addEventListener('click', toggleWebcam);
 
-    // Microphone button
-    const micBtn = document.getElementById('mic-btn');
-    if (micBtn) micBtn.addEventListener('click', () => {
-        if (typeof toggleMicrophone === 'function') toggleMicrophone();
+    // Prevent panel scroll while dragging sliders (delegated for dynamic sliders too)
+    const _clearSliderActive = () => {
+        document.querySelectorAll('.panel.slider-active').forEach(p => p.classList.remove('slider-active'));
+    };
+    document.addEventListener('pointerdown', (e) => {
+        if (e.target.matches('.panel input[type="range"], .panel input[type="range"] *')) {
+            const panel = e.target.closest('.panel');
+            if (panel) panel.classList.add('slider-active');
+        }
+    });
+    document.addEventListener('pointerup', _clearSliderActive);
+    document.addEventListener('pointercancel', _clearSliderActive);
+    document.addEventListener('lostpointercapture', _clearSliderActive);
+    window.addEventListener('blur', _clearSliderActive);
+
+    // Audio source selector (FILE / MIC / VIDEO)
+    document.querySelectorAll('#audio-source-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.dataset.value;
+            const fileUpload = document.getElementById('audio-file-upload');
+            const hintEl = document.getElementById('audio-source-hint');
+
+            // Deactivate all source buttons
+            document.querySelectorAll('#audio-source-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+
+            if (val === 'file') {
+                // Stop other sources
+                if (typeof micActive !== 'undefined' && micActive && typeof stopMicrophone === 'function') stopMicrophone();
+                if (typeof videoAudioActive !== 'undefined' && videoAudioActive && typeof stopVideoAudio === 'function') stopVideoAudio();
+                // Show file upload area
+                if (fileUpload) fileUpload.style.display = '';
+                btn.classList.add('active');
+                if (hintEl) hintEl.textContent = 'Upload an audio file (mp3, wav, ogg)';
+            } else if (val === 'mic') {
+                if (fileUpload) fileUpload.style.display = 'none';
+                if (typeof toggleMicrophone === 'function') {
+                    if (typeof micActive !== 'undefined' && micActive) {
+                        stopMicrophone();
+                    } else {
+                        startMicrophone();
+                        btn.classList.add('active');
+                    }
+                }
+                if (hintEl) hintEl.textContent = 'Live microphone input for audio reactivity';
+            } else if (val === 'video') {
+                if (fileUpload) fileUpload.style.display = 'none';
+                if (typeof toggleVideoAudio === 'function') {
+                    if (typeof videoAudioActive !== 'undefined' && videoAudioActive) {
+                        stopVideoAudio();
+                    } else {
+                        startVideoAudio();
+                        btn.classList.add('active');
+                    }
+                }
+                if (hintEl) hintEl.textContent = 'Use the loaded video\'s original audio track';
+            }
+        });
     });
 
     // Top bar transport buttons (sole transport controls)
@@ -3542,10 +3600,11 @@ function updateButtonStates() {
     const blobParamsSection = document.querySelector('section[aria-label="Blob parameters"]');
     if (trackingBody) trackingBody.classList.toggle('tracking-off', currentMode === 0);
     if (blobParamsSection) blobParamsSection.style.display = currentMode === 0 ? 'none' : '';
-    // Auto-switch tracking tab to match current mode (skip if user is on VISUALIZE tab)
-    if (currentMode > 0) {
-        const currentTab = document.querySelector('.tracking-tab.active');
-        if (!currentTab || currentTab.dataset.trackTab !== 'visualize') {
+    // Auto-switch tracking tab ONLY when mode changes (not on every call)
+    // Respects user's manual tab selection — only overrides when they pick a new mode
+    if (currentMode > 0 && !window._trackTabUserSelected) {
+        if (window._trackTabLastMode !== currentMode) {
+            window._trackTabLastMode = currentMode;
             const analysisModes = [3,6,7,8,9,12,4];
             const aiModes = [14,15,16,17];
             let targetTab = 'color';
@@ -3720,56 +3779,85 @@ function restoreLayerState() {
     } catch(e) {}
 }
 
-// ── TOP BAR STATUS ──────────────────────
+// ── TOP BAR STATUS (throttled — only updates DOM on value change) ──────────────────────
+let _tbPrev = { fps: -1, src: '', mode: -1, fxCount: -1, recSec: -1, hasSource: null };
+let _tbEls = null;
+function _getTbEls() {
+    if (_tbEls) return _tbEls;
+    _tbEls = {
+        fps: document.getElementById('tb-fps'),
+        src: document.getElementById('tb-source'),
+        mode: document.getElementById('tb-mode'),
+        fxBadge: document.getElementById('tb-fx-badge'),
+        recIndicator: document.getElementById('tb-rec-indicator'),
+        recTime: document.getElementById('tb-rec-time'),
+        empty: document.getElementById('canvas-empty-state'),
+    };
+    return _tbEls;
+}
 function updateTopBar() {
-    // FPS
-    let fpsEl = document.getElementById('tb-fps');
-    if (fpsEl) {
-        if (!usingWebcam && !videoLoaded) {
-            fpsEl.textContent = '';
+    let el = _getTbEls();
+    // FPS — update every 10 frames to reduce DOM writes
+    if (el.fps) {
+        let hasSource = usingWebcam || videoLoaded;
+        if (!hasSource) {
+            if (_tbPrev.fps !== -2) { el.fps.textContent = ''; _tbPrev.fps = -2; }
         } else {
             let fps = Math.round(frameRate());
-            fpsEl.textContent = fps + ' FPS';
-            fpsEl.className = 'tb-status tb-fps ' + (fps >= 30 ? 'good' : fps >= 15 ? 'warn' : 'bad');
+            if (fps !== _tbPrev.fps) {
+                _tbPrev.fps = fps;
+                el.fps.textContent = fps + ' FPS';
+                el.fps.className = 'tb-status tb-fps ' + (fps >= 30 ? 'good' : fps >= 15 ? 'warn' : 'bad');
+            }
         }
     }
-    // Source — amber when no source loaded
-    let srcEl = document.getElementById('tb-source');
-    if (srcEl) {
-        if (usingWebcam) { srcEl.textContent = 'WEBCAM'; srcEl.classList.add('active'); srcEl.classList.remove('no-source'); }
-        else if (videoLoaded) { srcEl.textContent = 'VIDEO'; srcEl.classList.add('active'); srcEl.classList.remove('no-source'); }
-        else { srcEl.textContent = 'NO SOURCE'; srcEl.classList.remove('active'); srcEl.classList.add('no-source'); }
+    // Source
+    if (el.src) {
+        let srcKey = usingWebcam ? 'WEBCAM' : videoLoaded ? 'VIDEO' : 'NO SOURCE';
+        if (srcKey !== _tbPrev.src) {
+            _tbPrev.src = srcKey;
+            el.src.textContent = srcKey;
+            el.src.classList.toggle('active', srcKey !== 'NO SOURCE');
+            el.src.classList.toggle('no-source', srcKey === 'NO SOURCE');
+        }
     }
     // Canvas empty state
-    let emptyState = document.getElementById('canvas-empty-state');
-    if (emptyState) emptyState.classList.toggle('hidden', videoLoaded || usingWebcam);
+    let hasSource = videoLoaded || usingWebcam;
+    if (hasSource !== _tbPrev.hasSource) {
+        _tbPrev.hasSource = hasSource;
+        if (el.empty) el.empty.classList.toggle('hidden', hasSource);
+    }
     // Mode
-    let modeEl = document.getElementById('tb-mode');
-    if (modeEl) {
-        modeEl.textContent = MODE_NAMES[currentMode] || 'OFF';
-        modeEl.classList.toggle('active', currentMode > 0);
+    if (el.mode && currentMode !== _tbPrev.mode) {
+        _tbPrev.mode = currentMode;
+        el.mode.textContent = MODE_NAMES[currentMode] || 'OFF';
+        el.mode.classList.toggle('active', currentMode > 0);
     }
-    // FX badge — show count of active effects
-    let fxBadge = document.getElementById('tb-fx-badge');
-    if (fxBadge) {
+    // FX badge
+    if (el.fxBadge) {
         let count = activeEffects ? activeEffects.size : 0;
-        fxBadge.textContent = count > 0 ? count + ' FX' : '';
+        if (count !== _tbPrev.fxCount) {
+            _tbPrev.fxCount = count;
+            el.fxBadge.textContent = count > 0 ? count + ' FX' : '';
+        }
     }
-    // Recording time
-    let dotEl = document.getElementById('tb-rec-dot');
-    let timeEl = document.getElementById('tb-rec-time');
-    if (dotEl && timeEl) {
+    // Recording indicator
+    if (el.recIndicator && el.recTime) {
         if (isRecording) {
-            dotEl.classList.add('visible');
             let elapsed = Math.floor((millis() - recordingStartTime) / 1000);
-            let m = Math.floor(elapsed / 60);
-            let s = elapsed % 60;
-            timeEl.textContent = 'REC ' + m + ':' + String(s).padStart(2, '0');
-            timeEl.classList.add('active');
-        } else {
-            dotEl.classList.remove('visible');
-            timeEl.textContent = '';
-            timeEl.classList.remove('active');
+            if (elapsed !== _tbPrev.recSec) {
+                _tbPrev.recSec = elapsed;
+                let m = Math.floor(elapsed / 60);
+                let s = elapsed % 60;
+                el.recTime.textContent = 'REC ' + m + ':' + String(s).padStart(2, '0');
+            }
+            if (_tbPrev.recSec === -1 || !el.recIndicator.classList.contains('active')) {
+                el.recIndicator.classList.add('active');
+            }
+        } else if (_tbPrev.recSec !== -1) {
+            _tbPrev.recSec = -1;
+            el.recIndicator.classList.remove('active');
+            el.recTime.textContent = '';
         }
     }
     // Save button disabled state in top bar
@@ -3846,6 +3934,15 @@ function syncPlayIcon(playing) {
 
 function togglePlay() {
     if (videoEl && videoLoaded) {
+        // Webcam mode: spacebar toggles audio only (webcam stream stays live)
+        if (usingWebcam) {
+            if (audioElement && audioLoaded) {
+                if (audioPlaying) { audioElement.pause(); audioPlaying = false; }
+                else { audioElement.play().catch(() => { audioPlaying = false; }); audioPlaying = true; }
+            }
+            return;
+        }
+        // Video mode: toggle video + audio
         videoPlaying = !videoPlaying;
         if (videoPlaying) {
              videoEl.elt.loop = (loopMode === 'loop' || loopMode === 'through');
@@ -3892,14 +3989,22 @@ function restartVideo() {
 function syncUI() {
     // Don't overwrite sliders while editing a blob segment
     if (editingBlobSeg) { updateButtonStates(); return; }
+    // Show baseline values (user's intended settings) in sliders, not audio/timeline-modulated values.
+    // Modulated values only affect rendering — UI stays stable.
+    let source = (audioSync || (typeof timelineSegments !== 'undefined' && timelineSegments.length > 0))
+        ? paramBaseline : paramValues;
     [0, 1, 2, 3, 4, 5, 6, 7].forEach(idx => {
         if(ui.sliders[idx]) {
-            ui.sliders[idx].value = paramValues[idx];
+            let val = source[idx];
+            // Only update DOM if value actually changed (avoid slider flicker)
+            let curSlider = parseFloat(ui.sliders[idx].value);
+            if (Math.abs(curSlider - val) > 0.01) {
+                ui.sliders[idx].value = val;
+            }
             if (document.activeElement !== ui.inputs[idx]) {
-                if (Number.isInteger(paramValues[idx])) {
-                    ui.inputs[idx].value = paramValues[idx];
-                } else {
-                    ui.inputs[idx].value = paramValues[idx].toFixed(1);
+                let displayVal = Number.isInteger(val) ? String(val) : val.toFixed(1);
+                if (ui.inputs[idx].value !== displayVal) {
+                    ui.inputs[idx].value = displayVal;
                 }
             }
         }
@@ -3925,6 +4030,11 @@ function toggleWebcam() {
 }
 
 function startWebcam() {
+    // Stop video audio if active (switching away from file video)
+    if (typeof videoAudioActive !== 'undefined' && videoAudioActive && typeof stopVideoAudio === 'function') stopVideoAudio();
+    if (typeof _videoAudioSource !== 'undefined') _videoAudioSource = null;
+    const vab = document.getElementById('audio-src-video');
+    if (vab) { vab.disabled = true; vab.classList.remove('active'); }
     if (videoEl) { videoEl.stop(); videoEl.remove(); videoEl = null; }
     usingWebcam = true;
     videoLoaded = false;
@@ -3978,6 +4088,12 @@ function handleFile(event) {
     const isVideo = file.type.startsWith('video/') || ['mp4','mov','webm','m4v','avi','mkv','qt'].includes(ext);
     if (isVideo) {
         if (usingWebcam) stopWebcam();
+        // Stop video audio if active (old video element being replaced)
+        if (typeof videoAudioActive !== 'undefined' && videoAudioActive && typeof stopVideoAudio === 'function') {
+            stopVideoAudio();
+        }
+        // Reset video audio source since element is being replaced
+        if (typeof _videoAudioSource !== 'undefined') _videoAudioSource = null;
         if (videoEl) { videoEl.stop(); videoEl.remove(); }
         ui.fileName.innerText = file.name;
         ui.fileName.title = file.name;
@@ -3988,12 +4104,21 @@ function handleFile(event) {
         videoEl = createVideo(url, () => {
             videoEl.volume(0); videoEl.loop(); videoEl.hide();
             videoLoaded = true; videoPlaying = true;
-            currentMode = 1; _userMode = 1;
+            // Enable video audio source button
+            const vab = document.getElementById('audio-src-video');
+            if (vab) vab.disabled = false;
+            // Don't auto-enable tracking — user must turn it on explicitly
+            if (currentMode === 0) { /* keep off */ }
             updateButtonStates();
             syncPlayIcon(true);
-            // Remove previous timeupdate listener to prevent accumulation across file loads
-            if (window._timeupdateHandler && videoEl.elt) {
-                videoEl.elt.removeEventListener('timeupdate', window._timeupdateHandler);
+            // Remove previous timeupdate listener from ANY previous video element
+            if (window._timeupdateHandler) {
+                if (window._timeupdateVideoEl) {
+                    window._timeupdateVideoEl.removeEventListener('timeupdate', window._timeupdateHandler);
+                }
+                if (videoEl.elt !== window._timeupdateVideoEl) {
+                    videoEl.elt.removeEventListener('timeupdate', window._timeupdateHandler);
+                }
             }
             // Keep audio in sync with video — handles offset and loop modes
             window._timeupdateHandler = () => {
@@ -4032,6 +4157,7 @@ function handleFile(event) {
                 }
             };
             videoEl.elt.addEventListener('timeupdate', window._timeupdateHandler);
+            window._timeupdateVideoEl = videoEl.elt;
             // Capture duration for timeline
             videoEl.elt.addEventListener('loadedmetadata', () => {
                 videoDuration = videoEl.elt.duration;
@@ -4224,9 +4350,18 @@ function saveScreenshot() {
 // ── KEYBOARD / MOUSE INPUT ────────────────
 
 function keyPressed(event) {
-    let tag = document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement.isContentEditable) return;
     let e = event instanceof KeyboardEvent ? event : {};
+    let tag = document.activeElement.tagName;
+
+    // Spacebar always toggles play/pause regardless of focus — prevent checkboxes/buttons from hijacking it
+    if (key === ' ') {
+        if (e.preventDefault) e.preventDefault();
+        togglePlay();
+        return false;
+    }
+
+    // Block other keys when typing in inputs
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement.isContentEditable) return;
 
     // Help overlay: ? to toggle, Escape to close
     if (key === '?') { toggleHelp(); return false; }
@@ -4267,7 +4402,7 @@ function keyPressed(event) {
         updateZoomUI(); return false;
     }
 
-    if (key === ' ') { togglePlay(); return false; }
+    // Spacebar handled at top of keyPressed (before input guard)
     if (key === 'r' || key === 'R') { restartVideo(); return false; }
 
     if (key === 'w' || key === 'W') {
@@ -4521,7 +4656,9 @@ function keyPressed(event) {
     if(changed) syncUI();
 }
 
-function mouseDragged() {
+function mouseDragged(evt) {
+    let el = evt ? evt.target : document.elementFromPoint(winMouseX, winMouseY);
+    if (el && el.closest('.panel, #timeline-container, .modal-overlay, #settings-overlay, #top-bar')) return;
     if (mouseButton === RIGHT && mouseX > 0) {
         let delta = (mouseX - lastX) * 0.2;
         if (currentParam !== 4) {
@@ -4535,10 +4672,13 @@ function mouseDragged() {
     return true;
 }
 
-function mousePressed() {
+function mousePressed(evt) {
     // Don't handle clicks that landed on UI elements (buttons, inputs, panels)
-    let el = document.elementFromPoint(mouseX, mouseY);
-    if (el && el.closest('.panel, #timeline-container, .modal-overlay, #settings-overlay, #top-bar, .drawer-toggle, .panel-overlay')) return false;
+    // Use the actual event target or clientX/Y for viewport-correct element detection
+    let el = evt ? evt.target : document.elementFromPoint(winMouseX, winMouseY);
+    if (el && el.closest('.panel, #timeline-container, .modal-overlay, #settings-overlay, #top-bar, .drawer-toggle, .panel-overlay')) return;
+    // Only handle canvas clicks — bail if click wasn't on our canvas
+    if (el && el.tagName !== 'CANVAS') return;
     if (mouseButton === RIGHT) { lastX = mouseX; return false; }
     if (currentMode === 14 && mouseButton === LEFT) {
         if (mouseX >= videoX && mouseX <= videoX + videoW && mouseY >= videoY && mouseY <= videoY + videoH) {

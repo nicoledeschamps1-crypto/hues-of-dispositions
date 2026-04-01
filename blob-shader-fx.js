@@ -544,6 +544,7 @@ uniform float u_intensity;
 uniform float u_size;
 uniform float u_mono;
 uniform float u_opacity;
+uniform float u_animate; // 0.0 = static grain (default), 1.0 = animated (audio-linked)
 out vec4 fragColor;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
 void main() {
@@ -553,7 +554,8 @@ void main() {
     float grainMask = 1.0 - abs(lum - 0.5) * 2.0;
     grainMask = mix(0.3, 1.0, grainMask);
     vec2 cell = floor(v_texCoord * u_resolution / u_size);
-    float seed = floor(u_time * 24.0);
+    // Static grain uses fixed seed; animated grain changes per frame
+    float seed = u_animate > 0.5 ? floor(u_time * 24.0) : 0.0;
     vec3 n;
     if (u_mono > 0.5) {
         float v = (hash(cell+seed) - 0.5) * u_intensity * 0.314;
@@ -1447,13 +1449,13 @@ out vec4 fragColor;
 void main() {
     vec4 current = texture(u_texture, v_texCoord);
     vec4 history = texture(u_history, v_texCoord);
-    float scanPos = fract(u_time * u_speed * 0.02);
+    float scanPos = fract(u_time * u_speed * 0.5);
     float coord = u_direction < 0.5 ? v_texCoord.x : v_texCoord.y;
-    float edge = smoothstep(scanPos - 0.003, scanPos + 0.003, coord);
+    float edge = smoothstep(scanPos - 0.005, scanPos + 0.005, coord);
     vec3 result = mix(history.rgb, current.rgb, edge);
     float lineDist = abs(coord - scanPos);
-    float line = smoothstep(0.004, 0.0, lineDist);
-    result = mix(result, vec3(1.0), line * 0.4);
+    float line = smoothstep(0.01, 0.0, lineDist);
+    result = mix(result, vec3(1.0), line * 0.9);
     fragColor = mix(current, vec4(result, 1.0), u_opacity);
 }`;
 
@@ -1910,8 +1912,18 @@ class ShaderFXPipeline {
             persist.valid = true;
         }
 
+        // When rendering to screen (targetFBO=null), render to a temp FBO first
+        // so we can write-back the actual result to the persistent FBO
+        const renderToScreen = !targetFBO;
+        let renderTarget = targetFBO;
+        if (renderToScreen) {
+            // Use the opposite ping-pong FBO as a temp target
+            const tempIdx = 1 - this._pingPongIdx;
+            renderTarget = this.framebuffers[tempIdx];
+        }
+
         // Render: current (TEXTURE0) + history (TEXTURE1)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFBO);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget);
         gl.viewport(0, 0, this.width, this.height);
         gl.useProgram(entry.program);
 
@@ -1934,19 +1946,35 @@ class ShaderFXPipeline {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         gl.bindVertexArray(null);
 
-        // Write-back: copy result to persistent FBO for next frame
-        const resultTexture = targetFBO ? this.fbTextures[this._pingPongIdx] : null;
+        // Write-back: copy actual result to persistent FBO for next frame
+        const tempIdx = renderToScreen ? (1 - this._pingPongIdx) : this._pingPongIdx;
+        const resultTexture = this.fbTextures[tempIdx];
         const pt = this.programs.get('passthrough');
         if (pt) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, persist.fbo);
             gl.viewport(0, 0, this.width, this.height);
             gl.useProgram(pt.program);
             gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, resultTexture || inputTexture);
+            gl.bindTexture(gl.TEXTURE_2D, resultTexture);
             if (pt.uniforms['u_texture']) gl.uniform1i(pt.uniforms['u_texture'].location, 0);
             gl.bindVertexArray(this.quadVAO);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             gl.bindVertexArray(null);
+        }
+
+        // If rendering to screen, blit the temp FBO result to screen now
+        if (renderToScreen) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, this.width, this.height);
+            if (pt) {
+                gl.useProgram(pt.program);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, resultTexture);
+                if (pt.uniforms['u_texture']) gl.uniform1i(pt.uniforms['u_texture'].location, 0);
+                gl.bindVertexArray(this.quadVAO);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                gl.bindVertexArray(null);
+            }
         }
 
         gl.activeTexture(gl.TEXTURE0);
@@ -2251,6 +2279,9 @@ function registerCoreShaderEffects() {
             let sz = Math.max(1, Math.round((grainSize-5)/(40-5)*7+1));
             shaderFX.setUniform('grain','u_size',sz);
             shaderFX.setUniform('grain','u_mono',grainColorMode==='mono'?1:0);
+            // Animate grain only when audio sync is active for this effect
+            const hasAudio = typeof fxAudioSync !== 'undefined' && fxAudioSync && fxAudioSync.has && fxAudioSync.has('grain');
+            shaderFX.setUniform('grain','u_animate', hasAudio ? 1 : 0);
         }},
         { name:'glitch', frag:FRAG_GLITCH, sync:()=>{
             shaderFX.setUniform('glitch','u_intensity',glitchIntensity/100);
@@ -2354,8 +2385,8 @@ function registerCoreShaderEffects() {
         }},
         { name:'feedback', frag:FRAG_FEEDBACK, sync:()=>{
             shaderFX.setUniform('feedback','u_decay',feedbackDecay/100);
-            shaderFX.setUniform('feedback','u_zoom',feedbackZoom*0.005);
-            shaderFX.setUniform('feedback','u_rotation',feedbackRotation*Math.PI/180*0.1);
+            shaderFX.setUniform('feedback','u_zoom',feedbackZoom*0.01);
+            shaderFX.setUniform('feedback','u_rotation',feedbackRotation*Math.PI/180*0.15);
             shaderFX.setUniform('feedback','u_hueShift',feedbackHueShift/360);
         }},
         { name:'timewarp', frag:FRAG_TIMEWARP, sync:()=>{

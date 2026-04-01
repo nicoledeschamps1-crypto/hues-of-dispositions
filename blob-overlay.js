@@ -45,6 +45,7 @@ function loadOverlayFile(file) {
 
     if (!isVideo && !isImage) {
         console.warn('[Overlay] Unsupported file type:', file.type, ext);
+        _showOverlayError('Unsupported file type: ' + (ext || file.type || 'unknown'));
         return;
     }
 
@@ -66,6 +67,7 @@ function loadOverlayFile(file) {
         });
         overlayVideo.addEventListener('error', (e) => {
             console.error('[Overlay] Video load error:', e);
+            _showOverlayError('Failed to load video overlay');
             disposeOverlay();
         });
         overlayVideo.load();
@@ -80,6 +82,7 @@ function loadOverlayFile(file) {
         };
         overlayImage.onerror = () => {
             console.error('[Overlay] Image load error');
+            _showOverlayError('Failed to load image overlay');
             disposeOverlay();
         };
         overlayImage.src = _overlayFileURL;
@@ -318,6 +321,16 @@ function buildOverlayPanel() {
         overlayMuted = e.target.checked;
         if (overlayVideo) overlayVideo.muted = overlayMuted;
     });
+}
+
+function _showOverlayError(msg) {
+    const el = document.getElementById('overlay-upload-content');
+    if (!el) return;
+    const err = document.createElement('div');
+    err.textContent = msg;
+    err.style.cssText = 'color:#f87171;font-size:10px;padding:4px 0;text-align:center';
+    el.appendChild(err);
+    setTimeout(() => err.remove(), 4000);
 }
 
 function _updateOverlayUI() {

@@ -853,6 +853,8 @@ function toggleMicrophone() {
 }
 
 function startMicrophone() {
+    // Stop video audio if active (mutually exclusive)
+    if (videoAudioActive) stopVideoAudio();
     initAudioContext();
     // Save file-based audio graph so we can restore on mic stop
     window._savedFileAudioSource = audioSource || null;
@@ -882,7 +884,7 @@ function startMicrophone() {
         audioLoaded = true;
         micActive = true;
 
-        const micBtn = document.getElementById('mic-btn');
+        const micBtn = document.getElementById('audio-src-mic');
         if (micBtn) micBtn.classList.add('active');
         ui.audioName.innerText = 'Microphone active';
         const audioContainer = document.getElementById('audio-input-container');
@@ -923,8 +925,117 @@ function stopMicrophone() {
         audioLoaded = false;
     }
 
-    const micBtn = document.getElementById('mic-btn');
+    const micBtn = document.getElementById('audio-src-mic');
     if (micBtn) micBtn.classList.remove('active');
+    ui.audioName.innerText = 'mp3, wav, ogg';
+    const meterEl = document.getElementById('audio-meter');
+    if (meterEl) meterEl.style.display = 'none';
+    updateButtonStates();
+}
+
+// ═══ VIDEO AUDIO INPUT ═══
+let videoAudioActive = false;
+let _videoAudioSource = null; // MediaElementAudioSourceNode — can only be created once per element
+
+function toggleVideoAudio() {
+    if (videoAudioActive) {
+        stopVideoAudio();
+    } else {
+        startVideoAudio();
+    }
+}
+
+function startVideoAudio() {
+    if (!videoEl || !videoEl.elt) {
+        console.warn('[Audio] No video loaded — cannot use video audio');
+        return;
+    }
+    initAudioContext();
+
+    // Stop mic if active
+    if (micActive) stopMicrophone();
+
+    // Save file-based audio graph so we can restore later
+    window._savedFileAudioSource = audioSource || null;
+    window._savedFileAudioAnalyser = audioAnalyser || null;
+    window._savedFileAudioGainNode = audioGainNode || null;
+    window._savedFileAudioLoaded = audioLoaded;
+    // Disconnect file graph if active
+    if (audioSource) { try { audioSource.disconnect(); } catch(e){} }
+    if (audioAnalyser) { try { audioAnalyser.disconnect(); } catch(e){} }
+    if (audioGainNode) { try { audioGainNode.disconnect(); } catch(e){} }
+
+    // createMediaElementSource can only be called once per element
+    if (!_videoAudioSource) {
+        try {
+            _videoAudioSource = audioContext.createMediaElementSource(videoEl.elt);
+        } catch(e) {
+            console.warn('[Audio] Could not create source from video element:', e);
+            return;
+        }
+    }
+
+    audioAnalyser = audioContext.createAnalyser();
+    audioAnalyser.fftSize = 4096;
+    audioAnalyser.smoothingTimeConstant = 0;
+    audioGainNode = audioContext.createGain();
+
+    _videoAudioSource.connect(audioAnalyser);
+    audioAnalyser.connect(audioGainNode);
+    audioGainNode.connect(audioContext.destination);
+
+    // Unmute the video element — audio now routes through WebAudio
+    videoEl.volume(1);
+
+    frequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
+    floatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
+    prevFloatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
+    resetBandDetectors();
+    autoGainMax = { band: AUTO_GAIN_FLOOR, bass: AUTO_GAIN_FLOOR, mid: AUTO_GAIN_FLOOR, treble: AUTO_GAIN_FLOOR };
+    audioLoaded = true;
+    videoAudioActive = true;
+
+    const vidBtn = document.getElementById('audio-src-video');
+    if (vidBtn) vidBtn.classList.add('active');
+    ui.audioName.innerText = 'Video audio';
+    const audioContainer = document.getElementById('audio-input-container');
+    if (audioContainer) audioContainer.title = 'Using video\'s audio track';
+    const meterEl = document.getElementById('audio-meter');
+    if (meterEl) meterEl.style.display = '';
+    updateButtonStates();
+}
+
+function stopVideoAudio() {
+    if (_videoAudioSource) {
+        try { _videoAudioSource.disconnect(); } catch(e) {}
+    }
+    if (audioAnalyser) { try { audioAnalyser.disconnect(); } catch(e){} }
+    if (audioGainNode) { try { audioGainNode.disconnect(); } catch(e){} }
+    videoAudioActive = false;
+
+    // Mute video element again (no longer routing through WebAudio)
+    if (videoEl && videoEl.elt) videoEl.volume(0);
+
+    // Restore file-based audio graph if it existed
+    if (window._savedFileAudioSource && window._savedFileAudioAnalyser) {
+        audioSource = window._savedFileAudioSource;
+        audioAnalyser = window._savedFileAudioAnalyser;
+        audioGainNode = window._savedFileAudioGainNode;
+        try {
+            audioSource.connect(audioAnalyser);
+            audioAnalyser.connect(audioGainNode);
+            audioGainNode.connect(audioContext.destination);
+        } catch(e) {}
+        frequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
+        floatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
+        prevFloatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
+        audioLoaded = window._savedFileAudioLoaded;
+    } else {
+        audioLoaded = false;
+    }
+
+    const vidBtn = document.getElementById('audio-src-video');
+    if (vidBtn) vidBtn.classList.remove('active');
     ui.audioName.innerText = 'mp3, wav, ogg';
     const meterEl = document.getElementById('audio-meter');
     if (meterEl) meterEl.style.display = 'none';
