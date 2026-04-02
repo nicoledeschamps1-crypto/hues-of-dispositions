@@ -438,7 +438,6 @@
             box-shadow: 0 0 6px rgba(108, 92, 231, 0.4);
         }
         /* Tab button focus */
-        .panel-tab:focus-visible,
         .fx-view-btn:focus-visible,
         .fx-preset-cat-btn:focus-visible {
             outline: 2px solid var(--color-accent);
@@ -491,47 +490,11 @@
             border: 0;
         }
 
-        .panel-tabs {
-            display: flex;
-            gap: 2px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            padding: 2px;
-            border-radius: 6px;
-            flex-shrink: 0;
-        }
-        .panel-tab {
-            flex: 1;
-            background: transparent;
-            border: 1px solid transparent;
-            color: var(--text-muted);
-            font-size: 10px;
-            font-weight: 600;
-            padding: 5px 0;
-            cursor: pointer;
-            transition: all 0.15s;
-            text-transform: uppercase;
-            font-family: inherit;
-            letter-spacing: 0.3px;
-            border-radius: 4px;
-        }
-        .panel-tab:hover {
-            color: var(--text-main);
-            background: rgba(169,102,255,0.08);
-            border-color: rgba(255,255,255,0.10);
-        }
-        .panel-tab.active {
-            background: rgba(108,92,231,0.2);
-            color: #c4b8ff;
-            border-color: rgba(108,92,231,0.35);
-        }
+        /* Tab content always visible — section nav controls inner visibility */
         .tab-content {
-            display: none;
+            display: flex;
             flex-direction: column;
             gap: 14px;
-        }
-        .tab-content.active {
-            display: flex;
         }
 
         /* File Upload */
@@ -2900,9 +2863,7 @@
         @media (min-width: 901px) {
             .section-content { display: none !important; }
             .section-content.section-active { display: flex !important; flex-direction: column; gap: 14px; }
-            body[data-section] .panel-tabs[aria-label="Left panel tabs"] { display: none; }
-            body[data-section] #tab-track,
-            body[data-section] #tab-audio { display: block !important; }
+            /* Tab content always visible — section-content handles visibility */
         }
         /* Mobile: section-content wrappers transparent — show everything */
         @media (max-width: 900px) {
@@ -3161,7 +3122,6 @@
             .selector-btn,
             .action-btn,
             .tb-btn,
-            .panel-tab,
             .panel-close-btn,
             .fx-card,
             .fx-view-btn {
@@ -3301,16 +3261,7 @@
                 padding: 8px 10px;
             }
 
-            /* Panel tabs: fill width evenly */
-            .panel-tabs {
-                flex-wrap: nowrap;
-            }
-            .panel-tab {
-                flex: 1;
-                text-align: center;
-                padding: 8px 4px;
-                font-size: 10px;
-            }
+            /* Panel tabs removed — section nav only */
 
             /* ── Timeline ── */
             #timeline-container { left: 4px; right: 4px; bottom: 4px; padding: 6px 8px; gap: 3px; border-radius: 8px; }
@@ -3578,7 +3529,7 @@
             flex: 1;
         }
 
-        /* ═══ FX CAMERA PANEL (5th sub-tab) ═══ */
+        /* ═══ CAMERA PANEL (left panel Create section) ═══ */
         #fx-camera-panel {
             display: flex;
             flex-direction: column;
@@ -3911,10 +3862,7 @@
             </div>
         </div>
 
-        <div class="panel-tabs" role="tablist" aria-label="Left panel tabs">
-            <button class="panel-tab active" data-tab="track" role="tab" aria-selected="true" aria-controls="tab-track">TRACK</button>
-            <button class="panel-tab" data-tab="audio" role="tab" aria-selected="false" aria-controls="tab-audio">AUDIO</button>
-        </div>
+        <!-- Panel tabs removed — section nav is sole controller -->
 
         <div id="ui-controls">
 
@@ -3965,6 +3913,84 @@
                 </div>
                 <span class="hint-text">Interpolates zoom transitions for less jitter</span>
             </div>
+
+            <!-- Camera controls (Auto-Follow, Ken Burns, Split View, etc.) -->
+            <div class="control-group" id="fx-camera-panel">
+                <div class="slider-card-label">Camera</div>
+                <label id="label-autofollow">Auto-Follow</label>
+                <div class="selector-row" id="zoom-autofollow-buttons" aria-labelledby="label-autofollow">
+                    <button class="selector-btn" data-value="on">ON</button>
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                </div>
+                <span class="hint-text">Camera automatically pans to follow the largest blob</span>
+                <label id="label-kenburns">Ken Burns</label>
+                <div class="selector-row" id="zoom-kenburns-buttons" aria-labelledby="label-kenburns">
+                    <button class="selector-btn" data-value="on">ON</button>
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                </div>
+                <span class="hint-text">Slow animated zoom and pan — documentary style</span>
+                <div id="kenburns-speed-group" style="display:none">
+                    <label>Speed <input type="number" class="value-input" id="val-kb-speed" value="0.3" step="0.1"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-kb-speed" min="0.05" max="1.5" value="0.3" step="0.05"></div>
+                    <label>Min Zoom <input type="number" class="value-input" id="val-kb-min" value="1.0" step="0.1"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-kb-min" min="1.0" max="4.0" value="1.0" step="0.1"></div>
+                    <label>Max Zoom <input type="number" class="value-input" id="val-kb-max" value="2.5" step="0.1"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-kb-max" min="1.5" max="5.0" value="2.5" step="0.1"></div>
+                    <label>Pan Amount <input type="number" class="value-input" id="val-kb-pan" value="0.15" step="0.05"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-kb-pan" min="0" max="0.5" value="0.15" step="0.01"></div>
+                </div>
+                <label id="label-splitview">Split View</label>
+                <div class="selector-row" id="zoom-split-buttons" aria-labelledby="label-splitview">
+                    <button class="selector-btn" data-value="on">ON</button>
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                </div>
+                <span class="hint-text">Side-by-side original and effected view</span>
+                <div id="split-zoom-group" style="display:none">
+                    <label>Position <input type="number" class="value-input" id="val-split-pos" value="50" step="5"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-split-pos" min="10" max="90" value="50" step="1"></div>
+                    <label>Split Zoom <input type="number" class="value-input" id="val-split-zoom" value="3" step="0.5"></label>
+                    <div class="slider-wrapper"><input type="range" id="slider-split-zoom" min="1.5" max="8" value="3" step="0.5"></div>
+                    <label id="label-flip">Flip Sides</label>
+                    <div class="selector-row" id="split-mirror-buttons" aria-labelledby="label-flip">
+                        <button class="selector-btn" data-value="on">ON</button>
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                    </div>
+                    <label id="label-splitfx">Split FX</label>
+                    <div class="selector-row" id="split-fx-buttons" aria-labelledby="label-splitfx">
+                        <button class="selector-btn active" data-value="on">ON</button>
+                        <button class="selector-btn" data-value="off">OFF</button>
+                    </div>
+                    <label id="label-splitviz">Split Zoom Viz</label>
+                    <div class="selector-row" id="split-viz-buttons" aria-labelledby="label-splitviz">
+                        <button class="selector-btn" data-value="on">ON</button>
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                    </div>
+                    <label id="label-feedshape">Feed Shape</label>
+                    <div class="selector-row" id="split-shape-buttons" aria-labelledby="label-feedshape">
+                        <button class="selector-btn active" data-value="rect">RECT</button>
+                        <button class="selector-btn" data-value="rounded">ROUND</button>
+                        <button class="selector-btn" data-value="circle">CIRCLE</button>
+                        <button class="selector-btn" data-value="pill">PILL</button>
+                    </div>
+                </div>
+                <label id="label-depthblur">Depth Blur</label>
+                <div class="selector-row" id="zoom-depth-buttons" aria-labelledby="label-depthblur">
+                    <button class="selector-btn" data-value="on">ON</button>
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                </div>
+                <span class="hint-text">Simulated depth-of-field — blurs areas away from focus point</span>
+                <label id="label-pip">PiP Map</label>
+                <div class="selector-row" id="zoom-pip-buttons" aria-labelledby="label-pip">
+                    <button class="selector-btn" data-value="on">ON</button>
+                    <button class="selector-btn active" data-value="off">OFF</button>
+                </div>
+                <span class="hint-text">Picture-in-picture minimap showing full frame</span>
+            </div>
+
+            <!-- Overlay drop zone -->
+            <div id="fx-overlay-panel" class="control-group"></div>
+            <!-- Layers panel -->
+            <div id="fx-layers-panel" class="control-group"></div>
 
             </div><!-- /section-content create -->
 
@@ -4387,8 +4413,8 @@
         </div>
 
         <div id="ui-controls-right">
-            <!-- ═══ CREATE SECTION: Effects ═══ -->
-            <div data-section-content="create" class="section-content section-active">
+            <!-- ═══ CREATE + AUDIO SECTION: Effects ═══ -->
+            <div data-section-content="create audio" class="section-content section-active">
             <div class="control-group" id="group-fx">
                 <div class="fx-master-row">
                     <span>Effects</span>
@@ -4428,84 +4454,10 @@
                     </div>
                     <div id="fx-pp-list"></div>
                 </div>
-                <!-- Camera tab content (shown when CAMERA sub-tab active) -->
-                <div id="fx-camera-panel" style="display:none">
-                    <span class="panel-crosslink" id="link-to-zoom" title="Jump to Zoom controls in left panel">← Zoom controls</span>
-                    <label id="label-autofollow">Auto-Follow</label>
-                    <div class="selector-row" id="zoom-autofollow-buttons" aria-labelledby="label-autofollow">
-                        <button class="selector-btn" data-value="on">ON</button>
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                    </div>
-                    <span class="hint-text">Camera automatically pans to follow the largest blob</span>
-                    <label id="label-kenburns">Ken Burns</label>
-                    <div class="selector-row" id="zoom-kenburns-buttons" aria-labelledby="label-kenburns">
-                        <button class="selector-btn" data-value="on">ON</button>
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                    </div>
-                    <span class="hint-text">Slow animated zoom and pan — documentary style</span>
-                    <div id="kenburns-speed-group" style="display:none">
-                        <label>Speed <input type="number" class="value-input" id="val-kb-speed" value="0.3" step="0.1"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-kb-speed" min="0.05" max="1.5" value="0.3" step="0.05"></div>
-                        <label>Min Zoom <input type="number" class="value-input" id="val-kb-min" value="1.0" step="0.1"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-kb-min" min="1.0" max="4.0" value="1.0" step="0.1"></div>
-                        <label>Max Zoom <input type="number" class="value-input" id="val-kb-max" value="2.5" step="0.1"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-kb-max" min="1.5" max="5.0" value="2.5" step="0.1"></div>
-                        <label>Pan Amount <input type="number" class="value-input" id="val-kb-pan" value="0.15" step="0.05"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-kb-pan" min="0" max="0.5" value="0.15" step="0.01"></div>
-                    </div>
-                    <label id="label-splitview">Split View</label>
-                    <div class="selector-row" id="zoom-split-buttons" aria-labelledby="label-splitview">
-                        <button class="selector-btn" data-value="on">ON</button>
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                    </div>
-                    <span class="hint-text">Side-by-side original and effected view</span>
-                    <div id="split-zoom-group" style="display:none">
-                        <label>Position <input type="number" class="value-input" id="val-split-pos" value="50" step="5"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-split-pos" min="10" max="90" value="50" step="1"></div>
-                        <label>Split Zoom <input type="number" class="value-input" id="val-split-zoom" value="3" step="0.5"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-split-zoom" min="1.5" max="8" value="3" step="0.5"></div>
-                        <label id="label-flip">Flip Sides</label>
-                        <div class="selector-row" id="split-mirror-buttons" aria-labelledby="label-flip">
-                            <button class="selector-btn" data-value="on">ON</button>
-                            <button class="selector-btn active" data-value="off">OFF</button>
-                        </div>
-                        <label id="label-splitfx">Split FX</label>
-                        <div class="selector-row" id="split-fx-buttons" aria-labelledby="label-splitfx">
-                            <button class="selector-btn active" data-value="on">ON</button>
-                            <button class="selector-btn" data-value="off">OFF</button>
-                        </div>
-                        <label id="label-splitviz">Split Zoom Viz</label>
-                        <div class="selector-row" id="split-viz-buttons" aria-labelledby="label-splitviz">
-                            <button class="selector-btn" data-value="on">ON</button>
-                            <button class="selector-btn active" data-value="off">OFF</button>
-                        </div>
-                        <label id="label-feedshape">Feed Shape</label>
-                        <div class="selector-row" id="split-shape-buttons" aria-labelledby="label-feedshape">
-                            <button class="selector-btn active" data-value="rect">RECT</button>
-                            <button class="selector-btn" data-value="rounded">ROUND</button>
-                            <button class="selector-btn" data-value="circle">CIRCLE</button>
-                            <button class="selector-btn" data-value="pill">PILL</button>
-                        </div>
-                    </div>
-                    <label id="label-depthblur">Depth Blur</label>
-                    <div class="selector-row" id="zoom-depth-buttons" aria-labelledby="label-depthblur">
-                        <button class="selector-btn" data-value="on">ON</button>
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                    </div>
-                    <span class="hint-text">Simulated depth-of-field — blurs areas away from focus point</span>
-                    <label id="label-pip">PiP Map</label>
-                    <div class="selector-row" id="zoom-pip-buttons" aria-labelledby="label-pip">
-                        <button class="selector-btn" data-value="on">ON</button>
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                    </div>
-                    <span class="hint-text">Picture-in-picture minimap showing full frame</span>
-                </div>
+                <!-- Camera moved to left panel Create section -->
             </div>
 
-                <!-- Video Overlay tab content (shown when VIDEO sub-tab active) -->
-                <div id="fx-overlay-panel" style="display:none"></div>
-                <!-- Layers tab content -->
-                <div id="fx-layers-panel" style="display:none"></div>
+                <!-- Camera, Overlay, Layers moved to left panel Create section -->
 
             <!-- REMOVED: old static FX categories/cards/params — now JS-generated by buildFxPanel() -->
 
@@ -4858,14 +4810,14 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260401g"></script>
-<script src="blob-fx.js?v=20260401g"></script>
-<script src="blob-shader-fx.js?v=20260401g"></script>
-<script src="blob-overlay.js?v=20260401g"></script>
-<script src="blob-audio.js?v=20260401g"></script>
-<script src="blob-timeline.js?v=20260401g"></script>
-<script src="blob-mask.js?v=20260401g"></script>
-<script src="blob-tracking.js?v=20260401g"></script>
+<script src="blob-core.js?v=20260402h"></script>
+<script src="blob-fx.js?v=20260402h"></script>
+<script src="blob-shader-fx.js?v=20260402h"></script>
+<script src="blob-overlay.js?v=20260402h"></script>
+<script src="blob-audio.js?v=20260402h"></script>
+<script src="blob-timeline.js?v=20260402h"></script>
+<script src="blob-mask.js?v=20260402h"></script>
+<script src="blob-tracking.js?v=20260402h"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">

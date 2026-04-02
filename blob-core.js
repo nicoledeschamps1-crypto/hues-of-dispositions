@@ -2717,21 +2717,9 @@ function draw() {
 
 // ── CORE UI LISTENERS ─────────────────────
 
-function switchToTab(tabName) {
-    document.querySelectorAll('.panel-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === tabName);
-    });
-    document.querySelectorAll('.tab-content').forEach(tc => {
-        tc.classList.toggle('active', tc.dataset.tab === tabName);
-    });
-}
+// switchToTab() removed — section nav is sole controller (use switchSection())
 
 function setupCoreUIListeners() {
-
-    // Panel tab switching
-    document.querySelectorAll('.panel-tab').forEach(tab => {
-        tab.addEventListener('click', () => switchToTab(tab.dataset.tab));
-    });
 
     // Collapsible section toggles
     document.querySelectorAll('.collapsible-toggle').forEach(toggle => {
@@ -3477,10 +3465,8 @@ function setupCoreUIListeners() {
     // Cross-link navigation between panels
     let linkToCamera = document.getElementById('link-to-camera');
     if (linkToCamera) linkToCamera.addEventListener('click', () => {
-        // Switch to Camera tab in FX panel
-        if (typeof switchFxCategory === 'function') switchFxCategory('camera');
-        let rp = document.getElementById('right-panel');
-        if (rp) rp.scrollTo({ top: 0, behavior: 'smooth' });
+        // Switch to Create section where camera controls live
+        switchSection('create');
     });
     let linkToZoom = document.getElementById('link-to-zoom');
     if (linkToZoom) linkToZoom.addEventListener('click', () => {
@@ -4428,7 +4414,7 @@ function keyPressed(event) {
     if (key === '9') { exitMaskMode(); currentMode = 9; _userMode = 9; ui.customColorGroup.style.display = 'none'; changed = true; }
     if (key === 'm' || key === 'M') { currentMode = 14; _userMode = 14; enterMaskSelecting(); changed = true; }
     // Auto-switch to TRACK tab when mode keys pressed
-    if (/^[0-9zxm]$/i.test(key) && !e.metaKey && !e.ctrlKey && changed) switchToTab('track');
+    if (/^[0-9zxm]$/i.test(key) && !e.metaKey && !e.ctrlKey && changed) switchSection('track');
     if (key === 'l' || key === 'L') { showLines = !showLines; changed = true; }
 
     if (keyCode === ESCAPE && currentMode === 14) {
@@ -4443,7 +4429,7 @@ function keyPressed(event) {
         if (audioSync) {
             audioBaseValues = { 0: paramValues[0], 1: paramValues[1], 5: paramValues[5], 6: paramValues[6] };
         }
-        switchToTab('audio');
+        switchSection('audio');
         changed = true;
     }
 
@@ -4478,7 +4464,7 @@ function keyPressed(event) {
         autoGainMax = { band: AUTO_GAIN_FLOOR, bass: AUTO_GAIN_FLOOR, mid: AUTO_GAIN_FLOOR, treble: AUTO_GAIN_FLOOR };
         smoothBand = 0;
         resetBandDetectors();
-        switchToTab('audio');
+        switchSection('audio');
         changed = true;
     }
 
@@ -4643,13 +4629,13 @@ function keyPressed(event) {
         const targets = ['all', 'qty', 'size', 'color', 'flash', 'pulse', 'rate'];
         let curIdx = targets.indexOf(audioSyncTarget);
         audioSyncTarget = targets[(curIdx + 1) % targets.length];
-        switchToTab('audio');
+        switchSection('audio');
         changed = true;
     }
 
     if (key === 'b' || key === 'B') {
         bpmLocked = !bpmLocked;
-        switchToTab('audio');
+        switchSection('audio');
         changed = true;
     }
 
