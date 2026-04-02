@@ -16,8 +16,10 @@ function trackPoints() {
     trackedPoints = [];
     if (currentMode === 0 || !videoLoaded || !videoPlaying) return;
 
-    // FACE LANDMARK modes (EYES=15, LIPS=16, FACE=17) — skip loadPixels (uses MediaPipe, not pixel data)
+    // FACE LANDMARK modes (EYES=15, LIPS=16, FACE=17) — uses MediaPipe landmarks but needs pixel data for color sampling
     if (currentMode >= 15 && currentMode <= 17) {
+        videoEl.loadPixels();
+        if (videoEl.pixels.length === 0) return;
         if (!window.mpFaceLandmarkerReady || !window.mpFaceLandmarker) {
             if (!window._faceWarnThrottle || Date.now() - window._faceWarnThrottle > 3000) {
                 window._faceWarnThrottle = Date.now();
@@ -166,6 +168,8 @@ function trackPoints() {
 
     // MASK mode: AI re-segmentation — use mask directly for blob placement
     if (currentMode === 14 && maskReady && maskSegData && maskClickNorm) {
+        videoEl.loadPixels();
+        if (videoEl.pixels.length === 0) return;
         const w = videoEl.width, h = videoEl.height;
 
         // Adaptive re-segmentation: interval adjusts based on centroid drift

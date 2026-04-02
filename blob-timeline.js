@@ -504,6 +504,13 @@ function renderTimelineRuler() {
 // ── Audio Waveform Analysis for Timeline ───
 
 function analyzeAudioForTimeline(file) {
+    _overviewCanvasDrawn = false;
+    // Clear stale beat markers from previous audio
+    if (_cachedBeatMarkers && _cachedBeatMarkers.length > 0) {
+        _cachedBeatMarkers.forEach(el => el.remove());
+        _cachedBeatMarkers = [];
+        _cachedBeatKey = '';
+    }
     let reader = new FileReader();
     reader.onload = function(e) {
         initAudioContext();
@@ -968,11 +975,10 @@ function _setupSublaneRegionDrag(effectName, canvas) {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
 
-    // Store references for cleanup on next call
-    if (cache) {
-        cache._docMoveHandler = onMove;
-        cache._docUpHandler = onUp;
-    }
+    // Store references for cleanup on next call — ensure cache entry exists
+    if (!_sublaneCache[effectName]) _sublaneCache[effectName] = {};
+    _sublaneCache[effectName]._docMoveHandler = onMove;
+    _sublaneCache[effectName]._docUpHandler = onUp;
 }
 
 // Update sub-lane playheads (called from updateTimelinePlayhead)
@@ -1461,15 +1467,20 @@ function applyTimelineEffects() {
             }
         }
         restoreEffectParams(seg.effect, lerpedParams);
-        let fn = EFFECT_FN_MAP[seg.effect];
-        if (fn) {
-            if (!drawOnly.has(seg.effect)) {
-                if (!pixelsLoaded) { loadPixels(); pixelsLoaded = true; }
-                needsPixelUpdate = true;
-            } else if (needsPixelUpdate) {
-                updatePixels(); needsPixelUpdate = false;
+        // Skip CPU function for effects handled by GPU shader pipeline
+        let isGPU = typeof SHADER_EFFECT_REGISTRY !== 'undefined' && SHADER_EFFECT_REGISTRY[seg.effect] &&
+                     typeof shaderFX !== 'undefined' && shaderFX.ready && shaderFX.enabled;
+        if (!isGPU) {
+            let fn = EFFECT_FN_MAP[seg.effect];
+            if (fn) {
+                if (!drawOnly.has(seg.effect)) {
+                    if (!pixelsLoaded) { loadPixels(); pixelsLoaded = true; }
+                    needsPixelUpdate = true;
+                } else if (needsPixelUpdate) {
+                    updatePixels(); needsPixelUpdate = false;
+                }
+                fn();
             }
-            fn();
         }
         restoreEffectParams(seg.effect, saved);
     }

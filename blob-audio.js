@@ -90,8 +90,7 @@ function handleAudioFile(event) {
                 let startTime = getAudioTimeForVideo(videoEl ? videoEl.time() : 0);
                 if (startTime >= 0) {
                     audioElement.currentTime = startTime;
-                    audioElement.play().catch(() => { audioPlaying = false; });
-                    audioPlaying = true;
+                    audioElement.play().then(() => { audioPlaying = true; }).catch(() => { audioPlaying = false; });
                 }
             }
         };
@@ -398,7 +397,7 @@ function applyPerEffectAudioSync() {
     if (keys.length === 0) return;
 
     let now = 0;
-    if (audioElement && audioElement.currentTime) now = audioElement.currentTime;
+    if (audioElement && audioElement.readyState > 0) now = audioElement.currentTime;
     else if (typeof videoEl !== 'undefined' && videoEl) now = videoEl.time();
 
     let doUI = (++_fxSyncUIFrame % 6 === 0); // throttle UI updates
@@ -645,7 +644,7 @@ function setupAudioUIListeners() {
     let threshSlider = document.getElementById('slider-10');
     let threshInput = document.getElementById('val-10');
     threshSlider.addEventListener('input', (e) => {
-        audioThreshold = parseInt(e.target.value);
+        audioThreshold = parseInt(e.target.value) || audioThreshold;
         threshInput.value = audioThreshold;
     });
     threshInput.addEventListener('change', (e) => {
@@ -660,7 +659,7 @@ function setupAudioUIListeners() {
     let releaseSlider = document.getElementById('slider-11');
     let releaseInput = document.getElementById('val-11');
     releaseSlider.addEventListener('input', (e) => {
-        releaseSpeed = parseInt(e.target.value);
+        releaseSpeed = parseInt(e.target.value) || releaseSpeed;
         releaseInput.value = releaseSpeed;
     });
     releaseInput.addEventListener('change', (e) => {
@@ -1008,6 +1007,7 @@ function startVideoAudio() {
 function stopVideoAudio() {
     if (_videoAudioSource) {
         try { _videoAudioSource.disconnect(); } catch(e) {}
+        _videoAudioSource = null;
     }
     if (audioAnalyser) { try { audioAnalyser.disconnect(); } catch(e){} }
     if (audioGainNode) { try { audioGainNode.disconnect(); } catch(e){} }
@@ -1031,6 +1031,8 @@ function stopVideoAudio() {
         prevFloatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
         audioLoaded = window._savedFileAudioLoaded;
     } else {
+        audioAnalyser = null;
+        audioGainNode = null;
         audioLoaded = false;
     }
 

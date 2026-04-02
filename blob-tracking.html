@@ -119,6 +119,9 @@
             --surface-subtle: rgba(255, 255, 255, 0.02);
             --border-subtle: rgba(169, 102, 255, 0.06);
 
+            /* Layout sizing */
+            --topbar-h: 36px;
+
             /* Timeline sizing */
             --tl-height: 280px;
             --tl-padding-v: var(--sp-3);
@@ -157,7 +160,7 @@
         /* Panel Base (shared by left + right) */
         .panel {
             position: absolute;
-            top: 60px;
+            top: calc(var(--topbar-h) + 24px);
             width: 280px;
             padding: 12px;
             background: var(--panel-bg);
@@ -170,7 +173,7 @@
             gap: 8px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
             transition: transform 0.3s ease, opacity 0.3s ease;
-            max-height: calc(100vh - 80px);
+            max-height: calc(100vh - var(--topbar-h) - 44px);
             overflow-y: auto;
             overflow-x: hidden;
             overscroll-behavior: contain;
@@ -2696,7 +2699,7 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 36px;
+            height: var(--topbar-h);
             background: linear-gradient(to right in oklch, oklch(40% 0.28 15) 0%, oklch(40% 0.27 5) 18%, oklch(38% 0.24 340) 40%, oklch(35% 0.22 310) 65%, oklch(30% 0.20 285) 100%);
             border-bottom: 1px solid rgba(169,102,255,0.15);
             z-index: 1000;
@@ -3127,11 +3130,11 @@
 
             .panel {
                 position: fixed;
-                top: 36px;
+                top: var(--topbar-h);
                 bottom: 0;
-                width: 280px;
+                width: min(85vw, 340px);
                 max-height: none;
-                height: calc(100vh - 36px);
+                height: calc(100vh - var(--topbar-h));
                 padding: var(--sp-4);
                 padding-top: var(--sp-5);
                 border-radius: 0;
@@ -3167,13 +3170,43 @@
             }
         }
         @media (max-width: 700px) {
-            :root { --tl-height: 220px; }
+            :root { --tl-height: 200px; --topbar-h: 48px; }
+
+            /* ── Top bar: taller + larger icons for touch ── */
+            #top-bar {
+                height: var(--topbar-h);
+                padding: 0 var(--sp-2);
+                gap: 4px;
+                overflow: visible;
+            }
+            #top-bar .tb-btn {
+                padding: 6px;
+                min-height: 40px;
+                min-width: 40px;
+            }
+            #top-bar .tb-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            #top-bar .tb-zone { gap: 4px; }
+            #top-bar .tb-zone-right { gap: 4px; }
+
+            /* Drawer toggles: prominent and tappable */
+            .drawer-toggle {
+                padding: 6px 10px;
+                min-width: 44px;
+                min-height: 40px;
+                font-size: var(--font-sm);
+                font-weight: 700;
+            }
+
             /* Icon-only section tabs */
             .section-tab .tab-label-short { display: none; }
-            .section-tab .tab-icon { display: inline-block; width: 14px; height: 14px; }
-            .section-tab { padding: 4px 6px; }
-            .tb-section-nav { gap: 1px; margin: 0; }
-            /* Hide non-essential status (but keep recording visible) */
+            .section-tab .tab-icon { display: inline-block; width: 16px; height: 16px; }
+            .section-tab { padding: 6px 8px; min-height: 36px; }
+            .tb-section-nav { gap: 2px; margin: 0; }
+
+            /* Hide non-essential items for phone — keep core transport + drawers */
             #top-bar .tb-fps,
             #top-bar #tb-source,
             #top-bar #tb-mode,
@@ -3181,18 +3214,107 @@
             #top-bar .tb-saturn,
             #top-bar #tb-settings-btn,
             #top-bar #tb-help-btn,
-            #top-bar #btn-save-rec {
+            #top-bar #btn-save-rec,
+            #top-bar #tb-save,
+            #top-bar #tb-photo,
+            #top-bar #tb-restart,
+            #top-bar .tb-fx-badge {
                 display: none;
             }
-            #top-bar { padding: 0 var(--sp-1); gap: 2px; overflow: visible; }
-            #top-bar .tb-zone { gap: 2px; }
-            #top-bar .tb-zone-right { gap: 2px; }
-            #top-bar .tb-btn { padding: 4px 4px; min-height: 28px; }
-            .drawer-toggle { padding: 4px 6px; min-width: 36px; }
-            .panel { width: 280px; padding: var(--sp-3); font-size: var(--font-sm); }
+
+            /* ── Panels: full-width overlay on phones ── */
+            .panel {
+                width: calc(100vw - 16px) !important;
+                max-width: 100vw;
+                top: var(--topbar-h);
+                height: calc(100vh - var(--topbar-h));
+                padding: var(--sp-4);
+                font-size: var(--font-sm);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            /* Close button: larger on phone */
+            .panel-close-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 22px;
+                top: var(--sp-3);
+                right: var(--sp-3);
+            }
+
+            /* ── Canvas: offset for taller top bar ── */
+            canvas#defaultCanvas0 {
+                top: 0 !important;
+            }
+
+            /* ── Empty state: mobile-friendly ── */
+            #canvas-empty-state {
+                width: 85vw;
+                max-width: 340px;
+                padding: var(--sp-4);
+            }
+            #canvas-empty-state svg {
+                width: 36px;
+                height: 36px;
+            }
+            #canvas-empty-state .empty-title {
+                font-size: var(--font-md);
+            }
+            #canvas-empty-state .empty-step {
+                font-size: var(--font-xs);
+            }
+            #canvas-empty-state .empty-tip {
+                font-size: 10px;
+            }
+
+            /* ── Panel content reflow ── */
+            .header-section { padding-bottom: 6px; }
+            h1 { font-size: 12px; letter-spacing: 0.5px; }
+            .title-row { flex-wrap: wrap; gap: 4px; }
+
+            /* Sliders: taller touch targets */
+            input[type="range"] {
+                height: 32px;
+            }
+            input[type="range"]::-webkit-slider-thumb {
+                width: 20px;
+                height: 20px;
+            }
+
+            /* Selector buttons: wrap and fill */
+            .mode-buttons,
+            .viz-mode-buttons,
+            .color-mode-row {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .selector-btn {
+                flex: 1 1 auto;
+                min-width: 60px;
+                padding: 8px 6px;
+                font-size: 10px;
+            }
+
+            /* FX cards: larger tap targets */
+            .fx-card {
+                min-height: 48px;
+                padding: 8px 10px;
+            }
+
+            /* Panel tabs: fill width evenly */
+            .panel-tabs {
+                flex-wrap: nowrap;
+            }
+            .panel-tab {
+                flex: 1;
+                text-align: center;
+                padding: 8px 4px;
+                font-size: 10px;
+            }
+
+            /* ── Timeline ── */
             #timeline-container { left: 4px; right: 4px; bottom: 4px; padding: 6px 8px; gap: 3px; border-radius: 8px; }
 
-            /* ── Mobile timeline: compact toolbar rows ── */
             .timeline-controls {
                 flex-wrap: wrap;
                 gap: 4px;
@@ -3230,6 +3352,49 @@
 
             /* Sync config row: wrap on mobile */
             .tl-sync-row { flex-wrap: wrap; gap: 4px 8px; }
+        }
+
+        /* ═══ SMALL PHONE (≤500px) ═══ */
+        @media (max-width: 500px) {
+            /* Full-screen panels with no gap */
+            .panel {
+                width: 100vw !important;
+                max-width: 100vw;
+                left: 0 !important;
+                right: 0 !important;
+                border-radius: 0;
+                padding: var(--sp-3);
+            }
+
+            /* Section nav: icon-only, tight spacing */
+            .section-tab { padding: 4px 6px; }
+            .section-tab .tab-icon { width: 14px; height: 14px; }
+            .tb-section-nav { gap: 1px; padding: 1px; }
+
+            /* Tighter panel content */
+            .control-group { padding: 2px 4px; }
+            .accordion-header { padding: 3px 0; }
+            .slider-card { padding: var(--sp-2); }
+
+            /* Record group: compact */
+            .tb-record-group { gap: 2px; }
+            #top-bar .tb-btn {
+                min-width: 36px;
+                min-height: 36px;
+                padding: 4px;
+            }
+            #top-bar .tb-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            /* Getting started: even more compact */
+            #canvas-empty-state {
+                width: 90vw;
+                gap: 8px;
+            }
+            #canvas-empty-state .empty-title { font-size: var(--font-sm); margin-bottom: 8px; }
+            #canvas-empty-state .empty-step { font-size: 11px; margin-bottom: 4px; }
         }
         /* ═══ TRACKING TOGGLE ═══ */
         .tracking-toggle-row {
@@ -4693,14 +4858,14 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260401f"></script>
-<script src="blob-fx.js?v=20260401f"></script>
-<script src="blob-shader-fx.js?v=20260401f"></script>
-<script src="blob-overlay.js?v=20260401f"></script>
-<script src="blob-audio.js?v=20260401f"></script>
-<script src="blob-timeline.js?v=20260401f"></script>
-<script src="blob-mask.js?v=20260401f"></script>
-<script src="blob-tracking.js?v=20260401f"></script>
+<script src="blob-core.js?v=20260401g"></script>
+<script src="blob-fx.js?v=20260401g"></script>
+<script src="blob-shader-fx.js?v=20260401g"></script>
+<script src="blob-overlay.js?v=20260401g"></script>
+<script src="blob-audio.js?v=20260401g"></script>
+<script src="blob-timeline.js?v=20260401g"></script>
+<script src="blob-mask.js?v=20260401g"></script>
+<script src="blob-tracking.js?v=20260401g"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">

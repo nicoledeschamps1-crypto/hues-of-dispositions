@@ -38,7 +38,7 @@ function getScratchFloat(len) {
     if (!_scratchFloat32 || _scratchFloat32.length < len) {
         _scratchFloat32 = new Float32Array(len);
     } else {
-        _scratchFloat32.fill(0, 0, len);
+        _scratchFloat32.fill(0);
     }
     return _scratchFloat32;
 }
@@ -46,7 +46,7 @@ function getScratchFloat2(len) {
     if (!_scratchFloat32_2 || _scratchFloat32_2.length < len) {
         _scratchFloat32_2 = new Float32Array(len);
     } else {
-        _scratchFloat32_2.fill(0, 0, len);
+        _scratchFloat32_2.fill(0);
     }
     return _scratchFloat32_2;
 }
@@ -55,7 +55,7 @@ function getScratchFloat3(len) {
     if (!_scratchFloat32_3 || _scratchFloat32_3.length < len) {
         _scratchFloat32_3 = new Float32Array(len);
     } else {
-        _scratchFloat32_3.fill(0, 0, len);
+        _scratchFloat32_3.fill(0);
     }
     return _scratchFloat32_3;
 }
@@ -80,28 +80,23 @@ const EFFECT_TYPES = {
 // ---------------------------------------------------------------------------
 // applyActiveEffects() — batched pixel pipeline using EFFECT_TYPES
 // ---------------------------------------------------------------------------
+let _cpuOnlyEffects = null; // Set during applyActiveEffects() to skip GPU-handled effects
 function _fxActive(name) {
+    if (_cpuOnlyEffects && !_cpuOnlyEffects.has(name)) return false;
     return activeEffects.has(name) && !hiddenEffects.has(name);
 }
 
 function applyActiveEffects() {
     if (!masterFxEnabled || activeEffects.size === 0) return;
 
-    // Temporarily remove effects handled by GPU shader pipeline
-    let _gpuHandled = [];
+    // Build CPU-only set — never mutate shared activeEffects during processing
     if (typeof shaderFX !== 'undefined' && shaderFX.ready && shaderFX.enabled &&
         typeof SHADER_EFFECT_REGISTRY !== 'undefined') {
-        for (const name of [...activeEffects]) {
-            if (SHADER_EFFECT_REGISTRY[name]) {
-                _gpuHandled.push(name);
-            }
+        _cpuOnlyEffects = new Set();
+        for (const name of activeEffects) {
+            if (!SHADER_EFFECT_REGISTRY[name]) _cpuOnlyEffects.add(name);
         }
-        for (const name of _gpuHandled) activeEffects.delete(name);
-        if (activeEffects.size === 0) {
-            // All effects handled by GPU — restore and return
-            for (const name of _gpuHandled) activeEffects.add(name);
-            return;
-        }
+        if (_cpuOnlyEffects.size === 0) { _cpuOnlyEffects = null; return; }
     }
 
     try {
@@ -185,8 +180,7 @@ function applyActiveEffects() {
     if (_fxActive('cornerpin')) applyCornerPin();
 
     } finally {
-    // Restore GPU-handled effects to activeEffects
-    for (const name of _gpuHandled) activeEffects.add(name);
+    _cpuOnlyEffects = null;
     }
 }
 
@@ -2398,13 +2392,22 @@ function buildFxPanel() {
                 rangeInput.min = ctrl.min;
                 rangeInput.max = ctrl.max;
                 rangeInput.step = ctrl.step;
-                rangeInput.value = ctrl.min;
+                // Init to current value from FX_DEFAULTS if available, else ctrl.min
+                let initVal = ctrl.min;
+                if (typeof FX_DEFAULTS !== 'undefined' && FX_DEFAULTS[effectName]) {
+                    let setStr = ctrl.setter.toString();
+                    let m = setStr.match(/=>(\w+)=/);
+                    if (m && FX_DEFAULTS[effectName][m[1]] !== undefined) {
+                        initVal = FX_DEFAULTS[effectName][m[1]];
+                    }
+                }
+                rangeInput.value = initVal;
                 row.appendChild(rangeInput);
                 let numInput = document.createElement('input');
                 numInput.type = 'number';
                 numInput.className = 'value-input';
                 numInput.id = ctrl.vid;
-                numInput.value = ctrl.min;
+                numInput.value = initVal;
                 row.appendChild(numInput);
                 group.appendChild(row);
             } else if (ctrl.type === 'selector') {

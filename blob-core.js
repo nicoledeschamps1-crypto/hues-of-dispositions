@@ -2094,8 +2094,9 @@ function draw() {
                 try { applyActiveEffects(); } catch(e) { console.warn('FX error:', e); }
                 try { if (timelineSegments.length > 0) applyTimelineEffects(); } catch(e) { console.warn('Timeline FX error:', e); }
                 if (typeof applyPerEffectAudioSync === 'function') applyPerEffectAudioSync();
-                processShaderFX();
             });
+            // GPU shader pipeline — apply with its own split-side clipping
+            _applySplitSideFx(() => { processShaderFX(); });
             if (fxMasterOpacity < 1.0) {
                 drawingContext.save();
                 drawingContext.globalAlpha = 1.0 - fxMasterOpacity;
@@ -2342,8 +2343,8 @@ function draw() {
                 try { applyActiveEffects(); } catch(e) { console.warn('FX error:', e); }
                 try { if (timelineSegments.length > 0) applyTimelineEffects(); } catch(e) { console.warn('Timeline FX error:', e); }
                 if (typeof applyPerEffectAudioSync === 'function') applyPerEffectAudioSync();
-                processShaderFX();
             });
+            _applySplitSideFx(() => { processShaderFX(); });
             if (fxMasterOpacity < 1.0) {
                 drawingContext.save();
                 drawingContext.globalAlpha = 1.0 - fxMasterOpacity;
@@ -3959,8 +3960,7 @@ function togglePlay() {
                  let audioTime = getAudioTimeForVideo(videoEl.time());
                  if (audioTime >= 0) {
                      audioElement.currentTime = audioTime;
-                     audioElement.play().catch(() => { audioPlaying = false; });
-                     audioPlaying = true;
+                     audioElement.play().then(() => { audioPlaying = true; }).catch(() => { audioPlaying = false; });
                  }
              }
         } else {

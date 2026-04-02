@@ -16,6 +16,7 @@ function _resetMaskState() {
     maskPoints = [];
     maskPrevCentroid = null;
     maskSegInFlight = false;
+    maskOverlayVisible = true;
     if (maskOverlay) { maskOverlay.remove(); maskOverlay = null; }
 }
 

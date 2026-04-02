@@ -1991,7 +1991,7 @@ class ShaderFXPipeline {
 
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceCanvas);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
         this._pingPongIdx = 0;
