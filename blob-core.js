@@ -4601,6 +4601,15 @@ function handleFile(event) {
             }
         });
         _dbg('createVideo called, waiting for callback...');
+        // iOS Safari: video won't load without playsinline + muted.
+        // Without these, iOS suspends after loadstart and never fires canplaythrough.
+        if (videoEl && videoEl.elt) {
+            videoEl.elt.setAttribute('playsinline', '');
+            videoEl.elt.setAttribute('webkit-playsinline', '');
+            videoEl.elt.muted = true;
+            videoEl.elt.load(); // restart load with new attributes
+            _dbg('set playsinline+muted, called load()');
+        }
         // Handle video load errors (unsupported format, corrupt file)
         if (videoEl && videoEl.elt) {
             videoEl.elt.addEventListener('error', (e) => {
