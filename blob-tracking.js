@@ -259,10 +259,68 @@ function matchAndUpdateBlobs(candidates, numPoints, blobVarLevel) {
         let blob = _persistentBlobs[bi];
         if (blob.matchedThisFrame || blob.state === 'expired') continue;
         blob.lostFrames++;
-        if (blob.lostFrames > _persistDuration) {
+        let maxLost = _reviveEnabled ? Math.max(_persistDuration, _reviveTime) : _persistDuration;
+        if (blob.lostFrames > maxLost) {
             blob.state = 'expired';
         } else {
             blob.state = 'lost';
+        }
+    }
+
+    // ── REVIVAL PASS ──────────────────────────
+    if (_reviveEnabled) {
+        let revDist2 = _reviveDistance * _reviveDistance;
+        let revivePairs = [];
+
+        for (let bi = 0; bi < _persistentBlobs.length; bi++) {
+            let blob = _persistentBlobs[bi];
+            if (blob.state !== 'lost' || blob.lostFrames > _reviveTime) continue;
+
+            for (let ci = 0; ci < screenCandidates.length; ci++) {
+                if (usedCands.has(ci)) continue;
+                let cand = screenCandidates[ci];
+                let dx = blob.posicao.x - cand.x;
+                let dy = blob.posicao.y - cand.y;
+                let d2 = dx * dx + dy * dy;
+                if (d2 > revDist2) continue;
+
+                let candBri = brightness(cand.c);
+                let briDiff = Math.abs((blob.brightness || 50) - candBri) / 100;
+                if (briDiff > _reviveAreaDiff) continue;
+
+                revivePairs.push({ bi, ci, d2, briDiff });
+            }
+        }
+
+        revivePairs.sort((a, b) => a.d2 - b.d2 || a.briDiff - b.briDiff);
+
+        let usedReviveBlobs = new Set();
+        for (let pair of revivePairs) {
+            if (usedReviveBlobs.has(pair.bi) || usedCands.has(pair.ci)) continue;
+
+            let blob = _persistentBlobs[pair.bi];
+            let cand = screenCandidates[pair.ci];
+
+            blob.prevPos.set(blob.posicao.x, blob.posicao.y);
+            blob.posicao.x = cand.x;
+            blob.posicao.y = cand.y;
+            blob.cor = cand.c;
+            blob.brightness = brightness(cand.c);
+            blob.velocity.set(cand.x - blob.prevPos.x, cand.y - blob.prevPos.y);
+            blob.state = 'active';
+            blob.lostFrames = 0;
+            blob.matchedThisFrame = true;
+            blob.age++;
+            blob.reviveFlash = 15;
+            blob.reviveCount++;
+
+            if (_trailEnabled) {
+                blob.trail.push({ x: blob.posicao.x, y: blob.posicao.y });
+                if (blob.trail.length > _trailLength) blob.trail.shift();
+            }
+
+            usedReviveBlobs.add(pair.bi);
+            usedCands.add(pair.ci);
         }
     }
 
@@ -281,6 +339,11 @@ function matchAndUpdateBlobs(candidates, numPoints, blobVarLevel) {
         // Keep newest (highest ID) — sort by age desc, trim
         _persistentBlobs.sort((a, b) => b.age - a.age);
         _persistentBlobs.length = hardCap;
+    }
+
+    // Tick down revive flash counters
+    for (let blob of _persistentBlobs) {
+        if (blob.reviveFlash > 0) blob.reviveFlash--;
     }
 
     // Populate trackedPoints from persistent blobs
@@ -926,6 +989,9 @@ function drawPointInfo(p) {
                 } else if (p.state === 'new') {
                     fill(100, 255, 100, 180); textSize(8);
                     text('NEW', offsetX + 40, curY);
+                } else if (p.reviveFlash > 0) {
+                    fill(255, 200, 0, 180); textSize(8);
+                    text('REVIVED', offsetX + 40, curY);
                 }
                 pop();
                 curY += 16;

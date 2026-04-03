@@ -91,6 +91,10 @@ let _heatmapDecay = 0.95;        // per-frame fade factor
 let _trailEnabled = false;       // draw motion path trails
 let _trailLength = 30;           // max trail points per blob
 let _trailOpacity = 0.5;         // trail base opacity
+let _reviveEnabled = false;
+let _reviveTime = 30;           // frames lost blob stays revivable
+let _reviveDistance = 120;       // max px for revival match
+let _reviveAreaDiff = 0.5;      // max brightness difference (0-1)
 
 let productInfo = { brand: '', name: '', material: '', price: '', size: '' };
 let activeVizModes = new Set([1]);
@@ -1820,6 +1824,8 @@ class PersistentBlob {
         this.lostFrames = 0;
         this.matchedThisFrame = false;
         this.trail = [];
+        this.reviveFlash = 0;     // countdown for visual indicator
+        this.reviveCount = 0;     // times this blob was revived
     }
 }
 
@@ -2970,6 +2976,22 @@ function setupCoreUIListeners() {
     }
     wirePersistSlider('slider-trail-len', 'val-trail-len', v => { _trailLength = v; });
     wirePersistSlider('slider-trail-opacity', 'val-trail-opacity', v => { _trailOpacity = v / 100; });
+
+    // Blob Revival toggle + sliders
+    const reviveToggle = document.getElementById('revive-toggle');
+    const reviveOpts = document.getElementById('revive-options');
+    const reviveHint = document.getElementById('revive-hint');
+    if (reviveToggle) {
+        reviveToggle.checked = _reviveEnabled;
+        reviveToggle.addEventListener('change', () => {
+            _reviveEnabled = reviveToggle.checked;
+            if (reviveOpts) reviveOpts.style.display = _reviveEnabled ? '' : 'none';
+            if (reviveHint) reviveHint.style.display = _reviveEnabled ? '' : 'none';
+        });
+    }
+    wirePersistSlider('slider-revive-time', 'val-revive-time', v => { _reviveTime = v; });
+    wirePersistSlider('slider-revive-dist', 'val-revive-dist', v => { _reviveDistance = v; });
+    wirePersistSlider('slider-revive-area', 'val-revive-area', v => { _reviveAreaDiff = v / 100; });
 
     // BG SUB capture button
     const captureBgBtn = document.getElementById('btn-capture-bg');

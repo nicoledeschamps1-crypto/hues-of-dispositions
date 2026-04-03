@@ -5191,6 +5191,22 @@
                     <label>Dedup Radius <input type="number" class="value-input" id="val-dedup" value="0" min="0" max="50"></label>
                     <div class="slider-wrapper"><input type="range" id="slider-dedup" min="0" max="50" value="0" step="1"></div>
                 </div>
+                <label class="checkbox-label"><input type="checkbox" id="revive-toggle"> Blob Revival</label>
+                <span class="hint-text" id="revive-hint" style="display:none">Re-identify lost blobs when they reappear nearby</span>
+                <div id="revive-options" style="display:none">
+                    <div class="control-group">
+                        <label>Revive Window <input type="number" class="value-input" id="val-revive-time" value="30" min="1" max="120"></label>
+                        <div class="slider-wrapper"><input type="range" id="slider-revive-time" min="1" max="120" value="30" step="1"></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Revive Distance <input type="number" class="value-input" id="val-revive-dist" value="120" min="20" max="400"></label>
+                        <div class="slider-wrapper"><input type="range" id="slider-revive-dist" min="20" max="400" value="120" step="5"></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Similarity <input type="number" class="value-input" id="val-revive-area" value="50" min="0" max="100"></label>
+                        <div class="slider-wrapper"><input type="range" id="slider-revive-area" min="0" max="100" value="50" step="5"></div>
+                    </div>
+                </div>
                 <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
                     <label class="checkbox-label" style="flex:1"><input type="checkbox" id="roi-toggle"> Region of Interest</label>
                     <button class="selector-btn" id="btn-clear-roi" style="font-size:10px;padding:2px 8px;display:none">CLEAR</button>
@@ -5225,14 +5241,14 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260403b"></script>
-<script src="blob-fx.js?v=20260403b"></script>
-<script src="blob-shader-fx.js?v=20260403b"></script>
-<script src="blob-overlay.js?v=20260403b"></script>
-<script src="blob-audio.js?v=20260403b"></script>
-<script src="blob-timeline.js?v=20260403b"></script>
-<script src="blob-mask.js?v=20260403b"></script>
-<script src="blob-tracking.js?v=20260403b"></script>
+<script src="blob-core.js?v=20260403c"></script>
+<script src="blob-fx.js?v=20260403c"></script>
+<script src="blob-shader-fx.js?v=20260403c"></script>
+<script src="blob-overlay.js?v=20260403c"></script>
+<script src="blob-audio.js?v=20260403c"></script>
+<script src="blob-timeline.js?v=20260403c"></script>
+<script src="blob-mask.js?v=20260403c"></script>
+<script src="blob-tracking.js?v=20260403c"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">
