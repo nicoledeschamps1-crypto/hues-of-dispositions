@@ -3674,6 +3674,22 @@ function setupCoreUIListeners() {
     ui.fileInput.addEventListener('change', handleFile, false);
     ui.webcamBtn.addEventListener('click', toggleWebcam);
 
+    // iOS Safari fix: file inputs inside CSS-transformed containers (bottom sheet)
+    // don't open the file picker. Move input to <body> on mobile and proxy clicks.
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        const fileInput = ui.fileInput;
+        const label = document.getElementById('file-input-container');
+        // Move input to body (outside any transform)
+        document.body.appendChild(fileInput);
+        fileInput.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;';
+        // Tap on label → open file picker via the body-level input
+        label.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
+
     // Prevent panel scroll while dragging sliders (delegated for dynamic sliders too)
     const _clearSliderActive = () => {
         document.querySelectorAll('.panel.slider-active').forEach(p => p.classList.remove('slider-active'));
