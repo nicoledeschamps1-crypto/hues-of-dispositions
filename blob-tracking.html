@@ -149,6 +149,12 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* iOS Safari: eliminate 300ms tap delay on all interactive elements */
+        button, label, a, select, .selector-btn, .section-tab, .drawer-toggle,
+        .source-row > *, .overlay-upload-zone, #file-input-container {
+            touch-action: manipulation;
+        }
+
         canvas#defaultCanvas0 {
             display: block;
             position: absolute;
@@ -3472,7 +3478,6 @@
                 background: inherit;
                 border-radius: 16px 16px 0 0;
                 cursor: grab;
-                touch-action: none;
             }
             .sheet-handle-pill {
                 width: 40px;
@@ -3480,6 +3485,7 @@
                 border-radius: 2px;
                 background: rgba(255,255,255,0.3);
                 margin-bottom: 8px;
+                touch-action: none; /* only the drag pill blocks gestures, not children */
             }
             /* Section tabs row inside handle */
             .sheet-section-tabs {

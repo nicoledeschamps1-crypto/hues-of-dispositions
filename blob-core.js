@@ -5263,8 +5263,15 @@ function touchEnded(event) {
     if (_touchLongPressTimer) { clearTimeout(_touchLongPressTimer); _touchLongPressTimer = null; }
     _touchPinchDist = 0;
 
+    // Only suppress default for canvas touches — UI buttons need click synthesis
+    if (!event || !event.target || event.target.tagName !== 'CANVAS') {
+        _touchStartPos = null;
+        _touchMoved = false;
+        return; // let browser synthesize click for UI elements
+    }
+
     // Single tap (no drag) → forward to click-to-track logic
-    if (!_touchMoved && _touchStartPos && event && event.target && event.target.tagName === 'CANVAS') {
+    if (!_touchMoved && _touchStartPos) {
         // Let mousePressed handle it via p5 fallback — just clean up
     }
     _touchStartPos = null;
