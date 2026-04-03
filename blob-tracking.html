@@ -623,8 +623,8 @@
 
         #file-input-container input[type="file"],
         #audio-input-container input[type="file"] {
-            position: absolute; width: 1px; height: 1px; opacity: 0;
-            overflow: hidden; pointer-events: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
         }
 
         .upload-label {
@@ -2956,9 +2956,10 @@
             .section-content.section-active { display: flex !important; flex-direction: column; gap: 14px; }
             /* Tab content always visible — section-content handles visibility */
         }
-        /* Mobile: section-content wrappers transparent — show everything */
+        /* Mobile: section-content controlled by section-active (same as desktop) */
         @media (max-width: 900px) {
-            .section-content { display: flex !important; flex-direction: column; gap: 14px; }
+            .section-content { display: none !important; }
+            .section-content.section-active { display: flex !important; flex-direction: column; gap: 14px; }
         }
 
         /* Timeline section: slim panels */
@@ -4038,6 +4039,38 @@
             filter: brightness(1.15);
         }
     </style>
+    <!-- Mobile debug console (eruda) — triple-tap Saturn icon to toggle -->
+    <script>
+    (function(){
+        if (!/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return;
+        var loaded = false;
+        window._uploadDebug = function(msg) {
+            // Show as toast on mobile before eruda loads
+            var t = document.getElementById('_dbg-toast');
+            if (!t) { t = document.createElement('div'); t.id = '_dbg-toast';
+                t.style.cssText = 'position:fixed;bottom:60px;left:8px;right:8px;max-height:30vh;overflow:auto;background:rgba(0,0,0,0.85);color:#0f0;font:11px/1.4 monospace;padding:8px;border-radius:6px;z-index:99999;pointer-events:none;';
+                document.body.appendChild(t);
+            }
+            t.innerHTML += msg + '<br>'; t.scrollTop = t.scrollHeight;
+            clearTimeout(t._hide); t._hide = setTimeout(function(){ t.innerHTML = ''; }, 15000);
+        };
+        // Triple-tap Saturn icon loads eruda
+        var taps = 0, timer;
+        document.addEventListener('click', function(e){
+            if (!e.target.closest('.saturn-icon, .app-title')) return;
+            taps++; clearTimeout(timer);
+            timer = setTimeout(function(){ taps = 0; }, 600);
+            if (taps >= 3) {
+                taps = 0;
+                if (loaded) { eruda.show(); return; }
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                s.onload = function(){ eruda.init(); loaded = true; };
+                document.head.appendChild(s);
+            }
+        });
+    })();
+    </script>
 </head>
 <body data-section="create">
 

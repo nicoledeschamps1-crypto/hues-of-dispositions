@@ -4484,11 +4484,15 @@ function stopWebcam() {
 }
 
 function handleFile(event) {
+    const _dbg = (msg) => { console.log('[Upload] ' + msg); if (window._uploadDebug) window._uploadDebug(msg); };
+    _dbg('handleFile fired');
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) { _dbg('no file selected'); return; }
+    _dbg('file: ' + file.name + ' type=' + (file.type || '(empty)') + ' size=' + file.size);
     // iOS Safari may report empty file.type — fall back to extension check
     const ext = file.name.split('.').pop().toLowerCase();
     const isVideo = file.type.startsWith('video/') || ['mp4','mov','webm','m4v','avi','mkv','qt'].includes(ext);
+    _dbg('ext=' + ext + ' isVideo=' + isVideo);
     if (isVideo) {
         if (usingWebcam) stopWebcam();
         // Stop video audio if active (old video element being replaced)
@@ -4502,9 +4506,11 @@ function handleFile(event) {
         ui.fileName.title = file.name;
         if (currentVideoUrl) URL.revokeObjectURL(currentVideoUrl);
         currentVideoUrl = URL.createObjectURL(file);
+        _dbg('blobURL created: ' + currentVideoUrl.slice(0, 60));
         const url = currentVideoUrl;
 
         videoEl = createVideo(url, () => {
+            _dbg('createVideo callback fired — video ready');
             videoEl.volume(0); videoEl.loop(); videoEl.hide();
             videoLoaded = true; videoPlaying = true;
             // Show first-run overlay (once per user)
@@ -4578,14 +4584,26 @@ function handleFile(event) {
                 showTimeline();
             }
         });
+        _dbg('createVideo called, waiting for callback...');
         // Handle video load errors (unsupported format, corrupt file)
         if (videoEl && videoEl.elt) {
-            videoEl.elt.addEventListener('error', () => {
+            videoEl.elt.addEventListener('error', (e) => {
+                const err = videoEl.elt.error;
+                _dbg('VIDEO ERROR: code=' + (err?.code || '?') + ' msg=' + (err?.message || 'none'));
                 videoLoaded = false; videoPlaying = false;
                 ui.fileName.innerText = 'video failed to load';
                 syncPlayIcon(false);
                 if (currentVideoUrl) { URL.revokeObjectURL(currentVideoUrl); currentVideoUrl = null; }
             }, { once: true });
+            // iOS: track intermediate load events
+            videoEl.elt.addEventListener('loadstart', () => _dbg('loadstart'), { once: true });
+            videoEl.elt.addEventListener('loadeddata', () => _dbg('loadeddata'), { once: true });
+            videoEl.elt.addEventListener('canplay', () => _dbg('canplay'), { once: true });
+            videoEl.elt.addEventListener('canplaythrough', () => _dbg('canplaythrough'), { once: true });
+            videoEl.elt.addEventListener('stalled', () => _dbg('stalled'), { once: true });
+            videoEl.elt.addEventListener('suspend', () => _dbg('suspend'), { once: true });
+        } else {
+            _dbg('WARNING: createVideo returned null or no .elt');
         }
     }
 }
