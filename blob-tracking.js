@@ -1031,6 +1031,7 @@ function drawBlobStyle(p, w, h, tbc, alpha, weight) {
     let px = p.posicao.x, py = p.posicao.y;
 
     switch (blobStyle) {
+        case 'none':     break; // no border drawn
         case 'lframe':   _drawLFrame(px, py, w, h, r, g, b, a, wt); break;
         case 'xframe':   _drawXFrame(px, py, w, h, r, g, b, a, wt); break;
         case 'scope':    _drawScope(px, py, w, h, r, g, b, a, wt); break;

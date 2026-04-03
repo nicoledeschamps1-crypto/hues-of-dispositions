@@ -2299,7 +2299,7 @@ function draw() {
                 let absZoom = Math.abs(vizZoomLevel);
                 let sampleR;
                 if (vizZoomLevel >= 0) {
-                    let zoomFactor = map(absZoom, 0, 8, 0.5, 8);
+                    let zoomFactor = map(absZoom, 0, 8, 1, 8); // 1 = true 1:1 at slider 0
                     sampleR = max(pw, ph) / max(zoomFactor, 0.1);
                 } else {
                     let wideFactor = map(absZoom, 0, 8, 1, 12);

@@ -591,10 +591,18 @@ function wireRegionFXUI() {
     // Enable toggle
     let toggle = document.getElementById('region-fx-toggle');
     let options = document.getElementById('region-fx-options');
+    let trackingHint = document.getElementById('rfx-tracking-hint');
     if (toggle && options) {
         toggle.addEventListener('change', () => {
             regionFXEnabled = toggle.checked;
             options.style.display = toggle.checked ? '' : 'none';
+            // Show warning if tracking is off
+            if (trackingHint && toggle.checked) {
+                let trackingOff = typeof currentMode !== 'undefined' && currentMode === 0;
+                trackingHint.style.display = trackingOff ? '' : 'none';
+            } else if (trackingHint) {
+                trackingHint.style.display = 'none';
+            }
         });
     }
 
