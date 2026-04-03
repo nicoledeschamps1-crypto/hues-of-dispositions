@@ -22,7 +22,7 @@ let _regionFBO = null;           // framebuffer for render-to-texture
 let _regionOutTex = null;        // output texture attached to FBO
 let _regionFrameUploaded = -1;   // frameCount of last texture upload
 const _REGION_SIZE = 256;        // offscreen canvas size
-const _REGION_MODES = ['inv', 'pixel', 'thermal', 'blur'];
+const _REGION_MODES = ['inv', 'pixel', 'thermal', 'blur', 'glitch', 'tone', 'dither', 'crt', 'edge', 'xray', 'zoom', 'water', 'mask'];
 
 // ── GLSL Shaders ─────────────────────────────────────────────
 
@@ -133,6 +133,204 @@ void main() {
     fragColor = vec4(sum, 1.0);
 }`;
 
+const FRAG_REGION_GLITCH = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    vec4 orig = texture(u_texture, v_texCoord);
+    float t = u_time * 3.0;
+    // Per-channel horizontal offset, scaled by intensity
+    float spread = u_intensity * 8.0 / u_resolution.x;
+    float offR = sin(t * 1.7 + v_texCoord.y * 40.0) * spread;
+    float offB = sin(t * 2.3 + v_texCoord.y * 30.0) * spread;
+    float r = texture(u_texture, v_texCoord + vec2(offR, 0.0)).r;
+    float g = orig.g;
+    float b = texture(u_texture, v_texCoord + vec2(offB, 0.0)).b;
+    // Scan line artifacts
+    float scanline = 0.95 + 0.05 * sin(v_texCoord.y * u_resolution.y * 3.14159);
+    fragColor = vec4(vec3(r, g, b) * scanline, orig.a);
+}`;
+
+const FRAG_REGION_TONE = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    vec4 c = texture(u_texture, v_texCoord);
+    float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+    // Halftone grid size scales with intensity
+    float gridSz = mix(3.0, 12.0, u_intensity);
+    vec2 px = v_texCoord * u_resolution;
+    vec2 cell = floor(px / gridSz) * gridSz + gridSz * 0.5;
+    float dist = length(px - cell) / (gridSz * 0.5);
+    // Dot radius proportional to luminance
+    float dot = step(dist, lum);
+    fragColor = vec4(vec3(dot), c.a);
+}`;
+
+const FRAG_REGION_DITHER = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    vec4 c = texture(u_texture, v_texCoord);
+    // Bayer 4x4 threshold matrix
+    int bayer[16] = int[16](
+         0,  8,  2, 10,
+        12,  4, 14,  6,
+         3, 11,  1,  9,
+        15,  7, 13,  5
+    );
+    ivec2 px = ivec2(mod(v_texCoord * u_resolution, 4.0));
+    float threshold = float(bayer[px.y * 4 + px.x]) / 16.0 - 0.5;
+    // Number of quantization levels based on intensity
+    float levels = mix(2.0, 8.0, 1.0 - u_intensity);
+    vec3 dithered = floor(c.rgb * levels + threshold + 0.5) / levels;
+    fragColor = vec4(clamp(dithered, 0.0, 1.0), c.a);
+}`;
+
+const FRAG_REGION_CRT = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    // Barrel distortion
+    vec2 uv = v_texCoord - 0.5;
+    float dist = dot(uv, uv);
+    float barrel = 1.0 + dist * 0.3 * u_intensity;
+    uv = uv * barrel + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+    // RGB sub-pixel offset
+    float sep = u_intensity * 1.5 / u_resolution.x;
+    float r = texture(u_texture, uv + vec2(sep, 0.0)).r;
+    float g = texture(u_texture, uv).g;
+    float b = texture(u_texture, uv - vec2(sep, 0.0)).b;
+    vec3 col = vec3(r, g, b);
+    // Scanlines
+    float scanline = 0.85 + 0.15 * sin(uv.y * u_resolution.y * 3.14159);
+    // Flicker
+    float flicker = 0.98 + 0.02 * sin(u_time * 8.0);
+    fragColor = vec4(col * scanline * flicker, 1.0);
+}`;
+
+const FRAG_REGION_EDGE = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_texelSize;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    // Sobel operator
+    float tl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float t  = dot(texture(u_texture, v_texCoord + vec2(0.0, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float tr = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float l  = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float r  = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float bl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float b  = dot(texture(u_texture, v_texCoord + vec2(0.0,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float br = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float gx = -tl - 2.0*l - bl + tr + 2.0*r + br;
+    float gy = -tl - 2.0*t - tr + bl + 2.0*b + br;
+    float edge = sqrt(gx*gx + gy*gy);
+    edge = smoothstep(0.05, mix(0.3, 0.08, u_intensity), edge);
+    fragColor = vec4(vec3(edge), 1.0);
+}`;
+
+const FRAG_REGION_XRAY = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform vec2 u_texelSize;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    // Sobel edge detection
+    float tl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float t  = dot(texture(u_texture, v_texCoord + vec2(0.0, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float tr = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float l  = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float r  = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
+    float bl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float b  = dot(texture(u_texture, v_texCoord + vec2(0.0,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float br = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
+    float gx = -tl - 2.0*l - bl + tr + 2.0*r + br;
+    float gy = -tl - 2.0*t - tr + bl + 2.0*b + br;
+    float edge = sqrt(gx*gx + gy*gy);
+    // Invert original + blend edges + blue tint
+    vec4 orig = texture(u_texture, v_texCoord);
+    vec3 inv = vec3(1.0) - orig.rgb;
+    vec3 xray = inv + edge * 0.8;
+    // Blue/cyan tint
+    xray = mix(xray, xray * vec3(0.6, 0.85, 1.0), u_intensity);
+    fragColor = vec4(xray, orig.a);
+}`;
+
+const FRAG_REGION_ZOOM = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    // Zoom toward center of region
+    vec2 center = vec2(0.5);
+    float zoomFactor = mix(1.0, 3.0, u_intensity);
+    vec2 uv = center + (v_texCoord - center) / zoomFactor;
+    uv = clamp(uv, 0.0, 1.0);
+    fragColor = texture(u_texture, uv);
+}`;
+
+const FRAG_REGION_WATER = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    float amp = u_intensity * 0.03;
+    float freq = 10.0;
+    float t = u_time * 2.0;
+    vec2 uv = v_texCoord;
+    uv.x += sin(uv.y * freq + t) * amp;
+    uv.y += cos(uv.x * freq + t * 1.3) * amp;
+    uv = clamp(uv, 0.0, 1.0);
+    fragColor = texture(u_texture, uv);
+}`;
+
+const FRAG_REGION_MASK = `#version 300 es
+precision highp float;
+in vec2 v_texCoord;
+uniform sampler2D u_texture;
+uniform float u_intensity;
+out vec4 fragColor;
+void main() {
+    vec4 orig = texture(u_texture, v_texCoord);
+    // Solid color cutout — intensity controls color:
+    // 0.0 = black, 0.5 = midgray, 1.0 = white
+    vec3 solid = vec3(u_intensity);
+    fragColor = vec4(solid, orig.a);
+}`;
+
 // ── Shader compilation helpers ───────────────────────────────
 
 function _regionCompileShader(gl, type, src) {
@@ -191,7 +389,16 @@ function initRegionFX() {
         inv:         FRAG_REGION_INVERT,
         pixel:       FRAG_REGION_PIXELATE,
         thermal:     FRAG_REGION_THERMAL,
-        blur:        FRAG_REGION_BLUR
+        blur:        FRAG_REGION_BLUR,
+        glitch:      FRAG_REGION_GLITCH,
+        tone:        FRAG_REGION_TONE,
+        dither:      FRAG_REGION_DITHER,
+        crt:         FRAG_REGION_CRT,
+        edge:        FRAG_REGION_EDGE,
+        xray:        FRAG_REGION_XRAY,
+        zoom:        FRAG_REGION_ZOOM,
+        water:       FRAG_REGION_WATER,
+        mask:        FRAG_REGION_MASK
     };
     for (let [name, frag] of Object.entries(shaders)) {
         let prog = _regionLinkProgram(gl, _VERT_REGION, frag);
@@ -334,9 +541,13 @@ function _regionRenderPass(gl, prog, uvX, uvY, uvW, uvH, canvasW, canvasH, inten
     let uRes = gl.getUniformLocation(prog, 'u_resolution');
     if (uRes !== null) gl.uniform2f(uRes, _REGION_SIZE, _REGION_SIZE);
 
-    // u_texelSize (for blur)
+    // u_texelSize (for blur, edge, xray)
     let uTexel = gl.getUniformLocation(prog, 'u_texelSize');
     if (uTexel !== null) gl.uniform2f(uTexel, 1.0 / _REGION_SIZE, 1.0 / _REGION_SIZE);
+
+    // u_time (for glitch, water, crt)
+    let uTime = gl.getUniformLocation(prog, 'u_time');
+    if (uTime !== null) gl.uniform1f(uTime, (typeof millis === 'function' ? millis() : performance.now()) / 1000.0);
 
     // Draw
     gl.bindVertexArray(_regionVAO);
