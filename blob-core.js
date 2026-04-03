@@ -4077,26 +4077,30 @@ function populateCameraDevices() {
     navigator.mediaDevices.enumerateDevices().then(devices => {
         const cams = devices.filter(d => d.kind === 'videoinput');
         const row = document.getElementById('camera-device-row');
-        const sel = document.getElementById('camera-device-select');
-        if (!row || !sel) return;
+        if (!row) return;
         if (cams.length <= 1) { row.style.display = 'none'; return; }
-        // Show selector
         row.style.display = '';
-        sel.innerHTML = '';
+        row.innerHTML = '';
         const saved = localStorage.getItem('hod-camera-device');
+        // Get current stream's deviceId to mark active
+        let activeId = saved;
+        if (videoEl && videoEl.elt && videoEl.elt.srcObject) {
+            const track = videoEl.elt.srcObject.getVideoTracks()[0];
+            if (track) activeId = track.getSettings().deviceId || saved;
+        }
         cams.forEach((cam, i) => {
-            const opt = document.createElement('option');
-            opt.value = cam.deviceId;
-            opt.textContent = cam.label || ('Camera ' + (i + 1));
-            if (cam.deviceId === saved) opt.selected = true;
-            sel.appendChild(opt);
+            const btn = document.createElement('button');
+            btn.className = 'camera-device-btn' + (cam.deviceId === activeId ? ' active' : '');
+            btn.textContent = cam.label || ('Camera ' + (i + 1));
+            btn.title = cam.label || ('Camera ' + (i + 1));
+            btn.addEventListener('click', () => {
+                localStorage.setItem('hod-camera-device', cam.deviceId);
+                row.querySelectorAll('.camera-device-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (usingWebcam) startWebcam(cam.deviceId);
+            });
+            row.appendChild(btn);
         });
-        // Switch camera on change
-        sel.onchange = () => {
-            const id = sel.value;
-            localStorage.setItem('hod-camera-device', id);
-            if (usingWebcam) startWebcam(id);
-        };
     }).catch(() => {});
 }
 

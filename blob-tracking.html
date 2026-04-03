@@ -548,23 +548,35 @@
 
         .camera-device-row {
             display: flex;
-            align-items: center;
-            gap: 8px;
+            gap: 4px;
             margin-top: 6px;
         }
-        .camera-device-select {
-            flex: 1;
+        .camera-device-btn {
+            flex: 1 1 0;
             background: var(--btn-bg);
             border: 1px solid var(--btn-border);
             border-radius: 3px;
-            color: var(--text-main);
+            color: var(--text-muted);
             font-family: inherit;
             font-size: var(--font-xs);
-            padding: 4px 6px;
-            outline: none;
+            font-weight: 600;
+            padding: 6px 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
-        .camera-device-select:focus {
+        .camera-device-btn:hover {
+            border-color: var(--btn-border-hover);
+            color: var(--text-main);
+        }
+        .camera-device-btn.active {
+            background: rgba(139,69,232,0.15);
             border-color: var(--color-accent);
+            color: var(--text-main);
         }
 
         #file-input-container {
@@ -4037,10 +4049,7 @@
                     CAMERA
                 </button>
             </div>
-            <div id="camera-device-row" class="camera-device-row" style="display:none">
-                <label for="camera-device-select" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px">Camera</label>
-                <select id="camera-device-select" class="camera-device-select"></select>
-            </div>
+            <div id="camera-device-row" class="camera-device-row" style="display:none"></div>
 
             <!-- Zoom — compact viewport controls -->
             <div class="control-group" id="zoom-options-panel">
