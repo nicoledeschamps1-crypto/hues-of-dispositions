@@ -3514,6 +3514,12 @@
                 border-radius: 0 !important;
                 z-index: 1001;
             }
+            /* Simplified timeline: hide sublanes, audio waveform, second controls row */
+            .tl-audio-sublanes { display: none !important; }
+            .timeline-controls-row2 { display: none !important; }
+            .tl-audio-section { display: none !important; }
+            #tl-offset-label { display: none !important; }
+            #timeline-container { --tl-height: 140px; max-height: 140px; }
         }
 
         /* ═══ SMALL PHONE (≤500px) ═══ */

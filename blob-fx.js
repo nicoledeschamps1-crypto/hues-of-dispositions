@@ -88,6 +88,11 @@ function _fxActive(name) {
 
 function applyActiveEffects() {
     if (!masterFxEnabled || activeEffects.size === 0) return;
+    // Adaptive quality: skip all CPU effects on mobile when performance is low
+    if (typeof _adaptiveQuality !== 'undefined' && _adaptiveQuality >= 1 && typeof _isMobileDevice !== 'undefined' && _isMobileDevice) {
+        // Only run GPU shader effects, skip CPU pixel pipeline entirely
+        return;
+    }
 
     // Build CPU-only set — never mutate shared activeEffects during processing
     if (typeof shaderFX !== 'undefined' && shaderFX.ready && shaderFX.enabled &&

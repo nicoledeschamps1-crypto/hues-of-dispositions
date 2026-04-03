@@ -1843,6 +1843,8 @@ function setup() {
     let canvas = createCanvas(windowWidth, windowHeight);
     resizeCanvas(windowWidth, windowHeight); // force 1x buffer
     p5Canvas = canvas.elt;
+    // Lock canvas base resolution on mobile (avoid WebKit memory leak on resize)
+    if (_isMobileDevice) { _canvasBaseW = windowWidth; _canvasBaseH = windowHeight; }
     p5Canvas.setAttribute('tabindex', '0');
     p5Canvas.setAttribute('role', 'img');
     p5Canvas.setAttribute('aria-label', 'Hues of Dispositions — live webcam effects canvas');
@@ -4093,8 +4095,28 @@ function updateTopBar() {
             let fps = Math.round(frameRate());
             if (fps !== _tbPrev.fps) {
                 _tbPrev.fps = fps;
-                el.fps.textContent = fps + ' FPS';
+                el.fps.textContent = fps + ' FPS' + (_adaptiveQuality > 0 ? ' ⚡' : '');
                 el.fps.className = 'tb-status tb-fps ' + (fps >= 30 ? 'good' : fps >= 15 ? 'warn' : 'bad');
+            }
+            // Adaptive quality: auto-reduce when sustained low FPS on mobile
+            if (_isMobileDevice && videoPlaying) {
+                if (fps < _LOW_FPS_THRESHOLD) {
+                    _lowFpsCount++;
+                    if (_lowFpsCount >= _LOW_FPS_TRIGGER && _adaptiveQuality < 2) {
+                        _adaptiveQuality++;
+                        _lowFpsCount = 0;
+                        if (_adaptiveQuality === 2 && _canvasBaseW > 0) {
+                            // Level 2: reduce canvas resolution by 25%
+                            let newW = Math.round(_canvasBaseW * 0.75);
+                            let newH = Math.round(_canvasBaseH * 0.75);
+                            resizeCanvas(newW, newH);
+                            _canvasBaseW = newW; _canvasBaseH = newH;
+                        }
+                        console.log('[Adaptive] Quality reduced to level', _adaptiveQuality);
+                    }
+                } else {
+                    _lowFpsCount = Math.max(0, _lowFpsCount - 2); // recover slowly
+                }
             }
         }
     }
@@ -4233,6 +4255,7 @@ function togglePlay() {
         videoPlaying = !videoPlaying;
         if (videoPlaying) {
              videoEl.elt.loop = (loopMode === 'loop' || loopMode === 'through');
+             if (_isMobileDevice) frameRate(60); // restore full frame rate on play
              let playPromise = videoEl.elt.play();
              if (playPromise) {
                  playPromise.catch(() => {
@@ -4254,6 +4277,8 @@ function togglePlay() {
              syncPlayIcon(false);
              if (typeof syncOverlayPlayback === 'function') syncOverlayPlayback(false);
              if (audioElement && audioLoaded) { audioElement.pause(); audioPlaying = false; }
+             // Reduce frame rate when paused on mobile (battery savings)
+             if (_isMobileDevice) frameRate(10);
         }
     }
 }
@@ -4298,17 +4323,39 @@ function syncUI() {
     updateButtonStates();
 }
 
+let _windowResizeTimer = null;
+let _isMobileDevice = /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
+let _adaptiveQuality = 0;       // 0=full, 1=reduced CPU effects, 2=reduced resolution
+let _lowFpsCount = 0;           // consecutive low-FPS frames
+const _LOW_FPS_THRESHOLD = 25;  // below this = "low"
+const _LOW_FPS_TRIGGER = 90;    // frames of sustained low FPS before adapting
+let _canvasBaseW = 0;  // fixed canvas resolution on mobile
+let _canvasBaseH = 0;
+
 function windowResized() {
     // iOS Safari reports pre-rotation dimensions for ~200ms after orientation change
     if (_windowResizeTimer) clearTimeout(_windowResizeTimer);
     _windowResizeTimer = setTimeout(() => {
-        pixelDensity(1); resizeCanvas(windowWidth, windowHeight);
+        if (_isMobileDevice && _canvasBaseW > 0) {
+            // Mobile: CSS scale the existing canvas instead of resizing (WebKit memory leak fix)
+            let scaleX = windowWidth / _canvasBaseW;
+            let scaleY = windowHeight / _canvasBaseH;
+            let scale = Math.min(scaleX, scaleY);
+            if (p5Canvas) {
+                p5Canvas.style.transformOrigin = 'top left';
+                p5Canvas.style.transform = `scale(${scale})`;
+                p5Canvas.style.width = _canvasBaseW + 'px';
+                p5Canvas.style.height = _canvasBaseH + 'px';
+            }
+        } else {
+            // Desktop: resize normally
+            pixelDensity(1); resizeCanvas(windowWidth, windowHeight);
+        }
         // Update cached timeline height on resize
         let tlEl = document.getElementById('timeline-container');
         window._cachedTimelineHeight = (tlEl && !tlEl.classList.contains('hidden')) ? tlEl.offsetHeight : 0;
-    }, /iPhone|iPad|iPod/.test(navigator.userAgent) ? 200 : 0);
+    }, _isMobileDevice ? 200 : 0);
 }
-let _windowResizeTimer = null;
 
 // ── FILE / WEBCAM HANDLERS ────────────────
 
