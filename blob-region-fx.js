@@ -588,32 +588,24 @@ function _compositeRegion(ctx, glCanvas, px, py, pw, ph, inverted, fusion, inten
 // ── UI Wiring ────────────────────────────────────────────────
 
 function wireRegionFXUI() {
-    // Enable toggle
-    let toggle = document.getElementById('region-fx-toggle');
-    let options = document.getElementById('region-fx-options');
-    let trackingHint = document.getElementById('rfx-tracking-hint');
-    if (toggle && options) {
-        toggle.addEventListener('change', () => {
-            regionFXEnabled = toggle.checked;
-            options.style.display = toggle.checked ? '' : 'none';
-            // Show warning if tracking is off
-            if (trackingHint && toggle.checked) {
-                let trackingOff = typeof currentMode !== 'undefined' && currentMode === 0;
-                trackingHint.style.display = trackingOff ? '' : 'none';
-            } else if (trackingHint) {
-                trackingHint.style.display = 'none';
-            }
-        });
-    }
-
-    // Effect buttons
+    // Effect buttons — click to activate, click again to deactivate (like blob style)
     let btnContainer = document.getElementById('region-fx-buttons');
     if (btnContainer) {
         btnContainer.querySelectorAll('.selector-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                regionFXMode = btn.dataset.rfx || 'none';
-                btnContainer.querySelectorAll('.selector-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                let mode = btn.dataset.rfx || 'none';
+                if (regionFXMode === mode) {
+                    // Click active effect again → deactivate
+                    regionFXMode = 'none';
+                    regionFXEnabled = false;
+                    btn.classList.remove('active');
+                } else {
+                    // Activate this effect
+                    regionFXMode = mode;
+                    regionFXEnabled = true;
+                    btnContainer.querySelectorAll('.selector-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
             });
         });
     }
