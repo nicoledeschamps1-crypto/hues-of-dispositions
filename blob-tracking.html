@@ -4408,16 +4408,8 @@
                 <canvas id="mini-spectrum" width="260" height="32" style="display:none"></canvas>
             </div>
 
-            <!-- Audio Controls (hidden until audio loaded) -->
+            <!-- Audio Analysis Controls (hidden until audio loaded) -->
             <div id="audio-controls-group" style="display:none">
-                <div class="control-group">
-                    <label id="label-audio-sync">Audio Sync</label>
-                    <div class="selector-row" id="sync-buttons" aria-labelledby="label-audio-sync">
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                        <button class="selector-btn" data-value="on">ON</button>
-                    </div>
-                    <span class="hint-text">Syncs effects to audio beats when enabled</span>
-                </div>
                 <div class="control-group">
                     <label id="label-freq-range">Freq Range</label>
                     <div class="selector-row" id="freq-preset-buttons" aria-labelledby="label-freq-range">
@@ -4460,53 +4452,6 @@
                         <button class="selector-btn" data-value="on">ON</button>
                     </div>
                     <span class="hint-text">Automatically normalizes volume levels for consistent reactivity</span>
-                </div>
-
-                <!-- Sync-specific controls (hidden until sync ON) -->
-                <div id="sync-controls-group" style="display:none">
-                    <div class="control-group">
-                        <label id="label-sync-target">Sync Target</label>
-                        <div class="selector-row" id="sync-target-buttons" aria-labelledby="label-sync-target">
-                            <button class="selector-btn active" data-value="all">MIX</button>
-                            <button class="selector-btn" data-value="qty">QTY</button>
-                            <button class="selector-btn" data-value="size">SIZE</button>
-                            <button class="selector-btn" data-value="color">COLOR</button>
-                            <button class="selector-btn" data-value="flash">FLASH</button>
-                            <button class="selector-btn" data-value="pulse">PULSE</button>
-                            <button class="selector-btn" data-value="rate">RATE</button>
-                        </div>
-                    </div>
-                    <div class="control-group" id="sync-range-group">
-                        <label>Qty Range <span id="sync-qty-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">5 – 50</span></label>
-                        <div style="display:flex;gap:6px;align-items:center">
-                            <input type="range" id="sync-min-qty" min="0" max="100" value="5" style="flex:1">
-                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
-                            <input type="range" id="sync-max-qty" min="0" max="100" value="50" style="flex:1">
-                        </div>
-                        <label>Size Range <span id="sync-size-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">10 – 60</span></label>
-                        <div style="display:flex;gap:6px;align-items:center">
-                            <input type="range" id="sync-min-size" min="0" max="100" value="10" style="flex:1">
-                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
-                            <input type="range" id="sync-max-size" min="0" max="100" value="60" style="flex:1">
-                        </div>
-                        <label>Rate Range <span id="sync-rate-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">5 – 80</span></label>
-                        <div style="display:flex;gap:6px;align-items:center">
-                            <input type="range" id="sync-min-rate" min="0" max="100" value="5" style="flex:1">
-                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
-                            <input type="range" id="sync-max-rate" min="0" max="100" value="80" style="flex:1">
-                        </div>
-                        <label>Beat Decay <input type="number" class="value-input" id="val-beat-decay" value="82"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-beat-decay" min="70" max="95" value="82" step="1"></div>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label id="label-bpm-lock">BPM Lock <span id="bpm-display" style="font-size:var(--font-xs);color:var(--text-muted)">— BPM</span></label>
-                    <div class="selector-row" id="bpm-lock-buttons" aria-labelledby="label-bpm-lock">
-                        <button class="selector-btn active" data-value="off">OFF</button>
-                        <button class="selector-btn" data-value="on">ON</button>
-                    </div>
-                    <span class="hint-text">Locks to a fixed tempo instead of auto-detecting beats</span>
                 </div>
             </div>
 
@@ -4572,7 +4517,7 @@
 
         <div id="ui-controls-right">
             <!-- ═══ CREATE + AUDIO SECTION: Effects ═══ -->
-            <div data-section-content="create audio" class="section-content section-active">
+            <div data-section-content="create" class="section-content section-active">
             <div class="control-group" id="group-fx">
                 <div class="fx-master-row">
                     <span>Effects</span>
@@ -4679,6 +4624,63 @@
 
             <!-- ═══ AUDIO SECTION: Per-effect sync summary ═══ -->
             <div data-section-content="audio" class="section-content">
+
+                <div class="control-group">
+                    <label id="label-audio-sync">Audio Sync</label>
+                    <div class="selector-row" id="sync-buttons" aria-labelledby="label-audio-sync">
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                        <button class="selector-btn" data-value="on">ON</button>
+                    </div>
+                    <span class="hint-text">Syncs effects to audio beats when enabled</span>
+                </div>
+
+                <!-- Sync-specific controls (hidden until sync ON) -->
+                <div id="sync-controls-group" style="display:none">
+                    <div class="control-group">
+                        <label id="label-sync-target">Sync Target</label>
+                        <div class="selector-row" id="sync-target-buttons" aria-labelledby="label-sync-target">
+                            <button class="selector-btn active" data-value="all">MIX</button>
+                            <button class="selector-btn" data-value="qty">QTY</button>
+                            <button class="selector-btn" data-value="size">SIZE</button>
+                            <button class="selector-btn" data-value="color">COLOR</button>
+                            <button class="selector-btn" data-value="flash">FLASH</button>
+                            <button class="selector-btn" data-value="pulse">PULSE</button>
+                            <button class="selector-btn" data-value="rate">RATE</button>
+                        </div>
+                    </div>
+                    <div class="control-group" id="sync-range-group">
+                        <label>Qty Range <span id="sync-qty-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">5 – 50</span></label>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="range" id="sync-min-qty" min="0" max="100" value="5" style="flex:1">
+                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
+                            <input type="range" id="sync-max-qty" min="0" max="100" value="50" style="flex:1">
+                        </div>
+                        <label>Size Range <span id="sync-size-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">10 – 60</span></label>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="range" id="sync-min-size" min="0" max="100" value="10" style="flex:1">
+                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
+                            <input type="range" id="sync-max-size" min="0" max="100" value="60" style="flex:1">
+                        </div>
+                        <label>Rate Range <span id="sync-rate-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">5 – 80</span></label>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <input type="range" id="sync-min-rate" min="0" max="100" value="5" style="flex:1">
+                            <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
+                            <input type="range" id="sync-max-rate" min="0" max="100" value="80" style="flex:1">
+                        </div>
+                        <label>Beat Decay <input type="number" class="value-input" id="val-beat-decay" value="82"></label>
+                        <div class="slider-wrapper"><input type="range" id="slider-beat-decay" min="70" max="95" value="82" step="1"></div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label id="label-bpm-lock">BPM Lock <span id="bpm-display" style="font-size:var(--font-xs);color:var(--text-muted)">— BPM</span></label>
+                    <div class="selector-row" id="bpm-lock-buttons" aria-labelledby="label-bpm-lock">
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                        <button class="selector-btn" data-value="on">ON</button>
+                    </div>
+                    <span class="hint-text">Locks to a fixed tempo instead of auto-detecting beats</span>
+                </div>
+
                 <div class="control-group">
                     <div class="slider-card-label">Per-Effect Audio Sync</div>
                     <span class="hint-text">Map audio bands to individual effect parameters</span>
