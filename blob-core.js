@@ -471,7 +471,7 @@ let splitFxSide = 'both';        // which side effects apply to: 'left'|'right'|
 let splitShape = 'rect';         // zoom side clip shape: rect|rounded|circle|pill
 let _splitDrag = null;           // drag state for split divider
 let _asciiSampler = null;        // offscreen canvas for ASCII viz sampling
-let _thermoSampler = null;       // offscreen canvas for thermal viz sampling
+// _thermoSampler removed — CPU THERMO viz removed in favor of GPU THERMAL region effect
 let _vizRecordQueue = [];        // viz mode render data for recording at native res
 let _splitBuf = null;            // offscreen canvas for dual FX compositing
 let depthBlurEnabled = false;    // depth-of-field vignette blur at edges
@@ -2290,8 +2290,8 @@ function draw() {
             let pw = p.width * pScale;
             let ph = p.height * pScale;
 
-            if (activeVizModes.has(10) || activeVizModes.has(11) || activeVizModes.has(12)) {
-                // ZOOM / THERMO / ASCII — video crop inside blob
+            if (activeVizModes.has(10) || activeVizModes.has(12)) {
+                // ZOOM / ASCII — video crop inside blob
                 push();
                 let _vc = screenToVideoCoords(p.posicao.x, p.posicao.y);
                 let srcX = _vc.x, srcY = _vc.y;
@@ -2315,36 +2315,6 @@ function draw() {
                 sw = max(sw, 1); sh = max(sh, 1);
                 let bx = p.posicao.x - zW/2, by = p.posicao.y - zH/2;
                 image(videoEl, bx, by, zW, zH, sx, sy, sw, sh);
-
-                // THERMO: thermal heatmap — sample from source video at high resolution
-                if (activeVizModes.has(11)) {
-                    let _hm = [[0,0,128],[0,0,255],[0,128,255],[0,255,255],[0,255,128],
-                               [0,255,0],[128,255,0],[255,255,0],[255,128,0],[255,0,0],[255,255,255]];
-                    // Sample at >= display size, using source resolution when available
-                    let tW = Math.min(Math.max(Math.ceil(zW), Math.ceil(sw), 128), 512);
-                    let tH = Math.min(Math.max(Math.ceil(zH), Math.ceil(sh), 128), 512);
-                    if (!_thermoSampler) _thermoSampler = document.createElement('canvas');
-                    if (_thermoSampler.width !== tW || _thermoSampler.height !== tH) {
-                        _thermoSampler.width = tW; _thermoSampler.height = tH;
-                    }
-                    let tctx = _thermoSampler.getContext('2d', { willReadFrequently: true });
-                    tctx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, tW, tH);
-                    let imgData = tctx.getImageData(0, 0, tW, tH);
-                    let d = imgData.data;
-                    for (let i = 0; i < d.length; i += 4) {
-                        let lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
-                        let pos = lum * (_hm.length - 1);
-                        let lo = Math.floor(pos), hi = Math.min(_hm.length-1, lo+1);
-                        let t = pos - lo;
-                        d[i]   = Math.round(_hm[lo][0]*(1-t) + _hm[hi][0]*t);
-                        d[i+1] = Math.round(_hm[lo][1]*(1-t) + _hm[hi][1]*t);
-                        d[i+2] = Math.round(_hm[lo][2]*(1-t) + _hm[hi][2]*t);
-                    }
-                    tctx.putImageData(imgData, 0, 0);
-                    drawingContext.drawImage(_thermoSampler, bx, by, zW, zH);
-                    // Queue for recording at native resolution
-                    if (isRecording) _vizRecordQueue.push({ type: 'thermo', sx, sy, sw, sh, bx, by, zW, zH });
-                }
 
                 // ASCII: green terminal-style ASCII art inside blob box
                 if (activeVizModes.has(12)) {
@@ -2533,36 +2503,7 @@ function draw() {
             let xScale = rw / (visRight - visLeft);
             let yScale = rh / (visBottom - visTop);
             for (let vd of _vizRecordQueue) {
-                if (vd.type === 'thermo') {
-                    let rx = (vd.bx - visLeft) * xScale;
-                    let ry = (vd.by - visTop) * yScale;
-                    let rdw = vd.zW * xScale;
-                    let rdh = vd.zH * yScale;
-                    // Render heatmap at recording resolution
-                    let tW = Math.min(Math.max(Math.ceil(rdw), 128), 512);
-                    let tH = Math.min(Math.max(Math.ceil(rdh), 128), 512);
-                    if (!_thermoSampler) _thermoSampler = document.createElement('canvas');
-                    if (_thermoSampler.width !== tW || _thermoSampler.height !== tH) {
-                        _thermoSampler.width = tW; _thermoSampler.height = tH;
-                    }
-                    let _hm = [[0,0,128],[0,0,255],[0,128,255],[0,255,255],[0,255,128],
-                                [0,255,0],[128,255,0],[255,255,0],[255,128,0],[255,0,0],[255,255,255]];
-                    let tctx = _thermoSampler.getContext('2d', { willReadFrequently: true });
-                    tctx.drawImage(videoEl.elt, vd.sx, vd.sy, vd.sw, vd.sh, 0, 0, tW, tH);
-                    let imgData = tctx.getImageData(0, 0, tW, tH);
-                    let d = imgData.data;
-                    for (let i = 0; i < d.length; i += 4) {
-                        let lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
-                        let pos = lum * (_hm.length - 1);
-                        let lo = Math.floor(pos), hi = Math.min(_hm.length-1, lo+1);
-                        let t = pos - lo;
-                        d[i]   = Math.round(_hm[lo][0]*(1-t) + _hm[hi][0]*t);
-                        d[i+1] = Math.round(_hm[lo][1]*(1-t) + _hm[hi][1]*t);
-                        d[i+2] = Math.round(_hm[lo][2]*(1-t) + _hm[hi][2]*t);
-                    }
-                    tctx.putImageData(imgData, 0, 0);
-                    recordingCtx.drawImage(_thermoSampler, rx, ry, rdw, rdh);
-                } else if (vd.type === 'ascii') {
+                if (vd.type === 'ascii') {
                     let rx = (vd.ax - visLeft) * xScale;
                     let ry = (vd.ay - visTop) * yScale;
                     let rdw = vd.aW * xScale;
@@ -3416,7 +3357,7 @@ function setupCoreUIListeners() {
             if (pig) pig.style.display = activeVizModes.has(8) ? '' : 'none';
             // Show/hide zoom viz options
             let vzp = document.getElementById('viz-zoom-options');
-            if (vzp) vzp.style.display = (activeVizModes.has(10) || activeVizModes.has(11) || activeVizModes.has(12)) ? '' : 'none';
+            if (vzp) vzp.style.display = (activeVizModes.has(10) || activeVizModes.has(12)) ? '' : 'none';
             updateButtonStates();
         });
     });

@@ -6,7 +6,7 @@
 
 // ── Globals ──────────────────────────────────────────────────
 let regionFXEnabled = false;
-let regionFXMode = 'none';    // none, inv, pixel, thermal, blur, glitch, tone, dither, crt, edge, xray, zoom, water, mask
+let regionFXMode = 'none';    // none, inv, pixel, thermal, blur, glitch, tone, dither, crt, edge, zoom, water, fill
 let regionFXInvert = false;   // apply OUTSIDE blob
 let regionFXFusion = false;   // 50/50 blend
 let regionFXRandom = false;   // random per blob
@@ -20,7 +20,7 @@ let _regionVAO = null;           // fullscreen quad VAO
 let _regionSrcTex = null;        // source texture (p5 canvas upload)
 let _regionFrameUploaded = -1;   // frameCount of last texture upload
 const _REGION_SIZE = 256;        // offscreen canvas size
-const _REGION_MODES = ['inv', 'pixel', 'thermal', 'blur', 'glitch', 'tone', 'dither', 'crt', 'edge', 'xray', 'zoom', 'water', 'mask'];
+const _REGION_MODES = ['inv', 'pixel', 'thermal', 'blur', 'glitch', 'tone', 'dither', 'crt', 'edge', 'zoom', 'water', 'fill'];
 
 // ── GLSL Shaders ─────────────────────────────────────────────
 
@@ -253,35 +253,6 @@ void main() {
     fragColor = vec4(vec3(edge), 1.0);
 }`;
 
-const FRAG_REGION_XRAY = `#version 300 es
-precision highp float;
-in vec2 v_texCoord;
-uniform sampler2D u_texture;
-uniform vec2 u_texelSize;
-uniform float u_intensity;
-out vec4 fragColor;
-void main() {
-    // Sobel edge detection
-    float tl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float t  = dot(texture(u_texture, v_texCoord + vec2(0.0, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float tr = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, -u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float l  = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float r  = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x, 0.0)).rgb, vec3(0.299, 0.587, 0.114));
-    float bl = dot(texture(u_texture, v_texCoord + vec2(-u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float b  = dot(texture(u_texture, v_texCoord + vec2(0.0,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float br = dot(texture(u_texture, v_texCoord + vec2( u_texelSize.x,  u_texelSize.y)).rgb, vec3(0.299, 0.587, 0.114));
-    float gx = -tl - 2.0*l - bl + tr + 2.0*r + br;
-    float gy = -tl - 2.0*t - tr + bl + 2.0*b + br;
-    float edge = sqrt(gx*gx + gy*gy);
-    // Invert original + blend edges + blue tint
-    vec4 orig = texture(u_texture, v_texCoord);
-    vec3 inv = vec3(1.0) - orig.rgb;
-    vec3 xray = inv + edge * 0.8;
-    // Blue/cyan tint
-    xray = mix(xray, xray * vec3(0.6, 0.85, 1.0), u_intensity);
-    fragColor = vec4(xray, orig.a);
-}`;
-
 const FRAG_REGION_ZOOM = `#version 300 es
 precision highp float;
 in vec2 v_texCoord;
@@ -315,7 +286,7 @@ void main() {
     fragColor = texture(u_texture, uv);
 }`;
 
-const FRAG_REGION_MASK = `#version 300 es
+const FRAG_REGION_FILL = `#version 300 es
 precision highp float;
 in vec2 v_texCoord;
 uniform sampler2D u_texture;
@@ -393,10 +364,9 @@ function initRegionFX() {
         dither:      FRAG_REGION_DITHER,
         crt:         FRAG_REGION_CRT,
         edge:        FRAG_REGION_EDGE,
-        xray:        FRAG_REGION_XRAY,
         zoom:        FRAG_REGION_ZOOM,
         water:       FRAG_REGION_WATER,
-        mask:        FRAG_REGION_MASK
+        fill:        FRAG_REGION_FILL
     };
     for (let [name, frag] of Object.entries(shaders)) {
         let prog = _regionLinkProgram(gl, _VERT_REGION, frag);
@@ -551,7 +521,7 @@ function _compositeRegion(ctx, glCanvas, px, py, pw, ph, inverted, fusion, inten
         ctx.beginPath();
         ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
         // Cut out the blob rect (even-odd rule)
-        ctx.rect(px + pw, py, -pw, ph);
+        ctx.rect(px, py, pw, ph);
         ctx.clip('evenodd');
     } else {
         // Normal mode: clip to blob rect

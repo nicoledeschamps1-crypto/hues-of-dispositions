@@ -4417,19 +4417,14 @@
                     <div id="viz-buttons" role="group" aria-label="Visualization modes">
                         <button class="selector-btn" data-value="0" title="Show blob x/y coordinates">XY</button>
                         <button class="selector-btn active" data-value="1" title="Show R, G, B values at blob center">RGB</button>
-                        <button class="selector-btn" data-value="2" title="Display saturation per blob">SAT</button>
+                        <button class="selector-btn" data-value="2" title="Color data: hue, saturation, brightness, hex">COLOR</button>
                         <button class="selector-btn" data-value="3" title="Label blobs with text descriptions">TXT</button>
                         <button class="selector-btn" data-value="8" title="Add numbered ID tags to blobs">TAG</button>
-                        <button class="selector-btn" data-value="4" title="Display hue angle per blob">HUE</button>
-                        <button class="selector-btn" data-value="5" title="Label blobs with hex color codes">HEX</button>
-                        <button class="selector-btn" data-value="6" title="Display brightness per blob">BRI</button>
-                        <button class="selector-btn" data-value="9" title="Color palette strip from detected blobs">PLT</button>
                         <button class="selector-btn" data-value="7" title="Hide all blob visualization overlays">NONE</button>
                         <button class="selector-btn" data-value="13" title="Motion velocity vectors (requires Persistence)">VEL</button>
                         <button class="selector-btn" data-value="14" title="Show persistent blob ID numbers (requires Persistence)">ID</button>
                         <button class="selector-btn" data-value="15" title="Accumulated detection density heatmap">HEAT</button>
                         <button class="selector-btn viz-action" data-value="10" title="Magnified view around blob centers">ZOOM</button>
-                        <button class="selector-btn viz-action" data-value="11" title="Heat-map style blob density">THERMO</button>
                         <button class="selector-btn viz-action" data-value="12" title="ASCII character art conversion">ASCII</button>
                     </div>
                     <!-- Blob Style + Region FX moved above, always visible when tracking ON -->
@@ -4454,10 +4449,8 @@
                         <button class="selector-btn" data-value="scope" title="Crosshair reticle">SCOPE</button>
                         <button class="selector-btn" data-value="win2k" title="Windows 2000 frame">WIN2K</button>
                         <button class="selector-btn" data-value="grid" title="Rule-of-thirds grid">GRID</button>
-                        <button class="selector-btn" data-value="dash" title="Dashed outline">DASH</button>
                         <button class="selector-btn" data-value="glow" title="Soft glow halo">GLOW</button>
                         <button class="selector-btn" data-value="particle" title="Particle emitter">PARTICLE</button>
-                        <button class="selector-btn" data-value="label" title="ID label">LABEL</button>
                         <button class="selector-btn" data-value="label2" title="Pill chip with coords">LABEL2</button>
                         <button class="selector-btn" data-value="backdrop" title="Filled backdrop">BACKDROP</button>
                     </div>
@@ -4476,10 +4469,9 @@
                         <button class="selector-btn" data-rfx="dither">DITHER</button>
                         <button class="selector-btn" data-rfx="crt">CRT</button>
                         <button class="selector-btn" data-rfx="edge">EDGE</button>
-                        <button class="selector-btn" data-rfx="xray">X-RAY</button>
                         <button class="selector-btn" data-rfx="zoom">ZOOM</button>
                         <button class="selector-btn" data-rfx="water">WATER</button>
-                        <button class="selector-btn" data-rfx="mask">MASK</button>
+                        <button class="selector-btn" data-rfx="fill">FILL</button>
                     </div>
                     <div class="control-group" style="margin-top:6px;">
                         <label>Intensity <span class="value-display" id="val-rfx-intensity">100</span></label>

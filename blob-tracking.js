@@ -219,8 +219,6 @@ function matchAndUpdateBlobs(candidates, numPoints, blobVarLevel) {
         if (sm > 0) {
             blob.posicao.x = lerp(cand.x, blob.posicao.x, sm);
             blob.posicao.y = lerp(cand.y, blob.posicao.y, sm);
-            blob.width = lerp(blob.width, blob.width, sm); // size stays stable
-            blob.height = lerp(blob.height, blob.height, sm);
             // Color smoothing — only when close (prevents muddy blending on jumps)
             if (pair.d2 < maxDist2 * 0.25) {
                 let cr = red(cand.c), cg = green(cand.c), cb = blue(cand.c);
@@ -336,7 +334,7 @@ function matchAndUpdateBlobs(candidates, numPoints, blobVarLevel) {
     _persistentBlobs = _persistentBlobs.filter(b => b.state !== 'expired');
     let hardCap = numPoints * 3;
     if (_persistentBlobs.length > hardCap) {
-        // Keep newest (highest ID) — sort by age desc, trim
+        // Hard cap: keep most established blobs (highest age = most stable tracking)
         _persistentBlobs.sort((a, b) => b.age - a.age);
         _persistentBlobs.length = hardCap;
     }
@@ -925,26 +923,22 @@ function drawPointInfo(p) {
             rect(offsetX, curY, colorSquareSize, colorSquareSize);
             curY += colorSquareSize + 6;
         }
-        else if (vizMode === 2) { // SAT
-            text(`st: ${saturation(p.cor).toFixed(0)}%`, offsetX, curY);
-            curY += 14;
+        else if (vizMode === 2) { // COLOR (merged: hue + sat + bri + hex + palette)
+            let _h = hue(p.cor).toFixed(0);
+            let _s = saturation(p.cor).toFixed(0);
+            let _b = brightness(p.cor).toFixed(0);
+            let _rr = red(p.cor), _gg = green(p.cor), _bb = blue(p.cor);
+            let _hex = '#' + [_rr, _gg, _bb].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+            text(`H:${_h}\u00B0 S:${_s}% B:${_b}%`, offsetX, curY);
+            curY += 13;
+            text(_hex, offsetX, curY);
+            curY += 4;
+            fill(p.cor); rectMode(CORNER);
+            rect(offsetX, curY, 24, 12);
+            curY += 18;
         }
         else if (vizMode === 3) { // TXT
             text(p.dynamicWord, offsetX, curY);
-            curY += 14;
-        }
-        else if (vizMode === 4) { // HUE
-            text(`hue: ${hue(p.cor).toFixed(0)}\u00B0`, offsetX, curY);
-            curY += 14;
-        }
-        else if (vizMode === 5) { // HEX
-            let rr = red(p.cor), gg = green(p.cor), bb = blue(p.cor);
-            let hex = '#' + [rr, gg, bb].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
-            text(hex, offsetX, curY);
-            curY += 14;
-        }
-        else if (vizMode === 6) { // BRI
-            text(`bri: ${brightness(p.cor).toFixed(0)}%`, offsetX, curY);
             curY += 14;
         }
         else if (vizMode === 8) { // TAG
@@ -961,20 +955,6 @@ function drawPointInfo(p) {
             textStyle(NORMAL);
             pop();
             curY += 4;
-        }
-        else if (vizMode === 9) { // PLT
-            push();
-            let chipSize = 26;
-            fill(p.cor); noStroke(); rectMode(CORNER);
-            rect(offsetX, curY, chipSize, chipSize);
-            noFill(); stroke(255, 100); strokeWeight(0.5);
-            rect(offsetX, curY, chipSize, chipSize);
-            let pr = red(p.cor), pg = green(p.cor), pb = blue(p.cor);
-            let pHex = '#' + [pr, pg, pb].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
-            noStroke(); fill(255, 160); textSize(8);
-            text(pHex, offsetX, curY + chipSize + 10);
-            pop();
-            curY += chipSize + 16;
         }
         else if (vizMode === 14) { // ID (persistent blob ID)
             if (_persistenceEnabled && p.id !== undefined) {
@@ -1037,10 +1017,8 @@ function drawBlobStyle(p, w, h, tbc, alpha, weight) {
         case 'scope':    _drawScope(px, py, w, h, r, g, b, a, wt); break;
         case 'win2k':    _drawWin2K(px, py, w, h, r, g, b, a, wt, p); break;
         case 'grid':     _drawGrid(px, py, w, h, r, g, b, a, wt); break;
-        case 'dash':     _drawDash(px, py, w, h, r, g, b, a, wt); break;
         case 'glow':     _drawGlow(px, py, w, h, r, g, b, a, wt); break;
         case 'particle': _drawParticleSpawn(px, py, r, g, b); break;
-        case 'label':    _drawLabel(px, py, w, h, r, g, b, a, wt, p); break;
         case 'label2':   _drawLabel2(px, py, w, h, r, g, b, a, wt, p); break;
         case 'backdrop': _drawBackdrop(px, py, w, h, r, g, b, a); break;
         default: // box
@@ -1188,16 +1166,6 @@ function _drawGrid(px, py, w, h, r, g, b, a, wt) {
     line(cx - m, cy, cx + m, cy); line(cx, cy - m, cx, cy + m);
 }
 
-function _drawDash(px, py, w, h, r, g, b, a, wt) {
-    let ctx = drawingContext;
-    ctx.save();
-    ctx.setLineDash([8, 4]);
-    ctx.strokeStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (a/255) + ')';
-    ctx.lineWidth = wt;
-    ctx.strokeRect(px - w/2, py - h/2, w, h);
-    ctx.restore();
-}
-
 function _drawGlow(px, py, w, h, r, g, b, a, wt) {
     let ctx = drawingContext;
     ctx.save();
@@ -1237,34 +1205,16 @@ function _updateBlobParticles() {
         pt.x += pt.vx; pt.y += pt.vy;
         pt.vy += 0.02; // slight gravity
         pt.life -= pt.decay;
-        if (pt.life <= 0) { _blobParticles.splice(i, 1); continue; }
+        if (pt.life <= 0) {
+            _blobParticles[i] = _blobParticles[_blobParticles.length - 1];
+            _blobParticles.pop();
+            continue; // swapped element already processed (reverse loop)
+        }
         ctx.fillStyle = 'rgba(' + pt.r + ',' + pt.g + ',' + pt.b + ',' + (pt.life * 0.8) + ')';
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, pt.sz * pt.life, 0, Math.PI * 2);
         ctx.fill();
     }
-}
-
-// ── LABEL style — blob ID text at center with background rect ──
-function _drawLabel(px, py, w, h, r, g, b, a, wt, pt) {
-    let ctx = drawingContext;
-    ctx.save();
-    let idText = '#' + (pt.id !== undefined ? pt.id : '?');
-    let fontSize = Math.max(10, Math.min(w, h) * 0.35);
-    ctx.font = 'bold ' + Math.round(fontSize) + 'px "Commit Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    let tm = ctx.measureText(idText);
-    let padX = 6, padY = 3;
-    let bgW = tm.width + padX * 2;
-    let bgH = fontSize + padY * 2;
-    // Background rect
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(px - bgW / 2, py - bgH / 2, bgW, bgH);
-    // Text
-    ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')';
-    ctx.fillText(idText, px, py);
-    ctx.restore();
 }
 
 // ── LABEL2 style — pill chip with ID + coordinates ──────────
