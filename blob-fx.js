@@ -4606,8 +4606,10 @@ function applyPixelFlow() {
                 buf[di]   = Math.round(_flowBuffer[si] * decay + pixels[di] * fresh);
                 buf[di+1] = Math.round(_flowBuffer[si+1] * decay + pixels[di+1] * fresh);
                 buf[di+2] = Math.round(_flowBuffer[si+2] * decay + pixels[di+2] * fresh);
+                buf[di+3] = pixels[di+3]; // preserve alpha
             } else {
                 buf[di] = pixels[di]; buf[di+1] = pixels[di+1]; buf[di+2] = pixels[di+2];
+                buf[di+3] = pixels[di+3]; // preserve alpha
             }
         }
     }

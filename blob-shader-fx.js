@@ -2461,6 +2461,10 @@ function initShaderFX() {
 }
 
 function processShaderFX() {
+    // Lazy init: if pipeline failed at setup() time, retry now
+    if (!shaderFX.ready && !shaderFX.gl && typeof p5Canvas !== 'undefined' && p5Canvas) {
+        initShaderFX();
+    }
     if (!shaderFX.ready || !shaderFX.enabled) return;
     syncShaderFromCPU();
     if (shaderFX.activeEffects.size === 0) return;
