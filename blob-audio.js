@@ -944,12 +944,16 @@ function toggleVideoAudio() {
     }
 }
 
-function startVideoAudio() {
+async function startVideoAudio() {
     if (!videoEl || !videoEl.elt) {
         console.warn('[Audio] No video loaded — cannot use video audio');
         return;
     }
     initAudioContext();
+    // Must await resume before creating MediaElementSource
+    if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+    }
 
     // Stop mic if active
     if (micActive) stopMicrophone();

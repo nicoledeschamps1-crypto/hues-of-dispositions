@@ -2082,8 +2082,8 @@ function draw() {
         videoX = (dispW - videoW) / 2 + vidPanX;
         videoY = (dispH - videoH) / 2 + vidPanY;
 
-        // Mirror webcam so you see yourself naturally (like a mirror)
-        if (usingWebcam) {
+        // Mirror only front-facing webcam (not external/rear cameras)
+        if (usingWebcam && _currentFacingMode === 'user') {
             push();
             translate(videoX * 2 + videoW, 0);
             scale(-1, 1);
@@ -4454,6 +4454,11 @@ function populateCameraDevices() {
                 localStorage.setItem('hod-camera-device', cam.deviceId);
                 row.querySelectorAll('.camera-device-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                // Detect facing mode: front cameras contain 'front'/'facetime'/'user' in label,
+                // external/back cameras don't — default to 'environment' (no mirror) for safety
+                let label = (cam.label || '').toLowerCase();
+                _currentFacingMode = (label.includes('front') || label.includes('facetime') || label.includes('user') || (i === 0 && cams.length <= 2))
+                    ? 'user' : 'environment';
                 if (usingWebcam) startWebcam(cam.deviceId);
             });
             row.appendChild(btn);
