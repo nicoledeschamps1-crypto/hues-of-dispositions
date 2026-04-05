@@ -1487,6 +1487,229 @@
         #debug-panel .val { color: #0f0; }
         #debug-panel .warn { color: #f80; }
         #debug-panel .off { color: #f44; }
+        /* ═══ TRACKING STATUS ROW ═══ */
+        .tracking-status-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            margin-bottom: 6px;
+            border-radius: var(--radius-md);
+            background: rgba(139,69,232,0.08);
+            font-size: 10px;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+        }
+        .tracking-status-row .status-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .tracking-status-row .status-sep {
+            color: rgba(255,255,255,0.2);
+        }
+        #tracking-status-family {
+            color: var(--color-accent);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        #tracking-status-mode {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+        #tracking-status-state {
+            color: var(--text-muted);
+            margin-left: auto;
+            font-style: italic;
+        }
+        /* ═══ GUIDE RAIL ═══ */
+        .guide-rail {
+            position: absolute;
+            top: calc(var(--topbar-h) + 24px);
+            right: 312px;
+            width: 200px;
+            padding: 14px 16px;
+            background: rgba(17, 14, 22, 0.94);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(169, 102, 255, 0.12);
+            border-radius: var(--panel-radius, 8px);
+            z-index: 9;
+            max-height: calc(100vh - var(--topbar-h) - 80px);
+            overflow-y: auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            font-family: inherit;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .guide-rail.hidden {
+            display: none;
+        }
+        .guide-rail::-webkit-scrollbar { width: 3px; }
+        .guide-rail::-webkit-scrollbar-track { background: transparent; }
+        .guide-rail::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 2px; }
+
+        .guide-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .guide-kicker {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--color-accent, #8B45E8);
+            background: rgba(139, 69, 232, 0.12);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .guide-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-main, #fff);
+            margin: 0;
+            flex: 1;
+            line-height: 1.3;
+        }
+        .guide-close {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            font-size: 14px;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .guide-close:hover {
+            color: var(--text-main);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        .guide-steps {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .guide-step {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .guide-step-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(139, 69, 232, 0.18);
+            border: 1px solid rgba(139, 69, 232, 0.3);
+            color: var(--color-accent, #8B45E8);
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .guide-step-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .guide-step-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-main, #fff);
+            line-height: 1.3;
+            margin-bottom: 2px;
+        }
+        .guide-step-desc {
+            font-size: 10px;
+            color: var(--text-muted, #888);
+            line-height: 1.4;
+        }
+        .guide-empty {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 12px 0;
+            font-style: italic;
+        }
+
+        /* Guide toolbar button active state */
+        #tb-guide-btn.active {
+            background: rgba(139, 69, 232, 0.2);
+            color: var(--color-accent, #8B45E8);
+        }
+        #tb-guide-btn.active svg { fill: var(--color-accent, #8B45E8); }
+
+        /* ═══ INLINE GUIDE CARD (Audio section) ═══ */
+        .guide-card {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(139, 69, 232, 0.06);
+            border: 1px solid rgba(139, 69, 232, 0.15);
+            border-radius: var(--radius-md, 6px);
+        }
+        .guide-card.hidden { display: none; }
+        .guide-card-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .guide-card-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-main, #fff);
+            flex: 1;
+        }
+        .guide-card .guide-steps { gap: 6px; }
+        .guide-card .guide-step-num {
+            width: 16px;
+            height: 16px;
+            font-size: 9px;
+        }
+        .guide-card .guide-step-title { font-size: 10px; }
+        .guide-card .guide-step-desc { font-size: 9px; }
+
+        /* ═══ RESPONSIVE GUIDE ═══ */
+        /* Medium screens: panels 240px */
+        @media (max-width: 1200px) {
+            .guide-rail { right: 272px; width: 180px; }
+        }
+        /* Small screens: convert guide rail to a bottom drawer */
+        @media (max-width: 900px) {
+            .guide-rail {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-height: 45vh;
+                border-radius: 12px 12px 0 0;
+                z-index: 200;
+                box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+                padding: 16px 20px 20px;
+            }
+            .guide-rail .guide-header { margin-bottom: 10px; }
+            .guide-rail .guide-steps { gap: 8px; }
+        }
+
+        /* Mode-specific inline controls */
+        .mode-context {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(169,102,255,0.1);
+        }
         /* ═══ TRACKING SECTION (left panel — mirrors right panel structure) ═══ */
         .tracking-section {
             display: flex;
@@ -4100,7 +4323,7 @@
         </nav>
         <!-- Transport -->
         <div class="tb-zone tb-transport-group">
-            <button class="tb-btn" id="tb-play" title="Play/Pause (Space)" aria-label="Play or Pause" data-tooltip="Play/Pause (Space)">
+            <button class="tb-btn" id="tb-play" title="Play or pause video playback (Space)" aria-label="Play or Pause" data-tooltip="Play/Pause (Space)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             </button>
             <button class="tb-btn" id="tb-restart" title="Restart (Home)" aria-label="Restart" data-tooltip="Restart (Home)">
@@ -4109,13 +4332,13 @@
         </div>
         <!-- Record group -->
         <div class="tb-zone tb-record-group">
-            <button class="tb-btn" id="tb-record" title="Record (Shift+R)" aria-label="Toggle Recording" data-tooltip="Record (Shift+R)">
+            <button class="tb-btn" id="tb-record" title="Record video with all active effects (Shift+R)" aria-label="Toggle Recording" data-tooltip="Record (Shift+R)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>
             </button>
             <button class="tb-btn" id="tb-save" title="Save Recording" aria-label="Save Recording" data-tooltip="Save Recording">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             </button>
-            <button class="tb-btn" id="tb-photo" title="Screenshot (P)" aria-label="Take Screenshot" data-tooltip="Screenshot (P)">
+            <button class="tb-btn" id="tb-photo" title="Capture a still frame with effects (P)" aria-label="Take Screenshot" data-tooltip="Screenshot (P)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
             </button>
         </div>
@@ -4131,6 +4354,9 @@
             <span class="tb-status no-source" id="tb-source">NO SOURCE</span>
             <span class="tb-status" id="tb-mode">OFF</span>
             <div class="tb-divider"></div>
+            <button class="tb-btn" id="tb-guide-btn" title="Guide" aria-label="Toggle Guide">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.65 1 5.5v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.15 5.05 19.5 6.5 19.5c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
+            </button>
             <button class="tb-btn" id="tb-settings-btn" title="Settings" aria-label="Settings">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
             </button>
@@ -4335,22 +4561,30 @@
             <!-- ═══ TRACK SECTION: Tracking + Blob Params ═══ -->
             <div data-section-content="track" class="section-content">
 
-            <!-- ═══ TRACKING ═══ -->
+            <!-- ═══ STATUS ROW ═══ -->
+            <div id="tracking-status-row" class="tracking-status-row">
+                <span class="status-label">Current:</span>
+                <span id="tracking-status-family">—</span>
+                <span class="status-sep">›</span>
+                <span id="tracking-status-mode">—</span>
+                <span id="tracking-status-state"></span>
+            </div>
+
+            <!-- ═══ DETECTION ═══ -->
             <div class="control-group tracking-section" id="group-modes">
                 <div class="tracking-section-header">
                     <div class="tracking-toggle-row">
-                        <span>Tracking</span>
+                        <span>Detection</span>
                         <label class="fx-toggle-switch"><input type="checkbox" id="tracking-toggle"><span class="toggle-slider"></span></label>
                     </div>
                 </div>
                 <span class="hint-text" style="margin-top:-4px;margin-bottom:4px">Master switch — disables all blob detection when off</span>
                 <div id="tracking-body" class="tracking-off">
-                <!-- Category tabs — matches right panel fx-tab-bar -->
-                <div class="tracking-tab-bar" role="tablist" aria-label="Tracking categories">
+                <!-- Detection family tabs -->
+                <div class="tracking-tab-bar" role="tablist" aria-label="Detection family">
                     <button class="tracking-tab active" data-track-tab="color" role="tab" aria-selected="true">Color</button>
                     <button class="tracking-tab" data-track-tab="analysis" role="tab" aria-selected="false">Analysis</button>
                     <button class="tracking-tab" data-track-tab="ai" role="tab" aria-selected="false">AI</button>
-                    <button class="tracking-tab" data-track-tab="visualize" role="tab" aria-selected="false">Visualize</button>
                 </div>
                 <!-- Color tab content -->
                 <div class="tracking-tab-content active" data-track-tab="color" id="mode-color-panel" role="tabpanel">
@@ -4368,6 +4602,11 @@
                         <span>CUSTOM: Pick any hue from video</span>
                         <span>INVERT: Track everything except selected hue</span>
                         <span>WARM/COOL: Bias toward warm or cool tones</span>
+                    </div>
+                    <!-- Mode-specific: Custom color picker -->
+                    <div class="control-group mode-context" id="custom-color-group" style="display:none">
+                        <label for="custom-color-picker">Target Color</label>
+                        <input type="color" id="custom-color-picker" value="#00b7eb" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
                     </div>
                 </div>
                 <!-- Analysis tab content -->
@@ -4410,139 +4649,38 @@
                         <span>MASK: AI foreground/background segmentation</span>
                         <span>EYES/LIPS/FACE: AI facial landmark detection</span>
                     </div>
-                </div>
-                <!-- Visualize tab content -->
-                <div class="tracking-tab-content" data-track-tab="visualize" id="mode-visualize-panel" role="tabpanel">
-                    <span class="tab-desc">How blob data is displayed on the video preview</span>
-                    <div id="viz-buttons" role="group" aria-label="Visualization modes">
-                        <button class="selector-btn" data-value="0" title="Show blob x/y coordinates">XY</button>
-                        <button class="selector-btn active" data-value="1" title="Show R, G, B values at blob center">RGB</button>
-                        <button class="selector-btn" data-value="2" title="Color data: hue, saturation, brightness, hex">COLOR</button>
-                        <button class="selector-btn" data-value="3" title="Label blobs with text descriptions">TXT</button>
-                        <button class="selector-btn" data-value="8" title="Add numbered ID tags to blobs">TAG</button>
-                        <button class="selector-btn" data-value="7" title="Hide all blob visualization overlays">NONE</button>
-                        <button class="selector-btn" data-value="13" title="Motion velocity vectors (requires Persistence)">VEL</button>
-                        <button class="selector-btn" data-value="14" title="Show persistent blob ID numbers (requires Persistence)">ID</button>
-                        <button class="selector-btn" data-value="15" title="Accumulated detection density heatmap">HEAT</button>
-                        <button class="selector-btn viz-action" data-value="10" title="Magnified view around blob centers">ZOOM</button>
-                        <button class="selector-btn viz-action" data-value="12" title="ASCII character art conversion">ASCII</button>
+                    <!-- Mode-specific: Mask controls -->
+                    <div class="control-group mode-context" id="mask-controls-group" style="display:none">
+                        <label>Magic Mask <span id="mask-status" style="color:#FDCB6E">CLICK SUBJECT</span></label>
+                        <div id="mask-loading" style="display:none;font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
+                            Loading AI model...
+                        </div>
+                        <div id="mask-hint" style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
+                            Click object to track. &#x21E7;+click adds, &#x2325;+click removes.
+                        </div>
+                        <div style="display:flex;gap:6px">
+                            <button class="selector-btn" id="mask-clear-btn" style="flex:1" title="Clear mask selection" aria-label="Clear mask selection">CLEAR</button>
+                        </div>
                     </div>
-                    <!-- Blob Style + Region FX moved above, always visible when tracking ON -->
-                    <div id="product-info-group" style="display:none;margin-top:8px;">
-                        <label style="font-size:9px;font-weight:600;color:var(--text-muted,#888);display:block;margin-bottom:4px;">Tag Text</label>
-                        <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
-                        <input type="text" class="text-input" id="product-name" placeholder="Product Name">
-                        <input type="text" class="text-input" id="product-material" placeholder="Material">
-                        <input type="text" class="text-input" id="product-price" placeholder="Price">
-                        <input type="text" class="text-input" id="product-size" placeholder="Size">
+                    <!-- Mode-specific: Face controls -->
+                    <div class="control-group mode-context" id="face-controls-group" style="display:none">
+                        <label>Face Tracking <span id="face-status" style="color:#00CEC9">DETECTING</span></label>
+                        <div id="face-loading" style="display:none;font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
+                            Loading face model...
+                        </div>
+                        <div id="face-hint" style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
+                            Point camera or video at a face. Blobs track facial landmarks.
+                        </div>
                     </div>
                 </div>
-
-                <!-- ── Blob Style (always visible when tracking ON) ── -->
-                <div class="control-group" style="margin-top:10px;">
-                    <label id="label-blob-style-main" style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Blob Style</label>
-                    <div class="selector-row selector-wrap" id="blob-style-buttons-main" aria-labelledby="label-blob-style-main">
-                        <button class="selector-btn" data-value="none" title="No blob border">NONE</button>
-                        <button class="selector-btn active" data-value="box" title="Rectangle outline">BOX</button>
-                        <button class="selector-btn" data-value="lframe" title="Corner brackets">L-FRAME</button>
-                        <button class="selector-btn" data-value="xframe" title="Diagonal cross">X-FRAME</button>
-                        <button class="selector-btn" data-value="scope" title="Crosshair reticle">SCOPE</button>
-                        <button class="selector-btn" data-value="win2k" title="Windows 2000 frame">WIN2K</button>
-                        <button class="selector-btn" data-value="grid" title="Rule-of-thirds grid">GRID</button>
-                        <button class="selector-btn" data-value="glow" title="Soft glow halo">GLOW</button>
-                        <button class="selector-btn" data-value="particle" title="Particle emitter">PARTICLE</button>
-                        <button class="selector-btn" data-value="label2" title="Pill chip with coords">LABEL2</button>
-                        <button class="selector-btn" data-value="backdrop" title="Filled backdrop">BACKDROP</button>
-                    </div>
-                </div>
-
-                <!-- ── Region Effects (always visible when tracking ON) ── -->
-                <div class="control-group" id="region-fx-group" style="margin-top:6px;">
-                    <label style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Region Effects</label>
-                    <div class="selector-row selector-wrap" id="region-fx-buttons">
-                        <button class="selector-btn" data-rfx="inv">INV</button>
-                        <button class="selector-btn" data-rfx="pixel">PIXEL</button>
-                        <button class="selector-btn" data-rfx="thermal">THERMAL</button>
-                        <button class="selector-btn" data-rfx="blur">BLUR</button>
-                        <button class="selector-btn" data-rfx="glitch">GLITCH</button>
-                        <button class="selector-btn" data-rfx="tone">TONE</button>
-                        <button class="selector-btn" data-rfx="dither">DITHER</button>
-                        <button class="selector-btn" data-rfx="crt">CRT</button>
-                        <button class="selector-btn" data-rfx="edge">EDGE</button>
-                        <button class="selector-btn" data-rfx="zoom">ZOOM</button>
-                        <button class="selector-btn" data-rfx="water">WATER</button>
-                        <button class="selector-btn" data-rfx="fill">FILL</button>
-                    </div>
-                    <div class="control-group" style="margin-top:6px;">
-                        <label>Intensity <span class="value-display" id="val-rfx-intensity">100</span></label>
-                        <input type="range" id="slider-rfx-intensity" min="0" max="100" value="100" step="1">
-                    </div>
-                    <div class="selector-row" style="margin-top:4px;">
-                        <label class="checkbox-label"><input type="checkbox" id="rfx-invert"> Invert</label>
-                        <label class="checkbox-label"><input type="checkbox" id="rfx-fusion"> Fusion</label>
-                        <label class="checkbox-label"><input type="checkbox" id="rfx-random"> Random</label>
-                    </div>
-                </div>
-
                 </div><!-- /tracking-body -->
             </div>
 
-            <div class="control-group" id="custom-color-group" style="display:none">
-                <label for="custom-color-picker">Target Color</label>
-                <input type="color" id="custom-color-picker" value="#00b7eb" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
-            </div>
-
-            <div class="control-group" id="mask-controls-group" style="display:none">
-                <label>Magic Mask <span id="mask-status" style="color:#FDCB6E">CLICK SUBJECT</span></label>
-                <div id="mask-loading" style="display:none;font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
-                    Loading AI model...
-                </div>
-                <div id="mask-hint" style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
-                    Click object to track. &#x21E7;+click adds, &#x2325;+click removes.
-                </div>
-                <div style="display:flex;gap:6px">
-                    <button class="selector-btn" id="mask-clear-btn" style="flex:1" title="Clear mask selection" aria-label="Clear mask selection">CLEAR</button>
-                </div>
-            </div>
-
-            <div class="control-group" id="face-controls-group" style="display:none">
-                <label>Face Tracking <span id="face-status" style="color:#00CEC9">DETECTING</span></label>
-                <div id="face-loading" style="display:none;font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
-                    Loading face model...
-                </div>
-                <div id="face-hint" style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
-                    Point camera or video at a face. Blobs track facial landmarks.
-                </div>
-            </div>
-
-            <!-- (Visualization moved into Tracking VISUALIZE tab) -->
-
-            <!-- Zoom Viz options (shown when ZOOM viz active) -->
-            <div class="control-group" id="viz-zoom-options" style="display:none">
-                <label for="slider-viz-zoom">Zoom Viz <span id="viz-zoom-val" style="color:#00CEC9;margin-left:6px">3.0x</span></label>
-                <div class="slider-wrapper">
-                    <input type="range" id="slider-viz-zoom" min="-8" max="8" value="3" step="0.5">
-                </div>
-                <span class="hint-text">Magnification level for the zoom visualization mode</span>
-                <div style="display:flex;justify-content:space-between;font-size:var(--font-xs);color:var(--text-muted);margin-top:-2px">
-                    <span>WIDE</span><span>1:1</span><span>MACRO</span>
-                </div>
-                <span class="hint-text">Zoom lens field of view — wide angle vs tight macro</span>
-                <label id="label-colorbox">Color Box</label>
-                <div class="selector-row" id="viz-zoom-box-buttons" aria-labelledby="label-colorbox">
-                    <button class="selector-btn" data-value="on">ON</button>
-                    <button class="selector-btn active" data-value="off">OFF</button>
-                </div>
-                <span class="hint-text">Shows a solid color swatch for each blob's detected color</span>
-            </div>
-
-            <!-- Blob Parameters -->
+            <!-- ═══ DETECTION TUNING ══��� -->
             <div id="blob-edit-banner">editing blob segment</div>
-
-            <!-- ── Blob Parameters Card ── -->
-            <section aria-label="Blob parameters">
+            <section aria-label="Detection tuning" id="detection-tuning-section">
             <div class="slider-card">
-                <div class="slider-card-label">Blob Parameters</div>
+                <div class="slider-card-label">Detection Tuning</div>
                 <div class="control-group" id="group-0">
                     <label>Quantity <input type="number" class="value-input" id="val-0" value="15"></label>
                     <div class="slider-wrapper">
@@ -4584,13 +4722,172 @@
             </div>
             </section>
 
-            <!-- Region Effects now inside tracking-body above -->
+            <!-- ═══ DISPLAY ═══ -->
+            <section aria-label="Display options" id="display-section">
+            <div class="slider-card">
+                <div class="slider-card-label">Display</div>
+                <label style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block">Visualization</label>
+                <div id="viz-buttons" role="group" aria-label="Visualization modes">
+                    <button class="selector-btn" data-value="0" title="Show blob x/y coordinates">XY</button>
+                    <button class="selector-btn" data-value="1" title="Show R, G, B values at blob center">RGB</button>
+                    <button class="selector-btn" data-value="2" title="Color data: hue, saturation, brightness, hex">COLOR</button>
+                    <button class="selector-btn" data-value="3" title="Label blobs with text descriptions">TXT</button>
+                    <button class="selector-btn" data-value="8" title="Add numbered ID tags to blobs">TAG</button>
+                    <button class="selector-btn" data-value="7" title="Hide all blob visualization overlays">NONE</button>
+                    <button class="selector-btn" data-value="13" title="Motion velocity vectors (requires Persistence)">VEL</button>
+                    <button class="selector-btn" data-value="14" title="Show persistent blob ID numbers (requires Persistence)">ID</button>
+                    <button class="selector-btn" data-value="15" title="Accumulated detection density heatmap">HEAT</button>
+                    <button class="selector-btn viz-action active" data-value="10" title="Magnified view around blob centers">ZOOM</button>
+                    <button class="selector-btn viz-action" data-value="12" title="ASCII character art conversion">ASCII</button>
+                </div>
+                <div id="product-info-group" style="display:none;margin-top:8px;">
+                    <label style="font-size:9px;font-weight:600;color:var(--text-muted,#888);display:block;margin-bottom:4px;">Tag Text</label>
+                    <input type="text" class="text-input" id="product-brand" placeholder="BRAND">
+                    <input type="text" class="text-input" id="product-name" placeholder="Product Name">
+                    <input type="text" class="text-input" id="product-material" placeholder="Material">
+                    <input type="text" class="text-input" id="product-price" placeholder="Price">
+                    <input type="text" class="text-input" id="product-size" placeholder="Size">
+                </div>
+                <!-- Zoom Viz options -->
+                <div class="control-group" id="viz-zoom-options" style="display:none;margin-top:6px">
+                    <label for="slider-viz-zoom">Zoom Viz <span id="viz-zoom-val" style="color:#00CEC9;margin-left:6px">3.0x</span></label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="slider-viz-zoom" min="-8" max="8" value="3" step="0.5">
+                    </div>
+                    <span class="hint-text">Magnification level for the zoom visualization mode</span>
+                    <div style="display:flex;justify-content:space-between;font-size:var(--font-xs);color:var(--text-muted);margin-top:-2px">
+                        <span>WIDE</span><span>1:1</span><span>MACRO</span>
+                    </div>
+                    <label id="label-colorbox">Color Box</label>
+                    <div class="selector-row" id="viz-zoom-box-buttons" aria-labelledby="label-colorbox">
+                        <button class="selector-btn" data-value="on">ON</button>
+                        <button class="selector-btn active" data-value="off">OFF</button>
+                    </div>
+                    <span class="hint-text">Shows a solid color swatch for each blob's detected color</span>
+                </div>
+                <!-- Blob Style -->
+                <label id="label-blob-style-main" style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:10px;display:block">Blob Style</label>
+                <div class="selector-row selector-wrap" id="blob-style-buttons-main" aria-labelledby="label-blob-style-main">
+                    <button class="selector-btn" data-value="none" title="No blob border">NONE</button>
+                    <button class="selector-btn active" data-value="box" title="Rectangle outline">BOX</button>
+                    <button class="selector-btn" data-value="lframe" title="Corner brackets">L-FRAME</button>
+                    <button class="selector-btn" data-value="xframe" title="Diagonal cross">X-FRAME</button>
+                    <button class="selector-btn" data-value="scope" title="Crosshair reticle">SCOPE</button>
+                    <button class="selector-btn" data-value="win2k" title="Windows 2000 frame">WIN2K</button>
+                    <button class="selector-btn" data-value="grid" title="Rule-of-thirds grid">GRID</button>
+                    <button class="selector-btn" data-value="glow" title="Soft glow halo">GLOW</button>
+                    <button class="selector-btn" data-value="particle" title="Particle emitter">PARTICLE</button>
+                    <button class="selector-btn" data-value="label2" title="Pill chip with coords">LABEL2</button>
+                    <button class="selector-btn" data-value="backdrop" title="Filled backdrop">BACKDROP</button>
+                </div>
+                <!-- Region Effects -->
+                <div class="control-group" id="region-fx-group" style="margin-top:10px;">
+                    <label style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Region Effects</label>
+                    <div class="selector-row selector-wrap" id="region-fx-buttons">
+                        <button class="selector-btn" data-rfx="inv">INV</button>
+                        <button class="selector-btn" data-rfx="pixel">PIXEL</button>
+                        <button class="selector-btn" data-rfx="thermal">THERMAL</button>
+                        <button class="selector-btn" data-rfx="blur">BLUR</button>
+                        <button class="selector-btn" data-rfx="glitch">GLITCH</button>
+                        <button class="selector-btn" data-rfx="tone">TONE</button>
+                        <button class="selector-btn" data-rfx="dither">DITHER</button>
+                        <button class="selector-btn" data-rfx="crt">CRT</button>
+                        <button class="selector-btn" data-rfx="edge">EDGE</button>
+                        <button class="selector-btn" data-rfx="zoom">ZOOM</button>
+                        <button class="selector-btn" data-rfx="water">WATER</button>
+                        <button class="selector-btn" data-rfx="fill">FILL</button>
+                    </div>
+                    <div class="control-group" style="margin-top:6px;">
+                        <label>Intensity <span class="value-display" id="val-rfx-intensity">100</span></label>
+                        <input type="range" id="slider-rfx-intensity" min="0" max="100" value="100" step="1">
+                    </div>
+                    <div class="selector-row" style="margin-top:4px;">
+                        <label class="checkbox-label"><input type="checkbox" id="rfx-invert"> Invert</label>
+                        <label class="checkbox-label"><input type="checkbox" id="rfx-fusion"> Fusion</label>
+                        <label class="checkbox-label"><input type="checkbox" id="rfx-random"> Random</label>
+                    </div>
+                </div>
+            </div>
+            </section>
 
-            <!-- (Appearance + line options moved to Settings modal) -->
-
-            <!-- Product Info moved inside VISUALIZE tab -->
-
-            <!-- (Bottom transport controls removed — top bar is the sole source) -->
+            <!-- ═══ ADVANCED ═══ -->
+            <section aria-label="Advanced tracking" id="advanced-tracking-section">
+            <div class="accordion-section collapsed" id="advanced-accordion">
+                <div class="accordion-header" role="button" tabindex="0" aria-expanded="false">
+                    <span class="accordion-title">Advanced</span>
+                    <span class="accordion-chevron">&#9662;</span>
+                </div>
+                <div class="accordion-body">
+                    <span class="tab-desc" style="margin-bottom:8px;display:block">Blobs maintain identity across frames — enables velocity, trails, and smoother tracking</span>
+                    <label class="checkbox-label"><input type="checkbox" id="persistence-toggle"> Enable Blob Persistence</label>
+                    <div id="persistence-options" style="display:none">
+                        <div class="control-group">
+                            <label>Match Distance <input type="number" class="value-input" id="val-match-dist" value="80" min="10" max="300"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-match-dist" min="10" max="300" value="80" step="5"></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Persist Duration <input type="number" class="value-input" id="val-persist-dur" value="30" min="0" max="120"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-persist-dur" min="0" max="120" value="30" step="1"></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Min Age <input type="number" class="value-input" id="val-min-age" value="0" min="0" max="30"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-min-age" min="0" max="30" value="0" step="1"></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Smoothing <input type="number" class="value-input" id="val-smoothing" value="40" min="0" max="100"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-smoothing" min="0" max="100" value="40" step="1"></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Dedup Radius <input type="number" class="value-input" id="val-dedup" value="0" min="0" max="50"></label>
+                            <div class="slider-wrapper"><input type="range" id="slider-dedup" min="0" max="50" value="0" step="1"></div>
+                        </div>
+                        <label class="checkbox-label"><input type="checkbox" id="revive-toggle"> Blob Revival</label>
+                        <span class="hint-text" id="revive-hint" style="display:none">Re-identify lost blobs when they reappear nearby</span>
+                        <div id="revive-options" style="display:none">
+                            <div class="control-group">
+                                <label>Revive Window <input type="number" class="value-input" id="val-revive-time" value="30" min="1" max="120"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-revive-time" min="1" max="120" value="30" step="1"></div>
+                            </div>
+                            <div class="control-group">
+                                <label>Revive Distance <input type="number" class="value-input" id="val-revive-dist" value="120" min="20" max="400"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-revive-dist" min="20" max="400" value="120" step="5"></div>
+                            </div>
+                            <div class="control-group">
+                                <label>Similarity <input type="number" class="value-input" id="val-revive-area" value="50" min="0" max="100"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-revive-area" min="0" max="100" value="50" step="5"></div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+                            <label class="checkbox-label" style="flex:1"><input type="checkbox" id="roi-toggle"> Region of Interest</label>
+                            <button class="selector-btn" id="btn-clear-roi" style="font-size:10px;padding:2px 8px;display:none">CLEAR</button>
+                        </div>
+                        <span class="hint-text" id="roi-hint" style="display:none">Draw a rectangle on the video to limit tracking area</span>
+                        <label class="checkbox-label"><input type="checkbox" id="cluster-toggle"> Cluster Mode (DBSCAN)</label>
+                        <div id="cluster-options" style="display:none">
+                            <div class="control-group">
+                                <label>Cluster Size (eps) <input type="number" class="value-input" id="val-cluster-eps" value="25" min="10" max="80"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-cluster-eps" min="10" max="80" value="25" step="1"></div>
+                            </div>
+                            <div class="control-group">
+                                <label>Min Points <input type="number" class="value-input" id="val-cluster-min" value="3" min="1" max="10"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-cluster-min" min="1" max="10" value="3" step="1"></div>
+                            </div>
+                        </div>
+                        <label class="checkbox-label"><input type="checkbox" id="trail-toggle"> Motion Trails</label>
+                        <div id="trail-options" style="display:none">
+                            <div class="control-group">
+                                <label>Trail Length <input type="number" class="value-input" id="val-trail-len" value="30" min="5" max="120"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-trail-len" min="5" max="120" value="30" step="1"></div>
+                            </div>
+                            <div class="control-group">
+                                <label>Trail Opacity <input type="number" class="value-input" id="val-trail-opacity" value="50" min="0" max="100"></label>
+                                <div class="slider-wrapper"><input type="range" id="slider-trail-opacity" min="0" max="100" value="50" step="1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </section>
 
             </div><!-- /section-content track -->
 
@@ -4602,6 +4899,45 @@
 
             <!-- ═══ AUDIO SECTION ═══ -->
             <div data-section-content="audio" class="section-content">
+
+            <!-- Audio Guide Card (inline, dismissible) -->
+            <div id="audio-guide-card" class="guide-card hidden">
+                <div class="guide-card-header">
+                    <span class="guide-kicker">GUIDE</span>
+                    <span class="guide-card-title">Audio Quick Start</span>
+                    <button class="guide-close" id="audio-guide-close" aria-label="Close audio guide">&times;</button>
+                </div>
+                <ol class="guide-steps">
+                    <li class="guide-step">
+                        <span class="guide-step-num">1</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Choose a source</div>
+                            <div class="guide-step-desc">File, mic, or video audio</div>
+                        </div>
+                    </li>
+                    <li class="guide-step">
+                        <span class="guide-step-num">2</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Pick a band</div>
+                            <div class="guide-step-desc">Kick, bass, vocal, hats, or full range</div>
+                        </div>
+                    </li>
+                    <li class="guide-step">
+                        <span class="guide-step-num">3</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Tune reactivity</div>
+                            <div class="guide-step-desc">Sensitivity, threshold, release, auto-gain</div>
+                        </div>
+                    </li>
+                    <li class="guide-step">
+                        <span class="guide-step-num">4</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Connect to visuals</div>
+                            <div class="guide-step-desc">Use sync targets once the signal is active</div>
+                        </div>
+                    </li>
+                </ol>
+            </div>
 
             <!-- Audio Source -->
             <div class="control-group">
@@ -4934,6 +5270,16 @@
         </div>
     </aside>
 
+    <!-- GUIDE RAIL -->
+    <aside id="guide-rail" class="guide-rail hidden" aria-label="Guide">
+        <div class="guide-header">
+            <span class="guide-kicker">GUIDE</span>
+            <h3 class="guide-title" id="guide-title"></h3>
+            <button class="guide-close" id="guide-close" aria-label="Close guide">&times;</button>
+        </div>
+        <div id="guide-content" class="guide-content"></div>
+    </aside>
+
     <!-- TIMELINE -->
     <div id="timeline-container" class="hidden">
         <div id="tl-resize-handle"></div>
@@ -5197,92 +5543,20 @@
                 <button class="selector-btn" data-value="web" title="Connect nearby blobs with distance-faded lines — constellation pattern">WEB</button>
             </div>
         </div>
-        <!-- PERSISTENCE SECTION -->
-        <section aria-label="Blob persistence controls" id="persistence-section">
-        <div class="slider-card" style="margin-top:12px">
-            <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 8px;color:rgba(255,255,255,0.6)">Persistence</h3>
-            <span class="tab-desc" style="margin-bottom:8px;display:block">Blobs maintain identity across frames — enables velocity, trails, and smoother tracking</span>
-            <label class="checkbox-label"><input type="checkbox" id="persistence-toggle"> Enable Blob Persistence</label>
-            <div id="persistence-options" style="display:none">
-                <div class="control-group">
-                    <label>Match Distance <input type="number" class="value-input" id="val-match-dist" value="80" min="10" max="300"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-match-dist" min="10" max="300" value="80" step="5"></div>
-                </div>
-                <div class="control-group">
-                    <label>Persist Duration <input type="number" class="value-input" id="val-persist-dur" value="30" min="0" max="120"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-persist-dur" min="0" max="120" value="30" step="1"></div>
-                </div>
-                <div class="control-group">
-                    <label>Min Age <input type="number" class="value-input" id="val-min-age" value="0" min="0" max="30"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-min-age" min="0" max="30" value="0" step="1"></div>
-                </div>
-                <div class="control-group">
-                    <label>Smoothing <input type="number" class="value-input" id="val-smoothing" value="40" min="0" max="100"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-smoothing" min="0" max="100" value="40" step="1"></div>
-                </div>
-                <div class="control-group">
-                    <label>Dedup Radius <input type="number" class="value-input" id="val-dedup" value="0" min="0" max="50"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-dedup" min="0" max="50" value="0" step="1"></div>
-                </div>
-                <label class="checkbox-label"><input type="checkbox" id="revive-toggle"> Blob Revival</label>
-                <span class="hint-text" id="revive-hint" style="display:none">Re-identify lost blobs when they reappear nearby</span>
-                <div id="revive-options" style="display:none">
-                    <div class="control-group">
-                        <label>Revive Window <input type="number" class="value-input" id="val-revive-time" value="30" min="1" max="120"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-revive-time" min="1" max="120" value="30" step="1"></div>
-                    </div>
-                    <div class="control-group">
-                        <label>Revive Distance <input type="number" class="value-input" id="val-revive-dist" value="120" min="20" max="400"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-revive-dist" min="20" max="400" value="120" step="5"></div>
-                    </div>
-                    <div class="control-group">
-                        <label>Similarity <input type="number" class="value-input" id="val-revive-area" value="50" min="0" max="100"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-revive-area" min="0" max="100" value="50" step="5"></div>
-                    </div>
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
-                    <label class="checkbox-label" style="flex:1"><input type="checkbox" id="roi-toggle"> Region of Interest</label>
-                    <button class="selector-btn" id="btn-clear-roi" style="font-size:10px;padding:2px 8px;display:none">CLEAR</button>
-                </div>
-                <span class="hint-text" id="roi-hint" style="display:none">Draw a rectangle on the video to limit tracking area</span>
-                <label class="checkbox-label"><input type="checkbox" id="cluster-toggle"> Cluster Mode (DBSCAN)</label>
-                <div id="cluster-options" style="display:none">
-                    <div class="control-group">
-                        <label>Cluster Size (eps) <input type="number" class="value-input" id="val-cluster-eps" value="25" min="10" max="80"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-cluster-eps" min="10" max="80" value="25" step="1"></div>
-                    </div>
-                    <div class="control-group">
-                        <label>Min Points <input type="number" class="value-input" id="val-cluster-min" value="3" min="1" max="10"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-cluster-min" min="1" max="10" value="3" step="1"></div>
-                    </div>
-                </div>
-                <label class="checkbox-label"><input type="checkbox" id="trail-toggle"> Motion Trails</label>
-                <div id="trail-options" style="display:none">
-                    <div class="control-group">
-                        <label>Trail Length <input type="number" class="value-input" id="val-trail-len" value="30" min="5" max="120"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-trail-len" min="5" max="120" value="30" step="1"></div>
-                    </div>
-                    <div class="control-group">
-                        <label>Trail Opacity <input type="number" class="value-input" id="val-trail-opacity" value="50" min="0" max="100"></label>
-                        <div class="slider-wrapper"><input type="range" id="slider-trail-opacity" min="0" max="100" value="50" step="1"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        </section>
+        <!-- Persistence controls moved to Track section Advanced accordion -->
     </div>
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260403c"></script>
-<script src="blob-fx.js?v=20260403c"></script>
-<script src="blob-shader-fx.js?v=20260403c"></script>
-<script src="blob-overlay.js?v=20260403c"></script>
-<script src="blob-audio.js?v=20260403c"></script>
-<script src="blob-timeline.js?v=20260403c"></script>
-<script src="blob-mask.js?v=20260403c"></script>
-<script src="blob-tracking.js?v=20260403c"></script>
-<script src="blob-region-fx.js?v=20260403c"></script>
+<script src="blob-core.js?v=20260404a"></script>
+<script src="blob-fx.js?v=20260404a"></script>
+<script src="blob-shader-fx.js?v=20260404a"></script>
+<script src="blob-overlay.js?v=20260404a"></script>
+<script src="blob-audio.js?v=20260404a"></script>
+<script src="blob-timeline.js?v=20260404a"></script>
+<script src="blob-mask.js?v=20260404a"></script>
+<script src="blob-tracking.js?v=20260404a"></script>
+<script src="blob-region-fx.js?v=20260404a"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">

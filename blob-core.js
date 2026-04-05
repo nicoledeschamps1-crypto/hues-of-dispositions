@@ -97,7 +97,7 @@ let _reviveDistance = 120;       // max px for revival match
 let _reviveAreaDiff = 0.5;      // max brightness difference (0-1)
 
 let productInfo = { brand: '', name: '', material: '', price: '', size: '' };
-let activeVizModes = new Set([1]);
+let activeVizModes = new Set([10]);
 let activeEffects = new Set();
 let hiddenEffects = new Set(); // effects toggled off via Layers eye but not removed
 let currentPreset = null; // currently applied preset name (null = none)
@@ -2820,7 +2820,9 @@ function setupCoreUIListeners() {
     // Tracking ON/OFF toggle
     const trackingToggle = document.getElementById('tracking-toggle');
     const trackingBody = document.getElementById('tracking-body');
-    const blobParamsSection = document.querySelector('section[aria-label="Blob parameters"]');
+    const detectionTuningSection = document.getElementById('detection-tuning-section');
+    const displaySection = document.getElementById('display-section');
+    const advancedTrackingSection = document.getElementById('advanced-tracking-section');
     let _trackingLastMode = 1; // remember last mode when toggling back on (default: BLUE)
     if (trackingToggle) {
         trackingToggle.addEventListener('change', () => {
@@ -2830,7 +2832,9 @@ function setupCoreUIListeners() {
                 currentMode = _trackingLastMode;
                 _userMode = currentMode;
                 if (trackingBody) trackingBody.classList.remove('tracking-off');
-                if (blobParamsSection) blobParamsSection.style.display = '';
+                if (detectionTuningSection) detectionTuningSection.style.display = '';
+                if (displaySection) displaySection.style.display = '';
+                if (advancedTrackingSection) advancedTrackingSection.style.display = '';
             } else {
                 // Save current mode and turn off
                 if (currentMode > 0) _trackingLastMode = currentMode;
@@ -2838,7 +2842,9 @@ function setupCoreUIListeners() {
                 _userMode = 0;
                 exitMaskMode();
                 if (trackingBody) trackingBody.classList.add('tracking-off');
-                if (blobParamsSection) blobParamsSection.style.display = 'none';
+                if (detectionTuningSection) detectionTuningSection.style.display = 'none';
+                if (displaySection) displaySection.style.display = 'none';
+                if (advancedTrackingSection) advancedTrackingSection.style.display = 'none';
             }
             if (currentMode === 3) prevGridPixels = {};
             if (currentMode === 12) flickerScores = {};
@@ -3143,12 +3149,199 @@ function setupCoreUIListeners() {
             buildAudioSyncSummaryPanel();
         }
 
+        // Update guide rail for new section
+        if (typeof setGuideSection === 'function') setGuideSection(section);
+
         // Recalculate layout after CSS changes
         requestAnimationFrame(() => {
             if (typeof windowResized === 'function') windowResized();
         });
     }
     window.switchSection = switchSection;
+
+    // ── GUIDE SYSTEM ─────────────────────────
+    // Section-aware guide: rail for Track/Timeline, inline card for Audio, minimal for Create/Export
+    const GUIDE_CONTENT = {
+        track: {
+            title: 'Tracking Quick Start',
+            mode: 'rail',
+            steps: [
+                { title: 'Choose a family', desc: 'Color, Analysis, or AI — each uses a different detection approach' },
+                { title: 'Choose a mode', desc: 'Each family shows its own set of detection modes' },
+                { title: 'Act in the preview', desc: 'For interactive modes like Mask, click the subject in the preview' },
+                { title: 'Tune detection', desc: 'Adjust quantity, size, tolerance, variation, and rate' },
+                { title: 'Move to Display', desc: 'Style your output with visualization, blob style, and region effects' }
+            ]
+        },
+        timeline: {
+            title: 'Timeline Basics',
+            mode: 'rail',
+            steps: [
+                { title: 'Add a segment', desc: 'Drag a mode or effect into the timeline to create a timed event' },
+                { title: 'Move and trim', desc: 'Drag segments to reposition, use edges to resize' },
+                { title: 'Preview timing', desc: 'Play through the timeline to see how changes land' },
+                { title: 'Layer behaviors', desc: 'Combine blobs, effects, and synced events over time' },
+                { title: 'Use shortcuts', desc: 'Undo, redo, duplicate, copy/paste, and nudge are power tools once the basics click' }
+            ]
+        },
+        audio: {
+            title: 'Audio Quick Start',
+            mode: 'card',
+            steps: [
+                { title: 'Choose a source', desc: 'File, mic, or video audio' },
+                { title: 'Pick a band', desc: 'Kick, bass, vocal, hats, or full range' },
+                { title: 'Tune reactivity', desc: 'Sensitivity, threshold, release, auto-gain' },
+                { title: 'Connect to visuals', desc: 'Use sync targets once the signal is active' }
+            ]
+        },
+        create: {
+            title: 'Getting Started',
+            mode: 'rail',
+            steps: [
+                { title: 'Upload or use camera', desc: 'Load a video file (.mp4, .mov) or enable your webcam' },
+                { title: 'Frame your shot', desc: 'Use zoom, camera controls, and split view to set up' },
+                { title: 'Start tracking', desc: 'Switch to Track to begin detecting objects in the video' }
+            ]
+        },
+        export: {
+            title: 'Export Basics',
+            mode: 'rail',
+            steps: [
+                { title: 'Choose resolution', desc: 'Source, 1080p, 720p, or 4K' },
+                { title: 'Pick format and FPS', desc: 'WebM or MP4, 15–60 fps' },
+                { title: 'Record', desc: 'Hit the record button in the toolbar — output includes all active effects' }
+            ]
+        }
+    };
+
+    // Context-aware step 3 for Tracking
+    function _getTrackStep3() {
+        if (currentMode === 14) return { title: 'Click the subject', desc: 'Click the object you want to track — Shift+click to add, Option+click to remove' };
+        if (currentMode === 5 || currentMode === 13) return { title: 'Pick the target color', desc: 'Use the color picker below the mode buttons, or click directly in the preview' };
+        if (currentMode >= 15 && currentMode <= 17) return { title: 'Point at a face', desc: 'Aim your camera or video at a face — landmarks are detected automatically' };
+        if (currentMode === 19) return { title: 'Capture the background', desc: 'Click Capture BG with a clean frame, then introduce your subject' };
+        return { title: 'Act in the preview', desc: 'For interactive modes like Mask, click the subject in the preview' };
+    }
+
+    const _guideRail = document.getElementById('guide-rail');
+    const _guideTitle = document.getElementById('guide-title');
+    const _guideContentEl = document.getElementById('guide-content');
+    const _guideCloseBtn = document.getElementById('guide-close');
+    const _guideToolbarBtn = document.getElementById('tb-guide-btn');
+    const _audioGuideCard = document.getElementById('audio-guide-card');
+    const _audioGuideClose = document.getElementById('audio-guide-close');
+
+    function _loadGuidePrefs() {
+        try {
+            const raw = localStorage.getItem('hod-guide');
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+    function _saveGuidePrefs(prefs) {
+        try { localStorage.setItem('hod-guide', JSON.stringify(prefs)); } catch {}
+    }
+
+    let _guideVisible = false;
+    let _guideSection = 'create';
+
+    function _renderSteps(container, steps) {
+        const ol = document.createElement('ol');
+        ol.className = 'guide-steps';
+        steps.forEach((step, i) => {
+            const li = document.createElement('li');
+            li.className = 'guide-step';
+            li.innerHTML =
+                '<span class="guide-step-num">' + (i + 1) + '</span>' +
+                '<div class="guide-step-body">' +
+                    '<div class="guide-step-title">' + step.title + '</div>' +
+                    '<div class="guide-step-desc">' + step.desc + '</div>' +
+                '</div>';
+            ol.appendChild(li);
+        });
+        container.innerHTML = '';
+        container.appendChild(ol);
+    }
+
+    function renderGuide() {
+        if (!_guideRail) return;
+        const content = GUIDE_CONTENT[_guideSection];
+        if (!content || content.mode === 'card') {
+            // Card-mode sections (Audio) use their own inline card, hide the rail
+            _guideRail.classList.add('hidden');
+            _syncAudioCard();
+            return;
+        }
+        // Rail-mode sections
+        _guideTitle.textContent = content.title;
+        let steps = [...content.steps];
+        // Context-aware step 3 for Tracking
+        if (_guideSection === 'track') steps[2] = _getTrackStep3();
+        _renderSteps(_guideContentEl, steps);
+        // Show rail if guide is active
+        if (_guideVisible) _guideRail.classList.remove('hidden');
+        _syncAudioCard();
+    }
+
+    function _syncAudioCard() {
+        if (!_audioGuideCard) return;
+        const prefs = _loadGuidePrefs();
+        const show = _guideVisible && _guideSection === 'audio' && !prefs.audioDismissed;
+        _audioGuideCard.classList.toggle('hidden', !show);
+    }
+
+    function setGuideVisible(visible) {
+        _guideVisible = visible;
+        const content = GUIDE_CONTENT[_guideSection];
+        if (_guideRail) {
+            const showRail = visible && content && content.mode !== 'card';
+            _guideRail.classList.toggle('hidden', !showRail);
+        }
+        if (_guideToolbarBtn) _guideToolbarBtn.classList.toggle('active', visible);
+        _syncAudioCard();
+    }
+
+    function setGuideSection(section) {
+        _guideSection = section;
+        renderGuide();
+    }
+
+    function toggleGuide() {
+        const next = !_guideVisible;
+        setGuideVisible(next);
+        const prefs = _loadGuidePrefs();
+        prefs.dismissed = !next;
+        _saveGuidePrefs(prefs);
+        // Re-render to ensure correct content
+        renderGuide();
+    }
+
+    function dismissAudioGuide() {
+        if (_audioGuideCard) _audioGuideCard.classList.add('hidden');
+        const prefs = _loadGuidePrefs();
+        prefs.audioDismissed = true;
+        _saveGuidePrefs(prefs);
+    }
+
+    // Wire guide button + close
+    if (_guideToolbarBtn) _guideToolbarBtn.addEventListener('click', toggleGuide);
+    if (_guideCloseBtn) _guideCloseBtn.addEventListener('click', toggleGuide);
+    if (_audioGuideClose) _audioGuideClose.addEventListener('click', dismissAudioGuide);
+
+    // Re-render tracking guide when mode changes (context-aware step 3)
+    window._guideRefreshTracking = function() {
+        if (_guideSection === 'track' && _guideVisible) renderGuide();
+    };
+
+    // Initialize guide on load
+    (function initGuide() {
+        const prefs = _loadGuidePrefs();
+        const shouldShow = prefs.dismissed !== true;
+        setGuideSection('create');
+        renderGuide();
+        setGuideVisible(shouldShow);
+    })();
+
+    window.toggleGuide = toggleGuide;
 
     // Update slim effects list for Timeline section
     function updateSlimEffectsList() {
@@ -3870,6 +4063,46 @@ function setupCoreUIListeners() {
     });
 }
 
+// ── STATUS ROW ───────────────────────────
+
+const _MODE_NAMES = {
+    0:'Off', 1:'Blue', 2:'Red', 3:'Motion', 4:'Skin', 5:'Custom', 6:'Bright',
+    7:'Dark', 8:'Edge', 9:'Chroma', 10:'Warm', 11:'Cool', 12:'Flicker',
+    13:'Invert', 14:'Mask', 15:'Eyes', 16:'Lips', 17:'Face', 19:'BG Sub'
+};
+const _MODE_FAMILY = {
+    1:'Color', 2:'Color', 5:'Color', 10:'Color', 11:'Color', 13:'Color',
+    3:'Analysis', 4:'Analysis', 6:'Analysis', 7:'Analysis', 8:'Analysis',
+    9:'Analysis', 12:'Analysis', 19:'Analysis',
+    14:'AI', 15:'AI', 16:'AI', 17:'AI'
+};
+function _updateTrackingStatusRow() {
+    const famEl = document.getElementById('tracking-status-family');
+    const modeEl = document.getElementById('tracking-status-mode');
+    const stateEl = document.getElementById('tracking-status-state');
+    if (!famEl) return;
+    if (currentMode === 0) {
+        famEl.textContent = '—';
+        modeEl.textContent = 'Off';
+        stateEl.textContent = '';
+        return;
+    }
+    famEl.textContent = _MODE_FAMILY[currentMode] || '—';
+    modeEl.textContent = _MODE_NAMES[currentMode] || '—';
+    // Status hints
+    if (currentMode === 14) {
+        stateEl.textContent = maskReady ? 'Tracking' : 'Click subject';
+    } else if (currentMode >= 15 && currentMode <= 17) {
+        stateEl.textContent = (faceLandmarkCache && faceLandmarkCache.length > 0)
+            ? faceLandmarkCache.length + ' face' + (faceLandmarkCache.length > 1 ? 's' : '')
+            : (window.mpFaceLandmarkerReady ? 'No face' : 'Loading...');
+    } else if (currentMode === 19) {
+        stateEl.textContent = window._bgRefFrame ? 'BG captured' : 'Capture BG first';
+    } else {
+        stateEl.textContent = '';
+    }
+}
+
 // ── STATE UPDATE ──────────────────────────
 
 function updateButtonStates() {
@@ -3882,17 +4115,21 @@ function updateButtonStates() {
     // Sync tracking toggle with current mode
     const trackingToggle = document.getElementById('tracking-toggle');
     if (trackingToggle) trackingToggle.checked = currentMode > 0;
-    // Sync tracking body visibility
+    // Sync tracking body + dependent sections visibility
     const trackingBody = document.getElementById('tracking-body');
-    const blobParamsSection = document.querySelector('section[aria-label="Blob parameters"]');
+    const _detTuning = document.getElementById('detection-tuning-section');
+    const _dispSec = document.getElementById('display-section');
+    const _advSec = document.getElementById('advanced-tracking-section');
     if (trackingBody) trackingBody.classList.toggle('tracking-off', currentMode === 0);
-    if (blobParamsSection) blobParamsSection.style.display = currentMode === 0 ? 'none' : '';
-    // Auto-switch tracking tab ONLY when mode changes (not on every call)
+    if (_detTuning) _detTuning.style.display = currentMode === 0 ? 'none' : '';
+    if (_dispSec) _dispSec.style.display = currentMode === 0 ? 'none' : '';
+    if (_advSec) _advSec.style.display = currentMode === 0 ? 'none' : '';
+    // Auto-switch detection family tab ONLY when mode changes
     // Respects user's manual tab selection — only overrides when they pick a new mode
     if (currentMode > 0 && !window._trackTabUserSelected) {
         if (window._trackTabLastMode !== currentMode) {
             window._trackTabLastMode = currentMode;
-            const analysisModes = [3,6,7,8,9,12,4];
+            const analysisModes = [3,6,7,8,9,12,4,19];
             const aiModes = [14,15,16,17];
             let targetTab = 'color';
             if (analysisModes.includes(currentMode)) targetTab = 'analysis';
@@ -3907,6 +4144,11 @@ function updateButtonStates() {
             });
         }
     }
+    // Update status row
+    _updateTrackingStatusRow();
+
+    // Mode-specific inline controls
+    ui.customColorGroup.style.display = (currentMode === 5 || currentMode === 13) ? '' : 'none';
 
     ui.vizButtons.forEach(btn => {
         let val = parseInt(btn.dataset.value);
@@ -4042,6 +4284,9 @@ function updateButtonStates() {
 
     // Sync layer panel
     if (typeof updateLayerStates === 'function') updateLayerStates();
+
+    // Refresh guide context (e.g., Tracking step 3 adapts to current mode)
+    if (window._guideRefreshTracking) window._guideRefreshTracking();
 }
 
 // ── LAYER PERSISTENCE ──────────────────────
