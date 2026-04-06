@@ -3163,53 +3163,63 @@ function setupCoreUIListeners() {
     // Section-aware guide: rail for Track/Timeline, inline card for Audio, minimal for Create/Export
     const GUIDE_CONTENT = {
         track: {
-            title: 'Tracking Quick Start',
+            title: 'Tracking Guide',
             mode: 'rail',
             steps: [
                 { title: 'Choose a family', desc: 'Color, Analysis, or AI — each uses a different detection approach' },
                 { title: 'Choose a mode', desc: 'Each family shows its own set of detection modes' },
                 { title: 'Act in the preview', desc: 'For interactive modes like Mask, click the subject in the preview' },
-                { title: 'Tune detection', desc: 'Adjust quantity, size, tolerance, variation, and rate' },
-                { title: 'Move to Display', desc: 'Style your output with visualization, blob style, and region effects' }
+                { title: 'Tune detection', desc: 'Adjust quantity, variation, tolerance, and rate to refine results' },
+                { title: 'Style your output', desc: 'Choose a blob style (BOX, GLOW, PARTICLE, etc.) and visualization mode' },
+                { title: 'Region FX', desc: 'Apply per-blob GPU effects (blur, thermal, glitch, etc.) to tracked regions' },
+                { title: 'Connection lines', desc: 'Link blobs with CHAIN, HUB, or WEB — toggle dashed lines in Settings' }
             ]
         },
         timeline: {
-            title: 'Timeline Basics',
+            title: 'Timeline Guide',
             mode: 'rail',
             steps: [
                 { title: 'Add a segment', desc: 'Drag a mode or effect into the timeline to create a timed event' },
                 { title: 'Move and trim', desc: 'Drag segments to reposition, use edges to resize' },
                 { title: 'Preview timing', desc: 'Play through the timeline to see how changes land' },
-                { title: 'Layer behaviors', desc: 'Combine blobs, effects, and synced events over time' },
-                { title: 'Use shortcuts', desc: 'Undo, redo, duplicate, copy/paste, and nudge are power tools once the basics click' }
+                { title: 'Layer behaviors', desc: 'Combine tracking modes, effects, and audio sync over time' },
+                { title: 'Keyboard shortcuts', desc: 'Cmd+Z undo, Cmd+D duplicate, Cmd+C/V copy/paste, Del remove, +/- zoom' }
             ]
         },
         audio: {
-            title: 'Audio Quick Start',
+            title: 'Audio Sync Guide',
             mode: 'card',
             steps: [
-                { title: 'Choose a source', desc: 'File, mic, or video audio' },
-                { title: 'Pick a band', desc: 'Kick, bass, vocal, hats, or full range' },
-                { title: 'Tune reactivity', desc: 'Sensitivity, threshold, release, auto-gain' },
-                { title: 'Connect to visuals', desc: 'Use sync targets once the signal is active' }
+                { title: 'Choose a source', desc: 'Upload a file (mp3/wav), use your mic, or tap VIDEO to use the video\'s own audio' },
+                { title: 'Enable sync', desc: 'Turn Sync ON, then pick a target: MIX, QTY, VAR, HUE, FLASH, PULSE, or RATE' },
+                { title: 'Pick a band', desc: 'Kick (bass hits), Vocal (mids), Hats (highs), or Full range — each responds to different parts of the sound' },
+                { title: 'Tune reactivity', desc: 'Sensitivity controls intensity, Threshold gates quiet parts, Release controls decay speed' },
+                { title: 'Per-effect sync', desc: 'Open any active effect → Audio Sync toggle → map a specific parameter to a band' },
+                { title: 'Check the overview', desc: 'The Per-Effect Audio Sync section below shows all active mappings at a glance' },
+                { title: 'Look for ♫', desc: 'The top bar shows ♫ with a count of synced items. Effect cards show a ♫ badge when synced.' }
             ]
         },
         create: {
             title: 'Getting Started',
             mode: 'rail',
             steps: [
-                { title: 'Upload or use camera', desc: 'Load a video file (.mp4, .mov) or enable your webcam' },
-                { title: 'Frame your shot', desc: 'Use zoom, camera controls, and split view to set up' },
-                { title: 'Start tracking', desc: 'Switch to Track to begin detecting objects in the video' }
+                { title: 'Upload or use camera', desc: 'Load a video file (.mp4, .mov, .webm) or enable your webcam' },
+                { title: 'Browse effects', desc: 'Click any effect card to apply it. Categories: Color, Distortion, Pattern, Overlay' },
+                { title: 'Toggle effects', desc: 'Click a card to activate. Use the eye icon in Layers to hide without removing. Trash to delete.' },
+                { title: 'Try presets', desc: 'Presets apply curated effect combinations — a quick way to explore what\'s possible' },
+                { title: 'Add an overlay', desc: 'Drag a video or image onto the canvas to layer it with blend modes and opacity' },
+                { title: 'Manage layers', desc: 'The Layers tab shows all active effects with eye toggles, opacity, and blend mode controls' },
+                { title: 'Add audio', desc: 'Switch to Audio to make everything react to sound — that\'s where the magic is' }
             ]
         },
         export: {
-            title: 'Export Basics',
+            title: 'Export Guide',
             mode: 'rail',
             steps: [
-                { title: 'Choose resolution', desc: 'Source, 1080p, 720p, or 4K' },
-                { title: 'Pick format and FPS', desc: 'WebM or MP4, 15–60 fps' },
-                { title: 'Record', desc: 'Hit the record button in the toolbar — output includes all active effects' }
+                { title: 'Choose resolution', desc: 'Source (original), 1080p, 720p, or 4K — higher res = slower recording' },
+                { title: 'Pick format and FPS', desc: 'WebM or MP4, 15–60 fps. 30fps is a good default.' },
+                { title: 'Record', desc: 'Hit the record button in the toolbar (or Shift+R). All active effects, tracking, and audio sync are captured.' },
+                { title: 'Save', desc: 'When done, click Save Recording. Screenshots also available via the camera button (or P).' }
             ]
         }
     };
@@ -4321,6 +4331,7 @@ function _getTbEls() {
         src: document.getElementById('tb-source'),
         mode: document.getElementById('tb-mode'),
         fxBadge: document.getElementById('tb-fx-badge'),
+        audioBadge: document.getElementById('tb-audio-badge'),
         recIndicator: document.getElementById('tb-rec-indicator'),
         recTime: document.getElementById('tb-rec-time'),
         empty: document.getElementById('canvas-empty-state'),
@@ -4391,6 +4402,20 @@ function updateTopBar() {
         if (count !== _tbPrev.fxCount) {
             _tbPrev.fxCount = count;
             el.fxBadge.textContent = count > 0 ? count + ' FX' : '';
+        }
+    }
+    // Audio sync badge — show count of audio-synced effects
+    if (el.audioBadge) {
+        let syncCount = 0;
+        if (typeof fxAudioSync !== 'undefined') {
+            for (let k in fxAudioSync) { if (fxAudioSync[k] && fxAudioSync[k].enabled) syncCount++; }
+        }
+        // Also count global sync
+        let globalSync = (typeof audioSync !== 'undefined' && audioSync) ? 1 : 0;
+        let totalSync = syncCount + globalSync;
+        if (totalSync !== _tbPrev.audioSyncCount) {
+            _tbPrev.audioSyncCount = totalSync;
+            el.audioBadge.textContent = totalSync > 0 ? '\u266B ' + totalSync : '';
         }
     }
     // Recording indicator
@@ -5042,7 +5067,7 @@ function saveRecording() {
     a.href = url;
     let d = new Date();
     let ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
-    a.download = `blob-tracking-${ts}.${lastRecordedExt || 'webm'}`;
+    a.download = `hues-of-dispositions-${ts}.${lastRecordedExt || 'webm'}`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -5068,7 +5093,7 @@ function saveScreenshot() {
         a.href = url;
         let d = new Date();
         let ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
-        a.download = `blob-tracking-${ts}.png`;
+        a.download = `hues-of-dispositions-${ts}.png`;
         a.click();
         URL.revokeObjectURL(url);
     }, 'image/png');

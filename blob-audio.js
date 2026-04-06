@@ -26,6 +26,7 @@ function handleAudioFile(event) {
     if (audioObjectUrl) { URL.revokeObjectURL(audioObjectUrl); }
 
     ui.audioName.innerText = file.name;
+    window._audioFileName = file.name;  // Save for restore after mic/video stop
     // Set tooltip for truncated names on both the container and the name element
     ui.audioName.title = file.name;
     let audioContainer = document.getElementById('audio-input-container');
@@ -167,7 +168,7 @@ function getAudioEnergy() {
 }
 
 function updateSmoothedAudio() {
-    if (!audioLoaded || !audioPlaying) {
+    if (!audioLoaded || (!audioPlaying && !micActive && !videoAudioActive)) {
         smoothBass = lerp(smoothBass, 0, 0.05);
         smoothMid = lerp(smoothMid, 0, 0.05);
         smoothTreble = lerp(smoothTreble, 0, 0.05);
@@ -307,7 +308,7 @@ function applyAudioSync() {
     if (!audioSync) { pulseIntensity *= 0.85; return; }
 
     // Sync is ON but audio isn't ready/playing — hold at base values
-    if (!audioLoaded || !audioPlaying) {
+    if (!audioLoaded || (!audioPlaying && !micActive && !videoAudioActive)) {
         if (audioBaseValues[0] !== undefined && paramOwnerPrev[0] < PARAM_SRC_TIMELINE) paramValues[0] = audioBaseValues[0];
         if (audioBaseValues[1] !== undefined && paramOwnerPrev[1] < PARAM_SRC_TIMELINE) paramValues[1] = audioBaseValues[1];
         if (audioBaseValues[5] !== undefined && paramOwnerPrev[5] < PARAM_SRC_TIMELINE) paramValues[5] = audioBaseValues[5];
@@ -392,7 +393,7 @@ function applyAudioSync() {
 // ── Per-Effect Audio Sync Engine ──────────────────────────────────────────
 let _fxSyncUIFrame = 0;
 function applyPerEffectAudioSync() {
-    if (!(audioLoaded && audioPlaying) && !micActive) return;
+    if (!(audioLoaded && (audioPlaying || micActive || videoAudioActive))) return;
     let keys = Object.keys(fxAudioSync);
     if (keys.length === 0) return;
 
@@ -438,15 +439,10 @@ function applyPerEffectAudioSync() {
             }
         }
 
-        // Capture baseline: use FX_DEFAULTS as the reliable source,
-        // falling back to current value only on first activation
+        // Capture baseline from user's current slider value — audio modulates
+        // around what the user actually set, not the factory defaults
         if (cfg._baseValue == null) {
-            let defaults = FX_DEFAULTS[effectName];
-            if (defaults && defaults[p.v] !== undefined) {
-                cfg._baseValue = defaults[p.v];
-            } else {
-                cfg._baseValue = p.g();
-            }
+            cfg._baseValue = p.g();
         }
 
         // Get band energy
@@ -508,6 +504,8 @@ function applyPerEffectAudioSync() {
             let meter = document.getElementById('fx-audio-meter-' + keys[i]);
             if (meter) meter.style.width = (cfg.smoothedValue * 100) + '%';
         }
+        // Update sync summary panel meters
+        if (typeof updateSyncSummaryMeters === 'function') updateSyncSummaryMeters();
     }
 }
 
@@ -609,9 +607,9 @@ function renderDebug() {
 <span class="label">AUTO-GAIN MAX</span>
   band:${autoGainMax.band.toFixed(3)}  bass:${autoGainMax.bass.toFixed(3)}  mid:${autoGainMax.mid.toFixed(3)}  tre:${autoGainMax.treble.toFixed(3)}
 <span class="label">BPM</span>        ${bpmValue > 0 ? bpmValue.toFixed(1) : '—'}  locked: <span class="${bpmLocked ? 'val' : 'off'}">${bpmLocked}</span>
-<span class="label">SYNC → ${audioSyncTarget.toUpperCase()}</span>
-  qty:${paramValues[0].toFixed(1)}  spec:${paramValues[1].toFixed(1)}  blobVar:${paramValues[6].toFixed(1)}  rate:${paramValues[5].toFixed(1)}
-  qtyRange:${syncMinQty}-${syncMaxQty}  sizeRange:${syncMinSize}-${syncMaxSize}  rateRange:${syncMinRate}-${syncMaxRate}
+<span class="label">SYNC → ${({all:'MIX',qty:'QTY',size:'VAR',color:'HUE',flash:'FLASH',pulse:'PULSE',rate:'RATE'})[audioSyncTarget] || audioSyncTarget.toUpperCase()}</span>
+  qty:${paramValues[0].toFixed(1)}  hue:${paramValues[1].toFixed(1)}  var:${paramValues[6].toFixed(1)}  rate:${paramValues[5].toFixed(1)}
+  qtyRange:${syncMinQty}-${syncMaxQty}  varRange:${syncMinSize}-${syncMaxSize}  rateRange:${syncMinRate}-${syncMaxRate}
 `;
 }
 
@@ -926,9 +924,9 @@ function stopMicrophone() {
 
     const micBtn = document.getElementById('audio-src-mic');
     if (micBtn) micBtn.classList.remove('active');
-    ui.audioName.innerText = 'mp3, wav, ogg';
+    ui.audioName.innerText = window._audioFileName || 'mp3, wav, ogg';
     const meterEl = document.getElementById('audio-meter');
-    if (meterEl) meterEl.style.display = 'none';
+    if (meterEl) meterEl.style.display = audioLoaded ? '' : 'none';
     updateButtonStates();
 }
 
@@ -1011,7 +1009,7 @@ async function startVideoAudio() {
 function stopVideoAudio() {
     if (_videoAudioSource) {
         try { _videoAudioSource.disconnect(); } catch(e) {}
-        _videoAudioSource = null;
+        // Do NOT null _videoAudioSource — createMediaElementSource can only be called once per element
     }
     if (audioAnalyser) { try { audioAnalyser.disconnect(); } catch(e){} }
     if (audioGainNode) { try { audioGainNode.disconnect(); } catch(e){} }
@@ -1042,8 +1040,8 @@ function stopVideoAudio() {
 
     const vidBtn = document.getElementById('audio-src-video');
     if (vidBtn) vidBtn.classList.remove('active');
-    ui.audioName.innerText = 'mp3, wav, ogg';
+    ui.audioName.innerText = window._audioFileName || 'mp3, wav, ogg';
     const meterEl = document.getElementById('audio-meter');
-    if (meterEl) meterEl.style.display = 'none';
+    if (meterEl) meterEl.style.display = audioLoaded ? '' : 'none';
     updateButtonStates();
 }

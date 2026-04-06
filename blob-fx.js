@@ -2257,6 +2257,11 @@ function buildFxPanel() {
         card.style.setProperty('--cat-color', FX_CAT_COLORS[FX_CATEGORIES[effectName]]);
         card.textContent = cfg.label;
         if (FX_HINTS[effectName]) card.title = FX_HINTS[effectName];
+        // Audio sync badge
+        let audioBadge = document.createElement('span');
+        audioBadge.className = 'fx-audio-badge';
+        audioBadge.textContent = '\u266B'; // ♫
+        card.appendChild(audioBadge);
         // Favorite star
         let star = document.createElement('span');
         star.className = 'fx-fav' + (fxFavorites.includes(effectName) ? ' starred' : '');
@@ -2716,16 +2721,16 @@ function updateFxOnButton() {
 }
 
 function updateCardHighlights() {
-    document.querySelectorAll('#fx-card-grid .fx-card').forEach(card => {
+    let audioActive = audioLoaded && (audioPlaying || micActive || videoAudioActive);
+    document.querySelectorAll('#fx-card-grid .fx-card, #fx-favorites-row .fx-card').forEach(card => {
         let name = card.dataset.effect;
         card.classList.toggle('viewing', name === currentViewedEffect);
         card.classList.toggle('active-effect', activeEffects.has(name));
-    });
-    // Also update favorites row
-    document.querySelectorAll('#fx-favorites-row .fx-card').forEach(card => {
-        let name = card.dataset.effect;
-        card.classList.toggle('viewing', name === currentViewedEffect);
-        card.classList.toggle('active-effect', activeEffects.has(name));
+        // Audio sync badge
+        let synced = fxAudioSync[name] && fxAudioSync[name].enabled;
+        card.classList.toggle('has-audio-sync', !!synced);
+        let badge = card.querySelector('.fx-audio-badge');
+        if (badge) badge.classList.toggle('pulsing', !!synced && audioActive);
     });
 }
 
@@ -2760,6 +2765,12 @@ function buildFxFavoritesRow() {
         card.textContent = cfg.label;
         card.classList.toggle('viewing', name === currentViewedEffect);
         card.classList.toggle('active-effect', activeEffects.has(name));
+        let synced = fxAudioSync[name] && fxAudioSync[name].enabled;
+        card.classList.toggle('has-audio-sync', !!synced);
+        let audioBadge = document.createElement('span');
+        audioBadge.className = 'fx-audio-badge' + (synced ? ' pulsing' : '');
+        audioBadge.textContent = '\u266B';
+        card.appendChild(audioBadge);
         card.addEventListener('click', () => selectFxEffect(name));
         row.appendChild(card);
     });
@@ -3092,9 +3103,11 @@ function buildFxAudioSyncSection(effectName, group) {
     let paramSelect = document.createElement('select');
     paramSelect.id = 'fx-async-param-' + effectName;
     paramSelect.style.cssText = 'width:100%;background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:3px 6px;font-size:9px;outline:none';
-    numericParams.forEach((p, idx) => {
+    numericParams.forEach((p) => {
+        // Store the real index in the full paramMap, not the filtered index
+        let realIndex = paramMap.indexOf(p);
         let opt = document.createElement('option');
-        opt.value = idx;
+        opt.value = realIndex;
         // Convert camelCase to readable label
         let label = p.v.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         opt.textContent = label;
@@ -3213,6 +3226,89 @@ function syncFxAudioSyncUI(effectName) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// buildAudioSyncSummaryPanel() — overview of all active audio-synced effects
+// Shown in the Audio section right panel (#audio-sync-summary container)
+// ---------------------------------------------------------------------------
+function buildAudioSyncSummaryPanel() {
+    let container = document.getElementById('audio-sync-summary');
+    if (!container) return;
+    container.innerHTML = '';
+
+    let entries = [];
+    for (let [name, cfg] of Object.entries(fxAudioSync)) {
+        if (cfg && cfg.enabled) entries.push({ name, cfg });
+    }
+
+    if (entries.length === 0) {
+        container.innerHTML = '<span class="hint-text" style="display:block;padding:4px 0">No effects synced to audio yet. Enable Audio Sync on any effect to see it here.</span>';
+        return;
+    }
+
+    let list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-top:4px';
+
+    entries.forEach(({ name, cfg }) => {
+        let uiCfg = FX_UI_CONFIG[name];
+        if (!uiCfg) return;
+
+        let paramMap = FX_PARAM_MAP[name];
+        let paramLabel = '—';
+        if (paramMap && paramMap[cfg.paramIndex]) {
+            paramLabel = paramMap[cfg.paramIndex].v.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        }
+
+        let row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--color-surface);border-radius:4px;border-left:2px solid var(--color-teal)';
+
+        // Effect name + param
+        let info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0';
+        info.innerHTML =
+            '<div style="font-size:9px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + uiCfg.label + '</div>' +
+            '<div style="font-size:8px;color:var(--text-muted)">' + paramLabel + ' · ' + cfg.band.toUpperCase() + '</div>';
+
+        // Live energy meter
+        let meter = document.createElement('div');
+        meter.style.cssText = 'width:40px;height:8px;background:var(--color-elevated);border-radius:2px;overflow:hidden;flex-shrink:0';
+        let fill = document.createElement('div');
+        fill.id = 'sync-summary-meter-' + name;
+        fill.style.cssText = 'height:100%;width:0%;background:var(--color-teal);border-radius:2px;transition:width 0.1s';
+        meter.appendChild(fill);
+
+        // Quick disable toggle
+        let disableBtn = document.createElement('button');
+        disableBtn.style.cssText = 'background:none;border:1px solid var(--color-border);border-radius:3px;color:var(--text-muted);font-size:8px;padding:1px 4px;cursor:pointer;flex-shrink:0';
+        disableBtn.textContent = '\u2715'; // ✕
+        disableBtn.title = 'Disable audio sync for ' + uiCfg.label;
+        disableBtn.addEventListener('click', () => {
+            cfg.enabled = false;
+            cfg._baseValue = null;
+            _saveFxAudioSync();
+            syncFxAudioSyncUI(name);
+            updateCardHighlights();
+            buildAudioSyncSummaryPanel();
+            if (typeof renderAudioSyncSublanes === 'function') renderAudioSyncSublanes();
+        });
+
+        row.appendChild(info);
+        row.appendChild(meter);
+        row.appendChild(disableBtn);
+        list.appendChild(row);
+    });
+
+    container.appendChild(list);
+}
+
+// Update sync summary meters from the audio engine (called from applyPerEffectAudioSync)
+function updateSyncSummaryMeters() {
+    for (let [name, cfg] of Object.entries(fxAudioSync)) {
+        if (!cfg || !cfg.enabled) continue;
+        let fill = document.getElementById('sync-summary-meter-' + name);
+        if (fill) fill.style.width = Math.round((cfg.smoothedValue || 0) * 100) + '%';
+    }
+}
+
 function wireFxAudioSyncListeners() {
     for (let effectName of Object.keys(FX_UI_CONFIG)) {
         let section = document.getElementById('fx-audio-sync-' + effectName);
@@ -3231,6 +3327,7 @@ function wireFxAudioSyncListeners() {
                 let chevron = section.querySelector('.sync-chevron');
                 if (chevron) chevron.style.transform = cfg.enabled ? 'rotate(90deg)' : '';
                 _saveFxAudioSync();
+                updateCardHighlights();
                 if (typeof renderAudioSyncSublanes === 'function') renderAudioSyncSublanes();
             });
         }

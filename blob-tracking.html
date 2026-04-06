@@ -1109,6 +1109,26 @@
             border: 1px dotted var(--cat-color, var(--color-accent));
             border-left: 2px solid var(--cat-color, var(--color-accent));
         }
+        /* Audio sync indicator on fx card */
+        .fx-card .fx-audio-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 8px;
+            line-height: 1;
+            color: var(--color-accent);
+            opacity: 0.9;
+            display: none;
+            pointer-events: none;
+        }
+        .fx-card.has-audio-sync .fx-audio-badge { display: block; }
+        .fx-card.has-audio-sync .fx-audio-badge.pulsing {
+            animation: audio-pulse 0.6s ease-in-out infinite alternate;
+        }
+        @keyframes audio-pulse {
+            0% { opacity: 0.5; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
         .fx-card .fx-fav {
             position: absolute;
             top: 2px;
@@ -3110,6 +3130,16 @@
         }
         .tb-fx-badge:empty { display: none; }
         .tb-fx-badge:empty + .tb-divider { display: none; }
+        /* Audio sync count badge */
+        .tb-audio-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--color-teal);
+            letter-spacing: 0.3px;
+            font-family: 'Commit Mono', monospace;
+        }
+        .tb-audio-badge:empty { display: none; }
+        .tb-audio-badge.beat-pulse { color: #fff; transition: color 0.1s; }
         /* FPS always visible */
         #top-bar .tb-fps {
             font-variant-numeric: tabular-nums;
@@ -4350,6 +4380,7 @@
         <!-- Right zone -->
         <div class="tb-zone tb-zone-right">
             <span class="tb-fx-badge" id="tb-fx-badge" title="Active effects" aria-live="polite"></span>
+            <span class="tb-audio-badge" id="tb-audio-badge" title="Audio-synced effects" aria-live="polite"></span>
             <span class="tb-status tb-fps" id="tb-fps"></span>
             <span class="tb-status no-source" id="tb-source">NO SOURCE</span>
             <span class="tb-status" id="tb-mode">OFF</span>
@@ -4904,7 +4935,7 @@
             <div id="audio-guide-card" class="guide-card hidden">
                 <div class="guide-card-header">
                     <span class="guide-kicker">GUIDE</span>
-                    <span class="guide-card-title">Audio Quick Start</span>
+                    <span class="guide-card-title">Audio Sync Guide</span>
                     <button class="guide-close" id="audio-guide-close" aria-label="Close audio guide">&times;</button>
                 </div>
                 <ol class="guide-steps">
@@ -4912,28 +4943,42 @@
                         <span class="guide-step-num">1</span>
                         <div class="guide-step-body">
                             <div class="guide-step-title">Choose a source</div>
-                            <div class="guide-step-desc">File, mic, or video audio</div>
+                            <div class="guide-step-desc">Upload a file (mp3/wav), use your mic, or tap VIDEO to use the video's own audio</div>
                         </div>
                     </li>
                     <li class="guide-step">
                         <span class="guide-step-num">2</span>
                         <div class="guide-step-body">
-                            <div class="guide-step-title">Pick a band</div>
-                            <div class="guide-step-desc">Kick, bass, vocal, hats, or full range</div>
+                            <div class="guide-step-title">Enable sync</div>
+                            <div class="guide-step-desc">Turn Sync ON, then pick a target: MIX, QTY, VAR, HUE, FLASH, PULSE, or RATE</div>
                         </div>
                     </li>
                     <li class="guide-step">
                         <span class="guide-step-num">3</span>
                         <div class="guide-step-body">
-                            <div class="guide-step-title">Tune reactivity</div>
-                            <div class="guide-step-desc">Sensitivity, threshold, release, auto-gain</div>
+                            <div class="guide-step-title">Pick a band</div>
+                            <div class="guide-step-desc">Kick (bass hits), Vocal (mids), Hats (highs), or Full — each responds to different parts of the sound</div>
                         </div>
                     </li>
                     <li class="guide-step">
                         <span class="guide-step-num">4</span>
                         <div class="guide-step-body">
-                            <div class="guide-step-title">Connect to visuals</div>
-                            <div class="guide-step-desc">Use sync targets once the signal is active</div>
+                            <div class="guide-step-title">Tune reactivity</div>
+                            <div class="guide-step-desc">Sensitivity = intensity, Threshold = gate quiet parts, Release = decay speed</div>
+                        </div>
+                    </li>
+                    <li class="guide-step">
+                        <span class="guide-step-num">5</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Per-effect sync</div>
+                            <div class="guide-step-desc">Open any active effect &rarr; Audio Sync toggle &rarr; map a specific parameter to a band</div>
+                        </div>
+                    </li>
+                    <li class="guide-step">
+                        <span class="guide-step-num">6</span>
+                        <div class="guide-step-body">
+                            <div class="guide-step-title">Check the overview</div>
+                            <div class="guide-step-desc">The Per-Effect Audio Sync section below shows all active mappings at a glance</div>
                         </div>
                     </li>
                 </ol>
@@ -5197,13 +5242,13 @@
                     <div class="control-group">
                         <label id="label-sync-target">Sync Target</label>
                         <div class="selector-row" id="sync-target-buttons" aria-labelledby="label-sync-target">
-                            <button class="selector-btn active" data-value="all">MIX</button>
-                            <button class="selector-btn" data-value="qty">QTY</button>
-                            <button class="selector-btn" data-value="size">SIZE</button>
-                            <button class="selector-btn" data-value="color">COLOR</button>
-                            <button class="selector-btn" data-value="flash">FLASH</button>
-                            <button class="selector-btn" data-value="pulse">PULSE</button>
-                            <button class="selector-btn" data-value="rate">RATE</button>
+                            <button class="selector-btn active" data-value="all" title="Balanced mix: kick→qty, overall→variation, mid→spectrum">MIX</button>
+                            <button class="selector-btn" data-value="qty" title="Audio drives blob quantity">QTY</button>
+                            <button class="selector-btn" data-value="size" title="Audio drives blob size variation">VAR</button>
+                            <button class="selector-btn" data-value="color" title="Audio drives color spectrum range">HUE</button>
+                            <button class="selector-btn" data-value="flash" title="Flash opacity on beat peaks">FLASH</button>
+                            <button class="selector-btn" data-value="pulse" title="Scale pulse on beat peaks">PULSE</button>
+                            <button class="selector-btn" data-value="rate" title="Audio drives detection refresh rate">RATE</button>
                         </div>
                     </div>
                     <div class="control-group" id="sync-range-group">
@@ -5213,7 +5258,7 @@
                             <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
                             <input type="range" id="sync-max-qty" min="0" max="100" value="50" style="flex:1">
                         </div>
-                        <label>Size Range <span id="sync-size-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">10 – 60</span></label>
+                        <label>Var Range <span id="sync-size-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">10 – 60</span></label>
                         <div style="display:flex;gap:6px;align-items:center">
                             <input type="range" id="sync-min-size" min="0" max="100" value="10" style="flex:1">
                             <span style="font-size:var(--font-xs);color:var(--text-muted)">to</span>
@@ -5373,7 +5418,7 @@
 <div id="help-overlay">
     <div id="help-content">
         <div class="help-header">
-            <h2>Keyboard Shortcuts &amp; Tips</h2>
+            <h2>Guide &amp; Shortcuts</h2>
             <button class="help-close" id="help-close-btn">ESC to close</button>
         </div>
         <div class="help-grid">
@@ -5410,7 +5455,7 @@
                 <dl>
                     <dt>T</dt><dd>Toggle sync on/off</dd>
                     <dt>F</dt><dd>Cycle freq preset</dd>
-                    <dt>Q</dt><dd>Cycle sync target</dd>
+                    <dt>Q</dt><dd>Cycle sync target (MIX/QTY/VAR/HUE/FLASH/PULSE/RATE)</dd>
                     <dt>B</dt><dd>BPM Lock toggle</dd>
                 </dl>
             </div>
@@ -5458,14 +5503,27 @@
             <div class="help-section help-workflow">
                 <h3>Quick Start</h3>
                 <div class="help-workflow-grid">
-                    <div class="help-tip"><strong>1.</strong> Upload a video (or use webcam)</div>
-                    <div class="help-tip"><strong>5.</strong> Drag effects/modes to timeline</div>
-                    <div class="help-tip"><strong>2.</strong> Load audio (optional)</div>
-                    <div class="help-tip"><strong>6.</strong> Use <strong>+ BLOB</strong> to snapshot params</div>
-                    <div class="help-tip"><strong>3.</strong> Pick a tracking mode (1-9, M)</div>
-                    <div class="help-tip"><strong>7.</strong> Use <strong>SYNC</strong> to auto-place blobs at beats</div>
-                    <div class="help-tip"><strong>4.</strong> Adjust params with sliders</div>
-                    <div class="help-tip"><strong>8.</strong> Hit Record to capture your creation</div>
+                    <div class="help-tip"><strong>1.</strong> Upload a video or use your webcam</div>
+                    <div class="help-tip"><strong>5.</strong> Turn on Audio Sync — pick a target</div>
+                    <div class="help-tip"><strong>2.</strong> Browse and apply effects (Create tab)</div>
+                    <div class="help-tip"><strong>6.</strong> Enable per-effect sync on each effect</div>
+                    <div class="help-tip"><strong>3.</strong> Load audio (file, mic, or video audio)</div>
+                    <div class="help-tip"><strong>7.</strong> Use the timeline for timed changes</div>
+                    <div class="help-tip"><strong>4.</strong> Try a tracking mode (Track tab)</div>
+                    <div class="help-tip"><strong>8.</strong> Record your creation (Shift+R)</div>
+                </div>
+            </div>
+            <div class="help-section help-workflow" style="margin-top:0; border-top:1px solid rgba(169,102,255,0.08); padding-top:14px;">
+                <h3>Features</h3>
+                <div class="help-workflow-grid">
+                    <div class="help-tip"><strong>Effects</strong> — 68 effects across Color, Distortion, Pattern, and Overlay categories. Click to apply, eye to toggle, trash to remove.</div>
+                    <div class="help-tip"><strong>Audio Sync</strong> — The heart of H.O.D. Connect sound to almost everything. Global sync targets + per-effect parameter mapping. Look for the &#x266B; badge.</div>
+                    <div class="help-tip"><strong>Tracking</strong> — Color, Analysis, and AI detection families. 19 modes including AI Mask, Face, Eyes, Lips, and Background Subtraction.</div>
+                    <div class="help-tip"><strong>Region FX</strong> — Apply GPU effects (blur, thermal, glitch, etc.) directly to tracked blobs.</div>
+                    <div class="help-tip"><strong>Overlays</strong> — Drag a video or image onto the canvas. 12 blend modes, opacity control, cover/contain/stretch fit.</div>
+                    <div class="help-tip"><strong>Layers</strong> — Manage active effects with eye toggles, opacity, and blend modes. Scene layer controls video/effects/blobs.</div>
+                    <div class="help-tip"><strong>Presets</strong> — Curated effect combos. Save your own custom presets to revisit later.</div>
+                    <div class="help-tip"><strong>Timeline</strong> — Sequence tracking modes, effects, and audio sync over time. Drag to add, edges to trim.</div>
                 </div>
             </div>
             <div class="help-section help-workflow" style="margin-top:0; border-top:1px solid rgba(169,102,255,0.08); padding-top:14px;">
@@ -5475,6 +5533,10 @@
                     <div class="help-tip"><strong>Click the note indicator</strong> to type a start time</div>
                     <div class="help-tip"><strong>Shift/Cmd+click</strong> segments for multi-select</div>
                     <div class="help-tip"><strong>Photo button</strong> exports cropped screenshot</div>
+                    <div class="help-tip"><strong>Blob styles</strong> — BOX, GLOW, PARTICLE, and more in the Track Display section</div>
+                    <div class="help-tip"><strong>Connection lines</strong> — CHAIN, HUB, or WEB linking in Settings</div>
+                    <div class="help-tip"><strong>Per-effect audio</strong> — expand Audio Sync on any active effect to map a band to its parameter</div>
+                    <div class="help-tip"><strong>Cmd+Shift+R</strong> to hard refresh if effects look stale</div>
                 </div>
             </div>
         </div>
@@ -5548,15 +5610,15 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260404a"></script>
-<script src="blob-fx.js?v=20260404a"></script>
-<script src="blob-shader-fx.js?v=20260404a"></script>
-<script src="blob-overlay.js?v=20260404a"></script>
-<script src="blob-audio.js?v=20260404a"></script>
-<script src="blob-timeline.js?v=20260404a"></script>
-<script src="blob-mask.js?v=20260404a"></script>
-<script src="blob-tracking.js?v=20260404a"></script>
-<script src="blob-region-fx.js?v=20260404a"></script>
+<script src="blob-core.js?v=20260405a"></script>
+<script src="blob-fx.js?v=20260405a"></script>
+<script src="blob-shader-fx.js?v=20260405a"></script>
+<script src="blob-overlay.js?v=20260405a"></script>
+<script src="blob-audio.js?v=20260405a"></script>
+<script src="blob-timeline.js?v=20260405a"></script>
+<script src="blob-mask.js?v=20260405a"></script>
+<script src="blob-tracking.js?v=20260405a"></script>
+<script src="blob-region-fx.js?v=20260405a"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">
