@@ -190,6 +190,8 @@ function updateSmoothedAudio() {
 
     // Always update meter
     ui.audioMeterFill.style.width = (smoothOverall * 100) + '%';
+    // Update sync bars visualization
+    try { if (typeof updateSyncBars === 'function') updateSyncBars(); } catch(e) {}
 }
 
 function resetBandDetectors() {
@@ -201,6 +203,35 @@ function resetBandDetectors() {
     beatIntensity = 0;
     bpmBeatTimes = [];
     bpmValue = 0;
+}
+
+// ── Sync bars visualization (Phase 8) ──
+var _syncBarsEl = null;
+var _syncBarsSpans = null;
+var _syncBarsFrame = 0;
+function updateSyncBars() {
+    if (!_syncBarsEl) {
+        _syncBarsEl = document.getElementById('sync-bars');
+        if (_syncBarsEl) _syncBarsSpans = _syncBarsEl.querySelectorAll('span');
+    }
+    if (!_syncBarsSpans || _syncBarsSpans.length === 0) return;
+    // Throttle to every 3rd frame
+    _syncBarsFrame++;
+    if (_syncBarsFrame % 3 !== 0) return;
+
+    var isLive = audioLoaded && (audioPlaying || micActive || videoAudioActive) && audioSyncEnabled;
+    if (_syncBarsEl) _syncBarsEl.classList.toggle('is-live', isLive);
+    if (!isLive || !frequencyData) return;
+
+    var binCount = frequencyData.length;
+    var barsCount = _syncBarsSpans.length;
+    var step = Math.max(1, Math.floor(binCount / barsCount));
+    for (var i = 0; i < barsCount; i++) {
+        var idx = Math.min(i * step, binCount - 1);
+        var val = frequencyData[idx] / 255;
+        var h = Math.max(8, Math.round(val * 100));
+        _syncBarsSpans[i].style.setProperty('--bar-h', h + '%');
+    }
 }
 
 function getActiveBandDetector() {
@@ -987,6 +1018,7 @@ async function startVideoAudio() {
 
     // Unmute the video element — audio now routes through WebAudio
     videoEl.volume(1);
+    videoEl.elt.muted = false;
 
     frequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
     floatFreqData = new Float32Array(audioAnalyser.frequencyBinCount);
@@ -1016,7 +1048,7 @@ function stopVideoAudio() {
     videoAudioActive = false;
 
     // Mute video element again (no longer routing through WebAudio)
-    if (videoEl && videoEl.elt) videoEl.volume(0);
+    if (videoEl && videoEl.elt) { videoEl.volume(0); videoEl.elt.muted = true; }
 
     // Restore file-based audio graph if it existed
     if (window._savedFileAudioSource && window._savedFileAudioAnalyser) {

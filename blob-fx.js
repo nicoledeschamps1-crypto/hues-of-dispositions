@@ -64,7 +64,7 @@ function getScratchFloat3(len) {
 // EFFECT_TYPES — unified classification of all 23 effects by render method
 // ---------------------------------------------------------------------------
 const EFFECT_TYPES = {
-    pixel: ['sepia','tint','palette','gradmap','duotone','thermal','bricon',
+    pixel: ['sepia','tint','palette','gradmap','duotone','bricon',
         'threshold','exposure','colortemp','rgbgain','levels','colorbal','colmatrix',
         'emboss','chroma','rgbshift','curve','wave','jitter','mblur',
         'blursharp','modulate','ripple','swirl','reedglass','polar2rect','rect2polar','radblur','zoomblur','circblur','elgrid',
@@ -73,8 +73,8 @@ const EFFECT_TYPES = {
         'glitch','noise','grain','crt',
         'ntsc','paperscan','xerox','grunge','datamosh','pxsortgpu',
         'automata','pixelflow'],
-    hybrid: ['halftone','ascii','dots','led','printstamp'],
-    draw: ['grid','scanlines','vignette','stripe','sift','slidestretch','cornerpin']
+    hybrid: ['halftone','dots','led','printstamp'],
+    draw: ['grid','scanlines','vignette','stripe','sift','slidestretch','cornerpin','thermal','ascii']
 };
 
 // ---------------------------------------------------------------------------
@@ -462,47 +462,68 @@ function applyPixelSort() {
     }
 }
 
+// ASCII effect: cached offscreen rendering — only re-renders every 3 frames
+let _asciiCache = null;
+let _asciiCacheFrame = -1;
+let _asciiCacheKey = '';
+
 function applyASCII() {
     let chars = ASCII_CHARSETS[asciiCharSet] || ASCII_CHARSETS.classic;
     if (asciiInvert) chars = chars.split('').reverse().join('');
-    let d = pixelDensity();
-    let totalW = width * d;
-    let cellD = asciiCellSize * d;
-    loadPixels();
 
-    let sx = Math.floor(videoX * d);
-    let sy = Math.floor(videoY * d);
-    let ex = Math.floor((videoX + videoW) * d);
-    let ey = Math.floor((videoY + videoH) * d);
+    // Cache key: invalidate when settings change
+    let cacheKey = asciiCharSet + '|' + asciiInvert + '|' + asciiColorMode + '|' + asciiCellSize + '|' + Math.round(videoW);
 
-    // Black background
-    let ctx = drawingContext;
-    ctx.save();
-    ctx.fillStyle = '#000';
-    ctx.fillRect(videoX, videoY, videoW, videoH);
+    // Reuse cached render for 3 frames
+    if (_asciiCache && frameCount - _asciiCacheFrame < 3 && _asciiCacheKey === cacheKey) {
+        let ctx = drawingContext;
+        ctx.drawImage(_asciiCache, videoX, videoY, videoW, videoH);
+        return;
+    }
 
-    // Set up font once
-    let fontSize = asciiCellSize * 1.2;
-    ctx.font = fontSize + 'px Courier New';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
+    // Sample from video via small offscreen canvas (NOT loadPixels)
+    let cellSz = asciiCellSize;
+    let cols = Math.min(Math.floor(videoW / cellSz), 200);
+    let rows = Math.min(Math.floor(videoH / cellSz), 120);
+    if (cols < 2 || rows < 2) return;
 
-    // Mono modes: batch all cells with same color function to minimize fillStyle changes
+    // Downsample video to grid resolution
+    if (!_asciiCache) _asciiCache = document.createElement('canvas');
+    if (!_asciiCache._grid) _asciiCache._grid = document.createElement('canvas');
+
+    let grid = _asciiCache._grid;
+    if (grid.width !== cols || grid.height !== rows) {
+        grid.width = cols; grid.height = rows;
+    }
+    let gctx = grid.getContext('2d', { willReadFrequently: true });
+    gctx.drawImage(videoEl.elt || videoEl, 0, 0, videoEl.width || videoW, videoEl.height || videoH, 0, 0, cols, rows);
+    let sData = gctx.getImageData(0, 0, cols, rows).data;
+
+    // Render ASCII to offscreen cache canvas
+    _asciiCache.width = Math.round(videoW);
+    _asciiCache.height = Math.round(videoH);
+    let actx = _asciiCache.getContext('2d');
+    actx.fillStyle = '#000';
+    actx.fillRect(0, 0, _asciiCache.width, _asciiCache.height);
+
+    let fontSize = cellSz * 1.2;
+    actx.font = fontSize + 'px Courier New';
+    actx.textAlign = 'left';
+    actx.textBaseline = 'top';
+
     let lastFill = '';
-    for (let cy = sy; cy < ey; cy += cellD) {
-        for (let cx = sx; cx < ex; cx += cellD) {
-            let mx = Math.min(cx + Math.floor(cellD / 2), totalW - 1);
-            let my = Math.min(cy + Math.floor(cellD / 2), height * d - 1);
-            let idx = (mx + my * totalW) * 4;
-            let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
-            let bri = 0.299 * r + 0.587 * g + 0.114 * b;
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            let si = (r * cols + c) * 4;
+            let pr = sData[si], pg = sData[si + 1], pb = sData[si + 2];
+            let bri = 0.299 * pr + 0.587 * pg + 0.114 * pb;
             let ci = Math.floor(bri / 255 * (chars.length - 0.01));
             ci = Math.max(0, Math.min(ci, chars.length - 1));
             let ch = chars[ci];
 
             let fill;
             if (asciiColorMode === 'color') {
-                fill = 'rgb(' + r + ',' + g + ',' + b + ')';
+                fill = 'rgb(' + pr + ',' + pg + ',' + pb + ')';
             } else if (asciiColorMode === 'green') {
                 let v = Math.round(bri);
                 fill = 'rgb(0,' + v + ',0)';
@@ -516,10 +537,20 @@ function applyASCII() {
                 let v = Math.round(bri);
                 fill = 'rgb(' + v + ',' + v + ',' + v + ')';
             }
-            if (fill !== lastFill) { ctx.fillStyle = fill; lastFill = fill; }
-            ctx.fillText(ch, cx / d, cy / d);
+            if (fill !== lastFill) { actx.fillStyle = fill; lastFill = fill; }
+            actx.fillText(ch, c * cellSz, r * cellSz);
         }
     }
+
+    _asciiCacheFrame = frameCount;
+    _asciiCacheKey = cacheKey;
+
+    // Draw cached result to main canvas
+    let ctx = drawingContext;
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.fillRect(videoX, videoY, videoW, videoH);
+    ctx.drawImage(_asciiCache, videoX, videoY, videoW, videoH);
     ctx.restore();
 }
 
@@ -1722,6 +1753,10 @@ function hexToRGBArray(hex) {
     return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
 }
 
+// Thermal: cached offscreen render — re-renders every 2 frames, uses downsampled canvas
+let _thermalCache = null;
+let _thermalCacheFrame = -1;
+
 function applyThermal() {
     const thermalPalettes = {
         default: [[0,0,32],[0,0,80],[16,0,128],[48,0,160],[80,0,180],[128,0,160],[160,0,100],[192,32,0],[220,80,0],[240,140,0],[255,200,0],[255,240,60],[255,255,160],[255,255,255]],
@@ -1732,25 +1767,49 @@ function applyThermal() {
     };
     let heatmap = thermalPalettes[thermalPalette] || thermalPalettes.default;
     let intensity = thermalIntensity / 100;
-    let d = pixelDensity();
-    let totalW = width * d;
-    let sx = Math.floor(videoX * d), ex = Math.floor((videoX + videoW) * d);
-    let sy = Math.floor(videoY * d), ey = Math.floor((videoY + videoH) * d);
-    for (let y = sy; y < ey; y++) {
-        for (let x = sx; x < ex; x++) {
-            let idx = (x + y * totalW) * 4;
-            let lum = (0.299*pixels[idx] + 0.587*pixels[idx+1] + 0.114*pixels[idx+2]) / 255;
-            let pos = lum * (heatmap.length - 1);
-            let lo = Math.floor(pos), hi = Math.min(heatmap.length-1, lo+1);
-            let t = pos - lo;
-            let hr = heatmap[lo][0]*(1-t) + heatmap[hi][0]*t;
-            let hg = heatmap[lo][1]*(1-t) + heatmap[hi][1]*t;
-            let hb = heatmap[lo][2]*(1-t) + heatmap[hi][2]*t;
-            pixels[idx]   = Math.round(pixels[idx]*(1-intensity) + hr*intensity);
-            pixels[idx+1] = Math.round(pixels[idx+1]*(1-intensity) + hg*intensity);
-            pixels[idx+2] = Math.round(pixels[idx+2]*(1-intensity) + hb*intensity);
-        }
+
+    // Reuse cache for 2 frames
+    if (_thermalCache && frameCount - _thermalCacheFrame < 2) {
+        drawingContext.drawImage(_thermalCache, videoX, videoY, videoW, videoH);
+        return;
     }
+
+    // Downsample: work at 1/2 or 1/3 resolution instead of full pixel grid
+    let scale = 0.5;
+    let tw = Math.round(videoW * scale);
+    let th = Math.round(videoH * scale);
+    if (tw < 10 || th < 10) return;
+
+    if (!_thermalCache) _thermalCache = document.createElement('canvas');
+    if (_thermalCache.width !== tw || _thermalCache.height !== th) {
+        _thermalCache.width = tw; _thermalCache.height = th;
+    }
+    let tctx = _thermalCache.getContext('2d', { willReadFrequently: true });
+
+    // Sample video at reduced resolution
+    tctx.drawImage(videoEl.elt || videoEl, 0, 0, videoEl.width || videoW, videoEl.height || videoH, 0, 0, tw, th);
+    let imgData = tctx.getImageData(0, 0, tw, th);
+    let px = imgData.data;
+
+    // Apply thermal palette at reduced resolution
+    for (let i = 0; i < px.length; i += 4) {
+        let lum = (0.299 * px[i] + 0.587 * px[i+1] + 0.114 * px[i+2]) / 255;
+        let pos = lum * (heatmap.length - 1);
+        let lo = Math.floor(pos), hi = Math.min(heatmap.length - 1, lo + 1);
+        let t = pos - lo;
+        let hr = heatmap[lo][0] * (1-t) + heatmap[hi][0] * t;
+        let hg = heatmap[lo][1] * (1-t) + heatmap[hi][1] * t;
+        let hb = heatmap[lo][2] * (1-t) + heatmap[hi][2] * t;
+        px[i]   = Math.round(px[i] * (1-intensity) + hr * intensity);
+        px[i+1] = Math.round(px[i+1] * (1-intensity) + hg * intensity);
+        px[i+2] = Math.round(px[i+2] * (1-intensity) + hb * intensity);
+    }
+    tctx.putImageData(imgData, 0, 0);
+
+    _thermalCacheFrame = frameCount;
+
+    // Draw upscaled result (browser smooths it)
+    drawingContext.drawImage(_thermalCache, videoX, videoY, videoW, videoH);
 }
 
 function applyGradientMap() {
@@ -2254,8 +2313,28 @@ function buildFxPanel() {
         card.className = 'fx-card';
         card.dataset.effect = effectName;
         card.dataset.cat = FX_CATEGORIES[effectName];
-        card.style.setProperty('--cat-color', FX_CAT_COLORS[FX_CATEGORIES[effectName]]);
-        card.textContent = cfg.label;
+        var catColor = FX_CAT_COLORS[FX_CATEGORIES[effectName]];
+        card.style.setProperty('--cat-color', catColor);
+        // Swatch preview strip (from FX_TILE_META lookup)
+        var tileMeta = (typeof FX_TILE_META !== 'undefined') ? FX_TILE_META[effectName] : null;
+        if (tileMeta && tileMeta.tones) {
+            var preview = document.createElement('div');
+            preview.className = 'fx-card-preview';
+            preview.style.setProperty('--tone-a', tileMeta.tones[0]);
+            preview.style.setProperty('--tone-b', tileMeta.tones[1]);
+            card.appendChild(preview);
+        }
+        // Label
+        var labelSpan = document.createElement('strong');
+        labelSpan.textContent = cfg.label;
+        card.appendChild(labelSpan);
+        // Subtitle
+        if (tileMeta && tileMeta.subtitle) {
+            var sub = document.createElement('span');
+            sub.className = 'fx-card-subtitle';
+            sub.textContent = tileMeta.subtitle;
+            card.appendChild(sub);
+        }
         if (FX_HINTS[effectName]) card.title = FX_HINTS[effectName];
         // Audio sync badge
         let audioBadge = document.createElement('span');
@@ -2549,6 +2628,8 @@ function buildFxPanel() {
         });
         // ── AUDIO SYNC SECTION ──
         buildFxAudioSyncSection(effectName, group);
+        // ── HAND SYNC SECTION ──
+        if (typeof buildFxHandsSyncSection === 'function') buildFxHandsSyncSection(effectName, group);
         container.appendChild(group);
     }
 
@@ -2642,6 +2723,23 @@ function switchFxCategory(cat) {
 }
 
 function selectFxEffect(name) {
+    // Click again on active+viewed effect → deselect (toggle off)
+    if (name === currentViewedEffect && activeEffects.has(name)) {
+        activeEffects.delete(name);
+        currentViewedEffect = null;
+        hideFxParams();
+        updateFxOnButton();
+        updateCardHighlights();
+        updateEffectCardStates();
+        updateDropdownMarkers();
+        updatePostProcessList();
+        let lbl = document.getElementById('fx-effect-name-label');
+        if (lbl) lbl.textContent = '';
+        if (typeof renderGuide === 'function') renderGuide();
+        if (typeof renderCanvasOverlay === 'function') renderCanvasOverlay();
+        if (typeof updatePanelBadges === 'function') updatePanelBadges();
+        return;
+    }
     currentViewedEffect = name;
     // Switch to the correct category if needed
     let cat = FX_CATEGORIES[name];
@@ -2658,6 +2756,9 @@ function selectFxEffect(name) {
     let lbl = document.getElementById('fx-effect-name-label');
     let cfg = FX_UI_CONFIG[name];
     if (lbl && cfg) lbl.textContent = cfg.label;
+    if (typeof renderGuide === 'function') renderGuide();
+    if (typeof renderCanvasOverlay === 'function') renderCanvasOverlay();
+    if (typeof updatePanelBadges === 'function') updatePanelBadges();
 }
 
 function cycleFxEffect(dir) {
@@ -2697,6 +2798,13 @@ function showFxParams(effectName) {
     // Hide all param groups, show the selected one
     document.querySelectorAll('#fx-params-container .fx-param-group').forEach(g => {
         g.classList.toggle('visible', g.id === 'fx-params-' + effectName);
+    });
+}
+
+function hideFxParams() {
+    // Hide all param groups
+    document.querySelectorAll('#fx-params-container .fx-param-group').forEach(g => {
+        g.classList.remove('visible');
     });
 }
 

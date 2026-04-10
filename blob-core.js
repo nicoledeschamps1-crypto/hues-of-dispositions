@@ -1198,6 +1198,74 @@ const FX_PRESETS = {
     }
 };
 
+// ── Effect tile metadata (tones + subtitle for card previews) ──
+const FX_TILE_META = {
+    sepia:     { subtitle:'Warm wash',       tones:['186, 112, 76','91, 51, 35'] },
+    tint:      { subtitle:'Color shift',     tones:['0, 184, 148','139, 69, 232'] },
+    palette:   { subtitle:'Remap colors',    tones:['30, 30, 30','0, 255, 128'] },
+    bricon:    { subtitle:'Light + contrast', tones:['200, 200, 200','60, 60, 60'] },
+    thermal:   { subtitle:'Heat map',        tones:['235, 112, 85','255, 214, 10'] },
+    gradmap:   { subtitle:'Gradient remap',  tones:['30, 10, 60','255, 183, 77'] },
+    duotone:   { subtitle:'Ink pair',        tones:['0, 184, 148','139, 69, 232'] },
+    chroma:    { subtitle:'Color split',     tones:['255, 50, 50','50, 50, 255'] },
+    hueshift:  { subtitle:'Rotate hue',      tones:['255, 100, 200','100, 255, 150'] },
+    invert:    { subtitle:'Negative',        tones:['255, 255, 255','0, 0, 0'] },
+    posterize: { subtitle:'Color crunch',    tones:['139, 69, 232','255, 214, 10'] },
+    threshold: { subtitle:'Binary split',    tones:['255, 255, 255','10, 10, 10'] },
+    gamma:     { subtitle:'Curve lift',      tones:['180, 160, 200','40, 30, 50'] },
+    spectrum:  { subtitle:'Hue cycle',       tones:['255, 0, 100','0, 255, 200'] },
+    pixelate:  { subtitle:'Block mosaic',    tones:['139, 69, 232','60, 40, 90'] },
+    blur:      { subtitle:'Soft veil',       tones:['142, 133, 164','66, 61, 86'] },
+    sharpen:   { subtitle:'Edge crisp',      tones:['220, 220, 220','100, 100, 100'] },
+    emboss:    { subtitle:'Surface relief',  tones:['160, 160, 170','80, 80, 90'] },
+    edge:      { subtitle:'Wire frame',      tones:['0, 184, 148','10, 10, 10'] },
+    glitch:    { subtitle:'Signal tear',     tones:['116, 185, 255','139, 69, 232'] },
+    displacement:{subtitle:'Warp field',     tones:['100, 60, 180','60, 180, 100'] },
+    ripple:    { subtitle:'Water wave',      tones:['60, 120, 200','30, 60, 120'] },
+    swirl:     { subtitle:'Spiral pull',     tones:['180, 80, 220','80, 220, 180'] },
+    stretch:   { subtitle:'Rubber band',     tones:['200, 100, 50','50, 100, 200'] },
+    mirror:    { subtitle:'Axis reflect',    tones:['139, 69, 232','139, 69, 232'] },
+    kaleid:    { subtitle:'Kaleidoscope',    tones:['255, 100, 200','100, 200, 255'] },
+    feedback:  { subtitle:'Echo loop',       tones:['139, 69, 232','0, 184, 148'] },
+    timewarp:  { subtitle:'Frame blend',     tones:['116, 185, 255','200, 100, 255'] },
+    flowfield: { subtitle:'Vector flow',     tones:['0, 184, 148','100, 50, 200'] },
+    freeze:    { subtitle:'Time lock',       tones:['180, 200, 220','60, 80, 100'] },
+    datamosh:  { subtitle:'I-frame melt',    tones:['255, 50, 100','50, 255, 100'] },
+    pxsortgpu: { subtitle:'Pixel sort',      tones:['255, 200, 50','50, 100, 255'] },
+    noise:     { subtitle:'Static grain',    tones:['150, 150, 150','50, 50, 50'] },
+    grain:     { subtitle:'Film texture',    tones:['154, 141, 112','49, 42, 28'] },
+    scanlines: { subtitle:'CRT lines',       tones:['0, 255, 0','0, 60, 0'] },
+    dots:      { subtitle:'Halftone',        tones:['139, 69, 232','20, 15, 30'] },
+    moire:     { subtitle:'Interference',    tones:['200, 150, 255','50, 30, 100'] },
+    ascii:     { subtitle:'Text render',     tones:['0, 255, 0','0, 30, 0'] },
+    matrix:    { subtitle:'Digital rain',    tones:['0, 255, 0','0, 40, 0'] },
+    grid:      { subtitle:'Wire overlay',    tones:['139, 69, 232','30, 20, 50'] },
+    bars:      { subtitle:'Signal bars',     tones:['0, 184, 148','30, 20, 50'] },
+    vignette:  { subtitle:'Edge fade',       tones:['0, 0, 0','139, 69, 232'] },
+    bloom:     { subtitle:'Halo spill',      tones:['255, 183, 255','139, 69, 232'] },
+    lenscurve: { subtitle:'Barrel warp',     tones:['180, 160, 200','60, 50, 80'] },
+    flare:     { subtitle:'Light leak',      tones:['255, 200, 100','255, 100, 50'] },
+    film:      { subtitle:'Analog look',     tones:['220, 180, 140','40, 30, 20'] },
+    crt:       { subtitle:'Monitor scan',    tones:['0, 200, 0','0, 40, 0'] },
+    dither:    { subtitle:'Bit crunch',      tones:['200, 200, 200','40, 40, 40'] },
+    contour:   { subtitle:'Edge carve',      tones:['0, 184, 148','27, 47, 54'] },
+    lensflare: { subtitle:'Star burst',      tones:['255, 220, 150','255, 100, 50'] },
+    rain:      { subtitle:'Droplet fall',    tones:['100, 150, 200','30, 50, 80'] },
+    snow:      { subtitle:'Particle drift',  tones:['220, 230, 255','100, 110, 140'] },
+    fire:      { subtitle:'Flame rise',      tones:['255, 100, 0','255, 200, 50'] },
+    smoke:     { subtitle:'Wisp curl',       tones:['120, 120, 130','40, 40, 50'] },
+    confetti:  { subtitle:'Party scatter',   tones:['255, 100, 200','100, 255, 100'] },
+    text:      { subtitle:'Type overlay',    tones:['255, 255, 255','139, 69, 232'] },
+    sticker:   { subtitle:'Shape stamp',     tones:['255, 200, 50','255, 100, 150'] },
+    frame:     { subtitle:'Border wrap',     tones:['139, 69, 232','0, 184, 148'] },
+    gradient:  { subtitle:'Color wash',      tones:['139, 69, 232','0, 184, 148'] },
+    lightwrap: { subtitle:'Edge glow',       tones:['255, 220, 180','139, 69, 232'] },
+    bokeh:     { subtitle:'Focus blur',      tones:['200, 180, 255','80, 60, 140'] },
+    prism:     { subtitle:'Color split',     tones:['255, 0, 0','0, 0, 255'] },
+    filmgrain: { subtitle:'Organic noise',   tones:['180, 170, 160','60, 55, 50'] },
+    split:     { subtitle:'View divide',     tones:['139, 69, 232','0, 184, 148'] }
+};
+
 // ── FX_UI_CONFIG — UI control definitions for JS-generated FX panel ──
 // Single source of truth for effect labels, controls, and DOM IDs.
 // Control types: slider, selector, color, shape, swatch, toggle
@@ -1642,6 +1710,15 @@ const FX_AUDIO_SYNC_DEFAULTS = {
     sensitivity: 50, threshold: 10, release: 40,
     smoothedValue: 0, _baseValue: null, regions: []
 };
+
+// Per-effect hand sync state (parallel to audio sync)
+let fxHandsSync = {};
+const FX_HANDS_SYNC_DEFAULTS = {
+    enabled: false, source: 'pinch', hand: 'any', paramIndex: 0,
+    sensitivity: 50, smoothing: 50,
+    smoothedValue: 0, _baseValue: null
+};
+
 function getEnergyForBand(band) {
     switch(band) {
         case 'kick': return smoothBass;
@@ -1868,19 +1945,7 @@ function setup() {
     textSize(11);
     restoreLayerState();
 
-    // First-run overlay dismiss
-    const froDismiss = document.getElementById('first-run-dismiss');
-    const froOverlay = document.getElementById('first-run-overlay');
-    if (froDismiss && froOverlay) {
-        const dismissFirstRun = () => {
-            froOverlay.style.display = 'none';
-            localStorage.setItem('hod-onboarded', 'true');
-        };
-        froDismiss.addEventListener('click', dismissFirstRun);
-        froOverlay.addEventListener('click', (e) => {
-            if (e.target === froOverlay) dismissFirstRun();
-        });
-    }
+    // First-run onboarding is handled by the guide system (Layer 2)
 
     // Video zoom: scroll on canvas (no modifier = video zoom, Ctrl = timeline zoom)
     canvas.elt.addEventListener('wheel', (e) => {
@@ -2180,6 +2245,7 @@ function draw() {
                 try { applyActiveEffects(); } catch(e) { console.warn('FX error:', e); }
                 try { if (timelineSegments.length > 0) applyTimelineEffects(); } catch(e) { console.warn('Timeline FX error:', e); }
                 if (typeof applyPerEffectAudioSync === 'function') applyPerEffectAudioSync();
+                if (typeof applyPerEffectHandsSync === 'function') applyPerEffectHandsSync();
             });
             // GPU shader pipeline — apply with its own split-side clipping
             _applySplitSideFx(() => { processShaderFX(); });
@@ -2199,6 +2265,9 @@ function draw() {
             trackPoints();
             lastTrackTime = millis();
         }
+
+        // Hand detection (independent of blob tracking)
+        if (typeof detectHands === 'function') detectHands();
 
         // Update face tracking status display continuously (cached DOM refs)
         if (currentMode >= 15 && currentMode <= 17 && frameCount % 15 === 0) {
@@ -2226,6 +2295,11 @@ function draw() {
                     if (fHintEl) fHintEl.textContent = 'Point camera or video at a face';
                 }
             }
+        }
+
+        // Update hand tracking status display (independent of face/blob tracking)
+        if (typeof updateHandStatus === 'function' && typeof handsEnabled !== 'undefined' && frameCount % 15 === 0) {
+            updateHandStatus();
         }
 
         // ── Auto-follow: pan toward centroid of tracked points
@@ -2317,6 +2391,7 @@ function draw() {
                 image(videoEl, bx, by, zW, zH, sx, sy, sw, sh);
 
                 // ASCII: green terminal-style ASCII art inside blob box
+                // Performance-optimized: capped grid, frame-skipped rendering
                 if (activeVizModes.has(12)) {
                     let _chars = ASCII_CHARSETS[asciiCharSet] || ASCII_CHARSETS.classic;
                     let asciiScale = 2.8;
@@ -2325,63 +2400,64 @@ function draw() {
                     let ax = p.posicao.x - aW/2, ay = p.posicao.y - aH/2;
                     ax = constrain(ax, 0, width - aW);
                     ay = constrain(ay, 0, height - aH);
-                    // Adaptive cell size: denser grid at higher viz zoom for sharper detail
-                    let cellSz = Math.max(3.5, 7 / Math.max(1, 1 + Math.max(0, vizZoomLevel) * 0.15));
-                    let cols = Math.min(Math.floor(aW / cellSz), 200);
-                    let rows = Math.min(Math.floor(aH / (cellSz * 1.6)), 120);
+                    // Cell size capped at minimum 5px to limit grid to ~800 cells max
+                    let cellSz = Math.max(5, 7 / Math.max(1, 1 + Math.max(0, vizZoomLevel) * 0.15));
+                    let cols = Math.min(Math.floor(aW / cellSz), 80);
+                    let rows = Math.min(Math.floor(aH / (cellSz * 1.6)), 50);
 
-                    // Sample from source video at >= grid resolution for quality
-                    let sampleW = Math.min(Math.max(cols, Math.ceil(sw)), 400);
-                    let sampleH = Math.min(Math.max(rows, Math.ceil(sh)), 300);
-                    if (!_asciiSampler) _asciiSampler = document.createElement('canvas');
-                    if (_asciiSampler.width !== sampleW || _asciiSampler.height !== sampleH) {
-                        _asciiSampler.width = sampleW;
-                        _asciiSampler.height = sampleH;
-                    }
-                    let actx = _asciiSampler.getContext('2d');
-                    actx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, sampleW, sampleH);
-                    // Downsample to grid resolution for character lookup
-                    let gridCanvas = _asciiSampler._grid;
-                    if (!gridCanvas) { gridCanvas = document.createElement('canvas'); _asciiSampler._grid = gridCanvas; }
-                    if (gridCanvas.width !== cols || gridCanvas.height !== rows) {
-                        gridCanvas.width = cols; gridCanvas.height = rows;
-                    }
-                    let gctx = gridCanvas.getContext('2d', { willReadFrequently: true });
-                    gctx.imageSmoothingEnabled = true;
-                    gctx.imageSmoothingQuality = 'high';
-                    gctx.drawImage(_asciiSampler, 0, 0, sampleW, sampleH, 0, 0, cols, rows);
-                    let sData = gctx.getImageData(0, 0, cols, rows).data;
+                    // Frame-skip: only re-render ASCII every 3 frames, cache to offscreen canvas
+                    if (!p._asciiCache) p._asciiCache = document.createElement('canvas');
+                    let needsRender = !p._asciiCacheFrame || frameCount - p._asciiCacheFrame >= 3;
 
+                    if (needsRender) {
+                        // Sample from source video — single downsample step
+                        if (!_asciiSampler) _asciiSampler = document.createElement('canvas');
+                        if (_asciiSampler.width !== cols || _asciiSampler.height !== rows) {
+                            _asciiSampler.width = cols; _asciiSampler.height = rows;
+                        }
+                        let gctx = _asciiSampler.getContext('2d', { willReadFrequently: true });
+                        gctx.drawImage(videoEl.elt || videoEl, sx, sy, sw, sh, 0, 0, cols, rows);
+                        let sData = gctx.getImageData(0, 0, cols, rows).data;
+
+                        // Render to per-blob cache canvas
+                        let cW = Math.round(aW);
+                        let cH = Math.round(aH);
+                        if (p._asciiCache.width !== cW || p._asciiCache.height !== cH) {
+                            p._asciiCache.width = cW; p._asciiCache.height = cH;
+                        }
+                        let actx = p._asciiCache.getContext('2d');
+                        actx.fillStyle = 'rgba(0,0,0,0.9)';
+                        actx.fillRect(0, 0, cW, cH);
+                        actx.font = Math.round(cellSz * 1.3) + 'px monospace';
+                        actx.textAlign = 'center';
+                        actx.textBaseline = 'middle';
+                        let rowH = cellSz * 1.6;
+                        let lastFill = '';
+                        for (let r = 0; r < rows; r++) {
+                            for (let c = 0; c < cols; c++) {
+                                let si = (r * cols + c) * 4;
+                                let lum = (0.299*sData[si] + 0.587*sData[si+1] + 0.114*sData[si+2]) / 255;
+                                let ci = Math.floor(lum * (_chars.length - 1));
+                                if (ci === 0) continue;
+                                let g = Math.round(60 + lum * 195);
+                                let f = 'rgb(0,' + g + ',' + Math.round(lum * 30) + ')';
+                                if (f !== lastFill) { actx.fillStyle = f; lastFill = f; }
+                                actx.fillText(_chars[ci], c * cellSz + cellSz/2, r * rowH + rowH/2);
+                            }
+                        }
+                        p._asciiCacheFrame = frameCount;
+                    }
+
+                    // Draw cached ASCII from offscreen canvas
                     push();
-                    noStroke(); fill(0, 0, 0, 230);
-                    rectMode(CORNER);
-                    rect(ax, ay, aW, aH);
-
                     drawingContext.save();
                     drawingContext.beginPath();
                     drawingContext.rect(ax, ay, aW, aH);
                     drawingContext.clip();
-                    let ctx = drawingContext;
-                    ctx.font = Math.round(cellSz * 1.3) + 'px monospace';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    let rowH = cellSz * 1.6;
-                    let lastFill = '';
-                    for (let r = 0; r < rows; r++) {
-                        for (let c = 0; c < cols; c++) {
-                            let si = (r * cols + c) * 4;
-                            let lum = (0.299*sData[si] + 0.587*sData[si+1] + 0.114*sData[si+2]) / 255;
-                            let ci = Math.floor(lum * (_chars.length - 1));
-                            if (ci === 0) continue;
-                            let g = Math.round(60 + lum * 195);
-                            let f = 'rgb(0,' + g + ',' + Math.round(lum * 30) + ')';
-                            if (f !== lastFill) { ctx.fillStyle = f; lastFill = f; }
-                            ctx.fillText(_chars[ci], ax + c * cellSz + cellSz/2, ay + r * rowH + rowH/2);
-                        }
-                    }
+                    drawingContext.drawImage(p._asciiCache, ax, ay, aW, aH);
                     drawingContext.restore();
                     pop();
-                    // Queue for recording at native resolution
+
                     if (isRecording) _vizRecordQueue.push({
                         type: 'ascii', sx, sy, sw, sh, ax, ay, aW, aH,
                         cellSz, cols, rows, chars: _chars
@@ -2394,11 +2470,11 @@ function draw() {
                 drawBlobStyle(p, zW, zH, _tbc, _vizA, _vizWt);
                 pop();
             } else {
-                // Region FX: per-blob shader effects
-                if (typeof applyRegionFX === 'function' && regionFXEnabled && regionFXMode !== 'none') {
-                    applyRegionFX(p, document.getElementById('defaultCanvas0'));
-                }
                 drawBlobStyle(p, pw, ph, _tbc, 255, trackBoxWeight);
+            }
+            // Region FX: per-blob shader effects (applies regardless of viz mode)
+            if (typeof applyRegionFX === 'function' && regionFXEnabled && regionFXMode !== 'none') {
+                applyRegionFX(p, document.getElementById('defaultCanvas0'));
             }
             drawPointInfo(p);
         }
@@ -2412,6 +2488,11 @@ function draw() {
             drawingContext.restore();
         }
         } // end blobsVisible
+
+        // Hand overlay (independent of blob visibility — renders on top of blobs)
+        if (typeof drawHandOverlay === 'function') drawHandOverlay();
+        // Hand frame processing (gestures, pinch meter — runs even when viz is off)
+        if (typeof processHandFrame === 'function') processHandFrame();
 
         // ALL mode: apply effects to everything including blobs
         if (fxLayerAll && fxMasterOpacity > 0) {
@@ -2427,6 +2508,7 @@ function draw() {
                 try { applyActiveEffects(); } catch(e) { console.warn('FX error:', e); }
                 try { if (timelineSegments.length > 0) applyTimelineEffects(); } catch(e) { console.warn('Timeline FX error:', e); }
                 if (typeof applyPerEffectAudioSync === 'function') applyPerEffectAudioSync();
+                if (typeof applyPerEffectHandsSync === 'function') applyPerEffectHandsSync();
             });
             _applySplitSideFx(() => { processShaderFX(); });
             if (fxMasterOpacity < 1.0) {
@@ -2556,6 +2638,9 @@ function draw() {
             recordingVideoTrack.requestFrame();
         }
     }
+
+    // ── Sync frame to projection window
+    if (_projActive) _syncProjectionFrame();
 
     // ── Depth blur: vignette blur at edges when zoomed
     if (depthBlurEnabled && videoLoaded && vidZoom > 1.05) {
@@ -3120,6 +3205,13 @@ function setupCoreUIListeners() {
         currentSection = section;
         document.body.dataset.section = section;
 
+        // Section color theming — update CSS variables
+        var meta = SECTION_META[section];
+        if (meta) {
+            document.documentElement.style.setProperty('--section-color', meta.color);
+            document.documentElement.style.setProperty('--section-rgb', meta.rgb);
+        }
+
         document.querySelectorAll('.section-tab').forEach(t => {
             const isActive = t.dataset.section === section;
             t.classList.toggle('active', isActive);
@@ -3149,8 +3241,21 @@ function setupCoreUIListeners() {
             buildAudioSyncSummaryPanel();
         }
 
+        // Hands section: update hand status display
+        if (section === 'hands' && typeof updateHandStatus === 'function') {
+            updateHandStatus();
+        }
+
         // Update guide rail for new section
         if (typeof setGuideSection === 'function') setGuideSection(section);
+        if (typeof updatePanelBadges === 'function') updatePanelBadges();
+        if (typeof renderCanvasOverlay === 'function') renderCanvasOverlay();
+
+        // Show section intro (Layer 3)
+        if (typeof _showSectionIntro === 'function') {
+            clearTimeout(switchSection._introTimer);
+            switchSection._introTimer = setTimeout(function() { _showSectionIntro(section); }, 200);
+        }
 
         // Recalculate layout after CSS changes
         requestAnimationFrame(() => {
@@ -3159,153 +3264,175 @@ function setupCoreUIListeners() {
     }
     window.switchSection = switchSection;
 
-    // ── GUIDE SYSTEM ─────────────────────────
-    // Section-aware guide: rail for Track/Timeline, inline card for Audio, minimal for Create/Export
-    const GUIDE_CONTENT = {
-        track: {
-            title: 'Tracking Guide',
-            mode: 'rail',
-            steps: [
-                { title: 'Choose a family', desc: 'Color, Analysis, or AI — each uses a different detection approach' },
-                { title: 'Choose a mode', desc: 'Each family shows its own set of detection modes' },
-                { title: 'Act in the preview', desc: 'For interactive modes like Mask, click the subject in the preview' },
-                { title: 'Tune detection', desc: 'Adjust quantity, variation, tolerance, and rate to refine results' },
-                { title: 'Style your output', desc: 'Choose a blob style (BOX, GLOW, PARTICLE, etc.) and visualization mode' },
-                { title: 'Region FX', desc: 'Apply per-blob GPU effects (blur, thermal, glitch, etc.) to tracked regions' },
-                { title: 'Connection lines', desc: 'Link blobs with CHAIN, HUB, or WEB — toggle dashed lines in Settings' }
-            ]
-        },
-        timeline: {
-            title: 'Timeline Guide',
-            mode: 'rail',
-            steps: [
-                { title: 'Add a segment', desc: 'Drag a mode or effect into the timeline to create a timed event' },
-                { title: 'Move and trim', desc: 'Drag segments to reposition, use edges to resize' },
-                { title: 'Preview timing', desc: 'Play through the timeline to see how changes land' },
-                { title: 'Layer behaviors', desc: 'Combine tracking modes, effects, and audio sync over time' },
-                { title: 'Keyboard shortcuts', desc: 'Cmd+Z undo, Cmd+D duplicate, Cmd+C/V copy/paste, Del remove, +/- zoom' }
-            ]
-        },
-        audio: {
-            title: 'Audio Sync Guide',
-            mode: 'card',
-            steps: [
-                { title: 'Choose a source', desc: 'Upload a file (mp3/wav), use your mic, or tap VIDEO to use the video\'s own audio' },
-                { title: 'Enable sync', desc: 'Turn Sync ON, then pick a target: MIX, QTY, VAR, HUE, FLASH, PULSE, or RATE' },
-                { title: 'Pick a band', desc: 'Kick (bass hits), Vocal (mids), Hats (highs), or Full range — each responds to different parts of the sound' },
-                { title: 'Tune reactivity', desc: 'Sensitivity controls intensity, Threshold gates quiet parts, Release controls decay speed' },
-                { title: 'Per-effect sync', desc: 'Open any active effect → Audio Sync toggle → map a specific parameter to a band' },
-                { title: 'Check the overview', desc: 'The Per-Effect Audio Sync section below shows all active mappings at a glance' },
-                { title: 'Look for ♫', desc: 'The top bar shows ♫ with a count of synced items. Effect cards show a ♫ badge when synced.' }
-            ]
-        },
-        create: {
-            title: 'Getting Started',
-            mode: 'rail',
-            steps: [
-                { title: 'Upload or use camera', desc: 'Load a video file (.mp4, .mov, .webm) or enable your webcam' },
-                { title: 'Browse effects', desc: 'Click any effect card to apply it. Categories: Color, Distortion, Pattern, Overlay' },
-                { title: 'Toggle effects', desc: 'Click a card to activate. Use the eye icon in Layers to hide without removing. Trash to delete.' },
-                { title: 'Try presets', desc: 'Presets apply curated effect combinations — a quick way to explore what\'s possible' },
-                { title: 'Add an overlay', desc: 'Drag a video or image onto the canvas to layer it with blend modes and opacity' },
-                { title: 'Manage layers', desc: 'The Layers tab shows all active effects with eye toggles, opacity, and blend mode controls' },
-                { title: 'Add audio', desc: 'Switch to Audio to make everything react to sound — that\'s where the magic is' }
-            ]
-        },
-        export: {
-            title: 'Export Guide',
-            mode: 'rail',
-            steps: [
-                { title: 'Choose resolution', desc: 'Source (original), 1080p, 720p, or 4K — higher res = slower recording' },
-                { title: 'Pick format and FPS', desc: 'WebM or MP4, 15–60 fps. 30fps is a good default.' },
-                { title: 'Record', desc: 'Hit the record button in the toolbar (or Shift+R). All active effects, tracking, and audio sync are captured.' },
-                { title: 'Save', desc: 'When done, click Save Recording. Screenshots also available via the camera button (or P).' }
-            ]
-        }
-    };
+    // ══════════════════════════════════════════════════════════
+    // GUIDE SYSTEM — 4-layer contextual guidance
+    //   Layer 1: Contextual Guide Rail (smart suggestion + steps + tracker)
+    //   Layer 2: First-Run Onboarding (SEE / FEEL / HEAR)
+    //   Layer 3: Section Intros (colored bars on first visit)
+    //   Layer 4: Spotlight Tour (7-step walkthrough)
+    // ══════════════════════════════════════════════════════════
 
-    // Context-aware step 3 for Tracking
-    function _getTrackStep3() {
-        if (currentMode === 14) return { title: 'Click the subject', desc: 'Click the object you want to track — Shift+click to add, Option+click to remove' };
-        if (currentMode === 5 || currentMode === 13) return { title: 'Pick the target color', desc: 'Use the color picker below the mode buttons, or click directly in the preview' };
-        if (currentMode >= 15 && currentMode <= 17) return { title: 'Point at a face', desc: 'Aim your camera or video at a face — landmarks are detected automatically' };
-        if (currentMode === 19) return { title: 'Capture the background', desc: 'Click Capture BG with a clean frame, then introduce your subject' };
-        return { title: 'Act in the preview', desc: 'For interactive modes like Mask, click the subject in the preview' };
-    }
-
-    const _guideRail = document.getElementById('guide-rail');
-    const _guideTitle = document.getElementById('guide-title');
-    const _guideContentEl = document.getElementById('guide-content');
-    const _guideCloseBtn = document.getElementById('guide-close');
-    const _guideToolbarBtn = document.getElementById('tb-guide-btn');
-    const _audioGuideCard = document.getElementById('audio-guide-card');
-    const _audioGuideClose = document.getElementById('audio-guide-close');
+    // ── Shared state & utils ──
+    function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
     function _loadGuidePrefs() {
-        try {
-            const raw = localStorage.getItem('hod-guide');
-            return raw ? JSON.parse(raw) : {};
-        } catch { return {}; }
+        try { const r = localStorage.getItem('hod-guide'); return r ? JSON.parse(r) : {}; } catch { return {}; }
     }
     function _saveGuidePrefs(prefs) {
         try { localStorage.setItem('hod-guide', JSON.stringify(prefs)); } catch {}
     }
 
+    // Discovery state — what features has the user activated?
+    function _getDiscovery() {
+        return {
+            video: !!videoLoaded,
+            effects: !!(activeEffects && activeEffects.size > 0),
+            audio: !!(typeof audioSyncEnabled !== 'undefined' && audioSyncEnabled),
+            tracking: currentMode > 0,
+            timeline: !!(typeof timelineSegments !== 'undefined' && timelineSegments && timelineSegments.length > 0)
+        };
+    }
+    function _getCurrentGuideKey(disc) {
+        if (!disc.video) return 'video';
+        if (!disc.effects) return 'effects';
+        if (!disc.audio) return 'audio';
+        if (!disc.tracking) return 'tracking';
+        if (!disc.timeline) return 'timeline';
+        return 'done';
+    }
+
+    // Section metadata
+    const SECTION_META = {
+        create:   { icon: '+',  color: '#8B45E8', rgb: '139, 69, 232',  intro: 'Start here \u2014 upload video and browse effects' },
+        audio:    { icon: '\u266B', color: '#00B894', rgb: '0, 184, 148',  intro: 'Connect sound to everything. This is the heart of H.O.D.' },
+        track:    { icon: '\u25CE', color: '#E17055', rgb: '225, 112, 85', intro: 'Detect objects, faces, and motion in your video' },
+        hands:    { icon: '\u270B', color: '#E84393', rgb: '232, 67, 147', intro: 'Use your hands to control effects in real time' },
+        timeline: { icon: '\u25B6', color: '#74B9FF', rgb: '116, 185, 255', intro: 'Sequence changes over time' },
+        export:   { icon: '\u2B07', color: '#00B894', rgb: '0, 184, 148',  intro: 'Capture your creation as video or screenshot' }
+    };
+
     let _guideVisible = false;
     let _guideSection = 'create';
 
-    function _renderSteps(container, steps) {
-        const ol = document.createElement('ol');
-        ol.className = 'guide-steps';
-        steps.forEach((step, i) => {
-            const li = document.createElement('li');
-            li.className = 'guide-step';
-            li.innerHTML =
-                '<span class="guide-step-num">' + (i + 1) + '</span>' +
-                '<div class="guide-step-body">' +
-                    '<div class="guide-step-title">' + step.title + '</div>' +
-                    '<div class="guide-step-desc">' + step.desc + '</div>' +
-                '</div>';
-            ol.appendChild(li);
-        });
-        container.innerHTML = '';
-        container.appendChild(ol);
+    // ── Layer 1: Contextual Guide Rail ──
+    const _guideRail = document.getElementById('guide-rail');
+    const _guideTitle = document.getElementById('guide-title');
+    const _guideBadge = document.getElementById('guide-badge');
+    const _guideSuggestion = document.getElementById('guide-suggestion');
+    const _guideSteps = document.getElementById('guide-steps');
+    const _guideTracker = document.getElementById('guide-tracker');
+    const _guideCloseBtn = document.getElementById('guide-close');
+    const _guideToolbarBtn = document.getElementById('tb-guide-btn');
+    const _audioGuideCard = document.getElementById('audio-guide-card');
+    const _audioGuideClose = document.getElementById('audio-guide-close');
+
+    function _buildGuideModel() {
+        const disc = _getDiscovery();
+        const section = _guideSection;
+        const effectName = activeEffects && activeEffects.size > 0 ? [...activeEffects][0] : null;
+        const modeName = currentMode > 0 ? (typeof MODE_NAMES !== 'undefined' && MODE_NAMES[currentMode] ? MODE_NAMES[currentMode] : 'Mode ' + currentMode) : null;
+
+        if (section === 'create') {
+            if (!disc.video) return { title: 'Bring in footage to wake up the canvas.', body: 'Upload a clip or switch on the camera. Everything else keys off live motion.', action: 'focus-upload', actionLabel: '\u2192 Upload', badge: 'Start here',
+                steps: [{ t:'Load video', d:'Bring in a clip or camera source.', done:false, cur:true, act:'focus-upload' },{ t:'Choose an effect', d:'Pick the first visual transformation.', done:false, cur:false, act:'choose-effect' },{ t:'Add audio', d:'Route sound once the look feels right.', done:false, cur:false, act:'go-audio' }] };
+            if (!disc.effects) return { title: 'Now give the clip a look.', body: 'One effect is enough to make the rest of the guide feel specific.', action: 'choose-effect', actionLabel: '\u2192 FX', badge: 'Effect next',
+                steps: [{ t:'Load video', d:'A source is already live.', done:true, cur:false, act:'focus-upload' },{ t:'Choose an effect', d:'Pick the effect that defines the mood.', done:false, cur:true, act:'choose-effect' },{ t:'Add audio', d:'Make the look react to sound.', done:false, cur:false, act:'go-audio' }] };
+            if (!disc.audio) return { title: 'You have effects active. Try adding audio.', body: 'Audio sync is the clearest next unlock for this composition.', action: 'go-audio', actionLabel: '\u2192 Audio', badge: 'Audio next',
+                steps: [{ t:'Load video', d:'Source is live.', done:true, cur:false, act:'focus-upload' },{ t:'Choose an effect', d: effectName ? effectName + ' is active.' : 'Effect active.', done:true, cur:false, act:'choose-effect' },{ t:'Connect audio', d:'Switch to Audio and map the first sync target.', done:false, cur:true, act:'go-audio' }] };
+            if (!disc.tracking) return { title: 'The scene is reacting. Tracking is next.', body: 'Let effects orbit a face, object, or motion field.', action: 'go-track', actionLabel: '\u2192 Track', badge: 'Tracking next',
+                steps: [{ t:'Video', d:'Live.', done:true, cur:false, act:'focus-upload' },{ t:'Effects', d: effectName || 'Active', done:true, cur:false, act:'choose-effect' },{ t:'Audio', d:'Synced.', done:true, cur:false, act:'go-audio' },{ t:'Add tracking', d:'Choose a tracker family and mode.', done:false, cur:true, act:'go-track' }] };
+            if (!disc.timeline) return { title: 'Sequence the changes next.', body: 'A short cue lane makes the piece feel intentional.', action: 'go-timeline', actionLabel: '\u2192 Timeline', badge: 'Timeline next',
+                steps: [{ t:'Video', d:'Ready.', done:true, cur:false, act:'focus-upload' },{ t:'Effects', d: effectName || 'Active', done:true, cur:false, act:'choose-effect' },{ t:'Audio', d:'Synced.', done:true, cur:false, act:'go-audio' },{ t:'Tracking', d: modeName || 'Active', done:true, cur:false, act:'go-track' },{ t:'Sequence', d:'Lay down cue segments.', done:false, cur:true, act:'go-timeline' }] };
+            return { title: 'The whole stack is alive. Capture it.', body: 'Move to Export and record a clean pass.', action: 'go-export', actionLabel: '\u2192 Export', badge: 'Ready',
+                steps: [{ t:'Video', d:'Loaded.', done:true, cur:false, act:'' },{ t:'Effects', d: effectName || 'Active', done:true, cur:false, act:'' },{ t:'Audio', d:'Synced.', done:true, cur:false, act:'' },{ t:'Tracking', d: modeName || 'Active', done:true, cur:false, act:'' },{ t:'Timeline', d:'Staged.', done:true, cur:false, act:'' }] };
+        }
+
+        if (section === 'audio') {
+            const synced = disc.audio;
+            return { title: synced ? 'Audio is live. Move forward when balanced.' : 'Turn Sync ON and choose what sound drives.', body: synced ? 'Tracking is a good next layer.' : 'Choose the first target carefully.', action: synced ? 'go-track' : 'toggle-audio', actionLabel: synced ? '\u2192 Track' : '\u2192 Enable sync', badge: synced ? 'Synced' : 'Waiting',
+                steps: [{ t:'Choose source', d:'FILE / MIC / VIDEO.', done:true, cur:false, act:'' },{ t:'Enable sync', d:'Turn on the master sync engine.', done:synced, cur:!synced, act:'toggle-audio' },{ t:'Map targets', d:'Choose what the sound drives.', done:synced, cur:false, act:'' },{ t:'Move to Track', d:'Use tracking once the pulse feels right.', done:false, cur:synced, act:'go-track' }] };
+        }
+
+        if (section === 'track') {
+            const tracking = disc.tracking;
+            return { title: tracking ? 'Tracking is live. Sequence next.' : 'Choose a tracker and lock onto motion.', body: tracking ? 'A short timeline cue lane will add intention.' : 'Start with the detector family, then pick a mode.', action: tracking ? 'go-timeline' : '', actionLabel: tracking ? '\u2192 Timeline' : '\u2192 Detect', badge: tracking ? 'Tracker live' : 'Detect next',
+                steps: [{ t:'Choose a family', d:'Color, Analysis, or AI.', done:true, cur:false, act:'' },{ t:'Pick a mode', d:'Lock onto a subject or motion field.', done:tracking, cur:!tracking, act:'' },{ t:'Style overlay', d:'Choose blob style + viz mode.', done:tracking, cur:false, act:'' },{ t:'Move to timeline', d:'Sequence tracking over time.', done:false, cur:tracking, act:'go-timeline' }] };
+        }
+
+        if (section === 'timeline') {
+            const hasTl = disc.timeline;
+            return { title: hasTl ? 'Cue lane is live. Capture next.' : 'Add a segment to evolve the scene.', body: hasTl ? 'Export is the next step.' : 'A few segments make the motion feel authored.', action: hasTl ? 'go-export' : '', actionLabel: hasTl ? '\u2192 Export' : '\u2192 Add cue', badge: hasTl ? 'Cue live' : 'Cue next',
+                steps: [{ t:'Choose a segment', d:'Add the first timing change.', done:hasTl, cur:!hasTl, act:'' },{ t:'Set blend style', d:'Fade or hard cut.', done:hasTl, cur:false, act:'' },{ t:'Move to export', d:'Capture the sequence.', done:false, cur:hasTl, act:'go-export' }] };
+        }
+
+        // export
+        return { title: 'Record a pass or save a frame.', body: 'The stack is assembled.', action: '', actionLabel: '\u2192 Record', badge: 'Capture',
+            steps: [{ t:'Choose size', d:'Resolution.', done:true, cur:false, act:'' },{ t:'Choose format', d:'WebM or MP4.', done:true, cur:false, act:'' },{ t:'Capture', d:'Record the scene or grab a frame.', done:false, cur:true, act:'' }] };
     }
 
     function renderGuide() {
         if (!_guideRail) return;
-        const content = GUIDE_CONTENT[_guideSection];
-        if (!content || content.mode === 'card') {
-            // Card-mode sections (Audio) use their own inline card, hide the rail
-            _guideRail.classList.add('hidden');
-            _syncAudioCard();
-            return;
+        const disc = _getDiscovery();
+        const guide = _buildGuideModel();
+        const currentKey = _getCurrentGuideKey(disc);
+
+        _guideTitle.textContent = (SECTION_META[_guideSection] ? _guideSection.charAt(0).toUpperCase() + _guideSection.slice(1) : '') + ' Guide';
+        if (_guideBadge) _guideBadge.textContent = guide.badge;
+
+        // Suggestion card
+        if (_guideSuggestion) {
+            _guideSuggestion.innerHTML =
+                '<strong>' + _escHtml(guide.title) + '</strong>' +
+                '<p>' + _escHtml(guide.body) + '</p>' +
+                (guide.action ? '<button class="guide-action' + (guide.action === 'go-audio' ? ' is-pulse' : '') + '" data-guide-action="' + guide.action + '" type="button">' + _escHtml(guide.actionLabel) + '</button>' : '');
         }
-        // Rail-mode sections
-        _guideTitle.textContent = content.title;
-        let steps = [...content.steps];
-        // Context-aware step 3 for Tracking
-        if (_guideSection === 'track') steps[2] = _getTrackStep3();
-        _renderSteps(_guideContentEl, steps);
-        // Show rail if guide is active
-        if (_guideVisible) _guideRail.classList.remove('hidden');
+
+        // Steps
+        if (_guideSteps) {
+            _guideSteps.innerHTML = guide.steps.map(function(step, i) {
+                var mark = step.done ? '\u2713' : (i + 1);
+                var cls = 'guide-step' + (step.done ? ' is-complete' : '') + (!step.done && step.cur ? ' is-current' : '');
+                return '<div class="' + cls + '">' +
+                    '<span class="guide-step-num">' + mark + '</span>' +
+                    '<div class="guide-step-body"><div class="guide-step-title">' + _escHtml(step.t) + '</div><div class="guide-step-desc">' + _escHtml(step.d) + '</div></div>' +
+                    (step.act ? '<button class="guide-step-action" data-guide-action="' + step.act + '" type="button">\u2192</button>' : '<span class="guide-step-action"></span>') +
+                '</div>';
+            }).join('');
+        }
+
+        // Discovery tracker
+        if (_guideTracker) {
+            var items = [
+                { key:'video', label:'Video' }, { key:'effects', label:'FX' },
+                { key:'audio', label:'Audio' }, { key:'tracking', label:'Track' },
+                { key:'timeline', label:'TL' }
+            ];
+            _guideTracker.innerHTML = items.map(function(it) {
+                var complete = disc[it.key];
+                var current = !complete && currentKey === it.key;
+                return '<div class="tracker-item' + (complete ? ' is-complete' : '') + (current ? ' is-current' : '') + '">' +
+                    '<span class="tracker-dot">' + (complete ? '\u2713' : '') + '</span>' +
+                    '<span>' + it.label + '</span></div>';
+            }).join('');
+        }
+
+        // Audio inline card sync
         _syncAudioCard();
+
+        // Show/hide rail
+        if (_guideVisible) _guideRail.classList.remove('hidden');
     }
 
     function _syncAudioCard() {
         if (!_audioGuideCard) return;
-        const prefs = _loadGuidePrefs();
-        const show = _guideVisible && _guideSection === 'audio' && !prefs.audioDismissed;
+        var prefs = _loadGuidePrefs();
+        var show = _guideVisible && _guideSection === 'audio' && !prefs.audioDismissed;
         _audioGuideCard.classList.toggle('hidden', !show);
     }
 
     function setGuideVisible(visible) {
         _guideVisible = visible;
-        const content = GUIDE_CONTENT[_guideSection];
-        if (_guideRail) {
-            const showRail = visible && content && content.mode !== 'card';
-            _guideRail.classList.toggle('hidden', !showRail);
-        }
+        if (_guideRail) _guideRail.classList.toggle('hidden', !visible);
         if (_guideToolbarBtn) _guideToolbarBtn.classList.toggle('active', visible);
         _syncAudioCard();
     }
@@ -3316,42 +3443,471 @@ function setupCoreUIListeners() {
     }
 
     function toggleGuide() {
-        const next = !_guideVisible;
+        var next = !_guideVisible;
         setGuideVisible(next);
-        const prefs = _loadGuidePrefs();
+        var prefs = _loadGuidePrefs();
         prefs.dismissed = !next;
         _saveGuidePrefs(prefs);
-        // Re-render to ensure correct content
         renderGuide();
     }
 
     function dismissAudioGuide() {
         if (_audioGuideCard) _audioGuideCard.classList.add('hidden');
-        const prefs = _loadGuidePrefs();
+        var prefs = _loadGuidePrefs();
         prefs.audioDismissed = true;
         _saveGuidePrefs(prefs);
     }
+
+    // Guide action dispatcher
+    function _performGuideAction(action) {
+        if (!action) return;
+        if (action === 'focus-upload') { switchSection('create'); return; }
+        if (action === 'choose-effect') { switchSection('create'); return; }
+        if (action === 'go-audio') { switchSection('audio'); return; }
+        if (action === 'go-track') { switchSection('track'); return; }
+        if (action === 'go-timeline') { switchSection('timeline'); return; }
+        if (action === 'go-export') { switchSection('export'); return; }
+        if (action === 'toggle-audio') { switchSection('audio'); return; }
+    }
+
+    // Delegated clicks on guide actions
+    document.addEventListener('click', function(e) {
+        var actionEl = e.target.closest('[data-guide-action]');
+        if (actionEl) {
+            e.preventDefault();
+            _performGuideAction(actionEl.dataset.guideAction);
+        }
+    });
 
     // Wire guide button + close
     if (_guideToolbarBtn) _guideToolbarBtn.addEventListener('click', toggleGuide);
     if (_guideCloseBtn) _guideCloseBtn.addEventListener('click', toggleGuide);
     if (_audioGuideClose) _audioGuideClose.addEventListener('click', dismissAudioGuide);
 
-    // Re-render tracking guide when mode changes (context-aware step 3)
+    // Re-render tracking guide when mode changes
     window._guideRefreshTracking = function() {
         if (_guideSection === 'track' && _guideVisible) renderGuide();
     };
 
-    // Initialize guide on load
+    // ── Layer 2: First-Run Onboarding ──
+    var _obOverlay = document.getElementById('onboarding-overlay');
+    var _obLaunch = document.getElementById('ob-launch');
+    var _obSkip = document.getElementById('ob-skip');
+    var _obState = { source: null, effect: null, audioConnected: false };
+
+    function _updateOnboardingCards() {
+        if (!_obOverlay) return;
+        var seeComplete = !!_obState.source;
+        var feelComplete = !!_obState.effect;
+        var hearComplete = _obState.audioConnected;
+
+        var modes = {
+            see: seeComplete ? 'complete' : 'active',
+            feel: !seeComplete ? 'locked' : feelComplete ? 'complete' : 'active',
+            hear: !feelComplete ? 'locked' : hearComplete ? 'complete' : 'active'
+        };
+
+        ['see','feel','hear'].forEach(function(key) {
+            var card = _obOverlay.querySelector('[data-card="' + key + '"]');
+            if (!card) return;
+            card.classList.remove('is-locked','is-active','is-complete','is-unlocking');
+            card.classList.add('is-' + modes[key]);
+            var st = card.querySelector('[data-status]');
+            if (st) st.textContent = modes[key] === 'locked' ? 'Locked' : modes[key] === 'complete' ? '\u2713 Done' : 'Live';
+        });
+
+        // Update descriptions
+        var sd = document.getElementById('ob-see-desc');
+        if (sd) sd.textContent = seeComplete ? _obState.source + ' is ready. The effects layer is now unlocked.' : 'Start with motion. Once there is footage, the effects shelf wakes up.';
+        var fd = document.getElementById('ob-feel-desc');
+        if (fd) fd.textContent = feelComplete ? _obState.effect + ' is active. The final step is to connect audio.' : 'Choose the first look. A single effect opens the door to audio-driven motion.';
+        var hd = document.getElementById('ob-hear-desc');
+        if (hd) hd.textContent = hearComplete ? 'Audio is connected. The scene is breathing with sound.' : 'Audio sync is the heart of H.O.D. Connect it and the scene starts breathing.';
+
+        // Update button states
+        _obOverlay.querySelectorAll('[data-ob-source]').forEach(function(btn) {
+            var val = btn.dataset.obSource === 'upload' ? 'Upload' : 'Camera';
+            btn.classList.toggle('is-selected', _obState.source === val);
+        });
+        _obOverlay.querySelectorAll('[data-ob-effect]').forEach(function(btn) {
+            btn.classList.toggle('is-selected', _obState.effect === btn.dataset.obEffect);
+        });
+        var audioBtn = _obOverlay.querySelector('[data-ob-audio]');
+        if (audioBtn) {
+            audioBtn.classList.toggle('is-selected', hearComplete);
+            audioBtn.textContent = hearComplete ? 'Audio Connected' : 'Connect Audio';
+        }
+
+        // Pulse unlocking cards
+        if (seeComplete && !feelComplete) _pulseCard(_obOverlay.querySelector('[data-card="feel"]'));
+        if (feelComplete && !hearComplete) _pulseCard(_obOverlay.querySelector('[data-card="hear"]'));
+
+        // Show launch button
+        if (_obLaunch) _obLaunch.classList.toggle('is-visible', hearComplete);
+    }
+
+    function _pulseCard(card) {
+        if (!card || card.classList.contains('is-locked')) return;
+        card.classList.remove('is-unlocking');
+        void card.offsetWidth;
+        card.classList.add('is-unlocking');
+        setTimeout(function() { card.classList.remove('is-unlocking'); }, 760);
+    }
+
+    function _launchFromOnboarding(completedAll) {
+        if (_obOverlay) _obOverlay.classList.add('is-hidden');
+        localStorage.setItem('hod-onboarded', 'true');
+        // Show section intro for current section
+        setTimeout(function() { _showSectionIntro(_guideSection); }, 240);
+    }
+
+    // Onboarding click handler
+    if (_obOverlay) {
+        _obOverlay.addEventListener('click', function(e) {
+            var srcBtn = e.target.closest('[data-ob-source]');
+            if (srcBtn) {
+                _obState.source = srcBtn.dataset.obSource === 'upload' ? 'Upload' : 'Camera';
+                _updateOnboardingCards();
+                return;
+            }
+            var fxBtn = e.target.closest('[data-ob-effect]');
+            if (fxBtn) {
+                _obState.effect = fxBtn.dataset.obEffect;
+                _updateOnboardingCards();
+                return;
+            }
+            var audioBtn = e.target.closest('[data-ob-audio]');
+            if (audioBtn) {
+                _obState.audioConnected = true;
+                _updateOnboardingCards();
+                return;
+            }
+        });
+    }
+    if (_obLaunch) _obLaunch.addEventListener('click', function() { _launchFromOnboarding(true); });
+    if (_obSkip) _obSkip.addEventListener('click', function() { _launchFromOnboarding(false); });
+
+    // Replay intro
+    var _replayBtn = document.getElementById('tb-replay-intro-btn');
+    if (_replayBtn) _replayBtn.addEventListener('click', function() {
+        _obState = { source: null, effect: null, audioConnected: false };
+        _updateOnboardingCards();
+        if (_obOverlay) _obOverlay.classList.remove('is-hidden');
+    });
+
+    // ── Layer 3: Section Intros ──
+    var _introEl = document.getElementById('section-intro');
+    var _introIcon = document.getElementById('section-intro-icon');
+    var _introTitle = document.getElementById('section-intro-title');
+    var _introText = document.getElementById('section-intro-text');
+    var _introDismiss = document.getElementById('section-intro-dismiss');
+    var _introTimerId = 0;
+
+    function _showSectionIntro(section) {
+        if (!_introEl || !SECTION_META[section]) return;
+        var prefs = _loadGuidePrefs();
+        // Don't show if already dismissed or tour is active
+        if (prefs['intro_' + section]) return;
+        if (_tourActive) return;
+
+        var meta = SECTION_META[section];
+        _introEl.setAttribute('data-intro-section', section);
+        if (_introIcon) _introIcon.textContent = meta.icon;
+        if (_introTitle) _introTitle.textContent = section.charAt(0).toUpperCase() + section.slice(1);
+        if (_introText) _introText.textContent = meta.intro;
+        _introEl.classList.add('is-visible');
+
+        // Auto-hide after 8 seconds
+        clearTimeout(_introTimerId);
+        _introTimerId = setTimeout(function() { _introEl.classList.remove('is-visible'); }, 8000);
+    }
+
+    function _dismissSectionIntro() {
+        if (!_introEl) return;
+        _introEl.classList.remove('is-visible');
+        clearTimeout(_introTimerId);
+        var section = _introEl.getAttribute('data-intro-section');
+        if (section) {
+            var prefs = _loadGuidePrefs();
+            prefs['intro_' + section] = true;
+            _saveGuidePrefs(prefs);
+        }
+    }
+
+    if (_introDismiss) _introDismiss.addEventListener('click', _dismissSectionIntro);
+
+    // ── Layer 4: Spotlight Tour ──
+    var _tourOverlay = document.getElementById('tour-overlay');
+    var _tourCard = document.getElementById('tour-card');
+    var _tourStepIndicator = document.getElementById('tour-step-indicator');
+    var _tourTitle = document.getElementById('tour-title');
+    var _tourBody = document.getElementById('tour-body');
+    var _tourBack = document.getElementById('tour-back');
+    var _tourNext = document.getElementById('tour-next');
+    var _tourEnd = document.getElementById('tour-end');
+    var _tourActive = false;
+    var _tourStep = 0;
+    var _tourCompleted = false;
+
+    var TOUR_STEPS = [
+        { section: 'create', targetId: 'upload-group',      title: 'Upload or Camera', body: 'Start by loading a video file or switching on your webcam. Everything else keys off live footage.' },
+        { section: 'create', targetId: 'right-panel',       title: 'Effects Browser',  body: 'Browse Color, Distortion, Pattern, and Overlay effects. Click any card to apply it instantly.' },
+        { section: 'create', targetId: 'guide-rail',        title: 'Your Guide',       body: 'The guide rail shows one smart suggestion at a time and tracks your discovery progress.' },
+        { section: 'audio',  targetId: 'audio-source-row',  title: 'Audio Source',      body: 'Choose FILE, MIC, or VIDEO as the sound input. Audio sync is the heart of H.O.D.' },
+        { section: 'audio',  targetId: 'audio-sync-toggle', title: 'Sync Toggle',       body: 'Turn Sync ON and map targets like MIX, QTY, HUE, PULSE. Sound drives the visuals.' },
+        { section: 'track',  targetId: 'tracking-modes',    title: 'Tracking Modes',    body: 'Color, Analysis, and AI families each detect motion differently. Pick one to start.' },
+        { section: 'export', targetId: 'tb-record-group',   title: 'Record',            body: 'Hit the record button to capture everything \u2014 effects, tracking, and audio sync.' }
+    ];
+
+    function _updateTour() {
+        if (!_tourActive) return;
+        var step = TOUR_STEPS[_tourStep];
+        if (!step) return;
+
+        // Switch section if needed
+        if (_guideSection !== step.section) switchSection(step.section);
+
+        requestAnimationFrame(function() {
+            // Clear old target
+            var old = document.querySelector('.is-tour-target');
+            if (old) old.classList.remove('is-tour-target');
+            document.querySelectorAll('.is-tour-parent').forEach(function(n) { n.classList.remove('is-tour-parent'); });
+
+            // Highlight new target
+            var target = document.getElementById(step.targetId);
+            if (target) {
+                target.classList.add('is-tour-target');
+                var parent = target.closest('.panel, #top-bar, #timeline-container');
+                if (parent) parent.classList.add('is-tour-parent');
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+
+            if (_tourStepIndicator) _tourStepIndicator.textContent = '\u25C9 Step ' + (_tourStep + 1) + ' of ' + TOUR_STEPS.length;
+            if (_tourTitle) _tourTitle.textContent = step.title;
+            if (_tourBody) _tourBody.textContent = step.body;
+            if (_tourBack) _tourBack.disabled = _tourStep === 0;
+            if (_tourNext) _tourNext.textContent = _tourStep === TOUR_STEPS.length - 1 ? 'Finish \u2192' : 'Next \u2192';
+        });
+    }
+
+    function _startTour() {
+        _tourActive = true;
+        _tourStep = 0;
+        if (_tourOverlay) _tourOverlay.classList.add('is-visible');
+        if (_tourCard) _tourCard.classList.add('is-visible');
+        // Hide section intro during tour
+        if (_introEl) _introEl.classList.remove('is-visible');
+        _updateTour();
+    }
+
+    function _endTour(markComplete) {
+        _tourActive = false;
+        if (markComplete) {
+            _tourCompleted = true;
+            var prefs = _loadGuidePrefs();
+            prefs.tourCompleted = true;
+            _saveGuidePrefs(prefs);
+        }
+        if (_tourOverlay) _tourOverlay.classList.remove('is-visible');
+        if (_tourCard) _tourCard.classList.remove('is-visible');
+        // Clear target highlight
+        var old = document.querySelector('.is-tour-target');
+        if (old) old.classList.remove('is-tour-target');
+        document.querySelectorAll('.is-tour-parent').forEach(function(n) { n.classList.remove('is-tour-parent'); });
+        // Update tour button text
+        var tourBtn = document.getElementById('tb-tour-btn');
+        if (tourBtn) tourBtn.textContent = _tourCompleted ? 'Restart Tour' : 'Tour';
+    }
+
+    // Tour button wiring
+    var _tourToggleBtn = document.getElementById('tb-tour-btn');
+    if (_tourToggleBtn) _tourToggleBtn.addEventListener('click', function() {
+        if (_tourActive) { _endTour(false); } else { _startTour(); }
+    });
+    if (_tourBack) _tourBack.addEventListener('click', function() {
+        if (_tourStep > 0) { _tourStep--; _updateTour(); }
+    });
+    if (_tourNext) _tourNext.addEventListener('click', function() {
+        if (_tourStep < TOUR_STEPS.length - 1) { _tourStep++; _updateTour(); }
+        else { _endTour(true); }
+    });
+    if (_tourEnd) _tourEnd.addEventListener('click', function() { _endTour(false); });
+
+    // ── Initialize guide system ──
     (function initGuide() {
-        const prefs = _loadGuidePrefs();
-        const shouldShow = prefs.dismissed !== true;
+        var prefs = _loadGuidePrefs();
+        var shouldShow = prefs.dismissed !== true;
+
+        // Check if onboarding should show
+        if (!localStorage.getItem('hod-onboarded') && _obOverlay) {
+            _obOverlay.classList.remove('is-hidden');
+            _updateOnboardingCards();
+        }
+
+        // Tour button text
+        if (prefs.tourCompleted) {
+            _tourCompleted = true;
+            var tourBtn = document.getElementById('tb-tour-btn');
+            if (tourBtn) tourBtn.textContent = 'Restart Tour';
+        }
+
         setGuideSection('create');
         renderGuide();
         setGuideVisible(shouldShow);
+        if (typeof updatePanelBadges === 'function') updatePanelBadges();
+        if (typeof renderCanvasOverlay === 'function') renderCanvasOverlay();
     })();
 
     window.toggleGuide = toggleGuide;
+    window.renderGuide = renderGuide;
+
+    // ── Panel Badges (Phase 4) ──
+    var _badgeLeft = document.getElementById('panel-badge-left');
+    var _badgeRight = document.getElementById('panel-badge-right');
+
+    function updatePanelBadges() {
+        var section = currentSection || 'create';
+        var leftText = '';
+        var rightText = '';
+        var leftLive = false;
+        var rightLive = false;
+
+        if (section === 'create') {
+            leftText = videoLoaded ? 'Source live' : 'Ready';
+            leftLive = !!videoLoaded;
+            var fxCount = activeEffects ? activeEffects.size : 0;
+            rightText = fxCount > 0 ? fxCount + ' active' : 'Choose a look';
+            rightLive = fxCount > 0;
+        } else if (section === 'audio') {
+            var synced = typeof audioSyncEnabled !== 'undefined' && audioSyncEnabled;
+            leftText = synced ? 'Sync armed' : 'Waiting';
+            leftLive = synced;
+            rightText = synced ? 'Live' : 'Off';
+            rightLive = synced;
+        } else if (section === 'track') {
+            leftText = currentMode > 0 ? 'Tracking live' : 'Choose a mode';
+            leftLive = currentMode > 0;
+            rightText = currentMode > 0 ? 'Styling' : 'Idle';
+            rightLive = currentMode > 0;
+        } else if (section === 'timeline') {
+            var hasSeg = typeof timelineSegments !== 'undefined' && timelineSegments && timelineSegments.length > 0;
+            leftText = hasSeg ? 'Cues staged' : 'No cues yet';
+            leftLive = hasSeg;
+            rightText = hasSeg ? 'Layers' : 'Empty';
+            rightLive = hasSeg;
+        } else if (section === 'export') {
+            leftText = 'Export';
+            rightText = 'Capture';
+        }
+
+        if (_badgeLeft) {
+            _badgeLeft.textContent = leftText;
+            _badgeLeft.classList.toggle('is-live', leftLive);
+        }
+        if (_badgeRight) {
+            _badgeRight.textContent = rightText;
+            _badgeRight.classList.toggle('is-live', rightLive);
+        }
+    }
+    window.updatePanelBadges = updatePanelBadges;
+
+    // ── Canvas Stage Overlay (Phase 7b) ──
+    var _stageTitle = document.getElementById('stage-title');
+    var _stagePills = document.getElementById('stage-pills');
+    var _stageHeadline = document.getElementById('stage-headline');
+    var _stageCopy = document.getElementById('stage-copy');
+    var _meterFill = document.getElementById('meter-fill');
+    var _meterStatus = document.getElementById('meter-status');
+    var _audioRings = document.getElementById('audio-rings');
+
+    function _getCanvasModel() {
+        var section = currentSection || 'create';
+        var disc = _getDiscovery();
+        var effectName = activeEffects && activeEffects.size > 0 ? [...activeEffects][0] : null;
+        var modeName = currentMode > 0 ? (typeof MODE_NAMES !== 'undefined' && MODE_NAMES[currentMode] ? MODE_NAMES[currentMode] : 'Mode ' + currentMode) : null;
+
+        var title = (section.charAt(0).toUpperCase() + section.slice(1)) + ' Preview';
+        var headline = '';
+        var copy = '';
+        var pills = [];
+
+        if (section === 'create') {
+            pills.push(disc.video ? 'Source live' : 'No source');
+            pills.push(effectName ? effectName + ' active' : 'No effect');
+            pills.push(disc.audio ? 'Audio synced' : 'Audio waiting');
+            if (!disc.video) {
+                headline = 'Build the first visual move.';
+                copy = 'Upload or stage a clip, choose a look, then let audio turn the motion into something responsive.';
+            } else if (!disc.effects) {
+                headline = 'Footage is live. Add an effect.';
+                copy = 'Click any effect card to apply it. Categories: Color, Distortion, Pattern, Overlay.';
+            } else if (!disc.audio) {
+                headline = effectName + ' is shaping the scene.';
+                copy = 'The next lift is audio sync so the whole scene starts moving with the sound.';
+            } else {
+                headline = effectName + ' is live and reacting to audio.';
+                copy = 'Use Track for subject-aware motion or Timeline to sequence changes over time.';
+            }
+        } else if (section === 'audio') {
+            title = 'Audio Reactive Preview';
+            headline = 'Audio sync is the heart of H.O.D.';
+            pills.push(disc.audio ? 'Sync on' : 'Sync off');
+            if (disc.audio) {
+                copy = 'Sound is driving the visuals. Add or remove targets until the motion feels intentional.';
+            } else {
+                copy = 'Choose an audio source, switch Sync ON, and map sound into the part of the stack that should breathe.';
+            }
+        } else if (section === 'track') {
+            title = 'Tracking Preview';
+            pills.push(modeName || 'Choose a mode');
+            if (disc.tracking) {
+                headline = modeName + ' is in focus.';
+                copy = modeName + ' is steering masks, blobs, and reactive overlays around the subject.';
+            } else {
+                headline = 'Lock the scene onto movement.';
+                copy = 'Pick a tracking mode so the effects can orbit faces, objects, or motion paths.';
+            }
+        } else if (section === 'timeline') {
+            title = 'Timeline Preview';
+            pills.push(disc.timeline ? 'Cues active' : 'No segment');
+            headline = disc.timeline ? 'Sequencing is live.' : 'Sequence change over time.';
+            copy = disc.timeline ? 'Keep layering scene shifts until the arc feels deliberate.' : 'Build a rhythm by adding sections that shift effects and sync behavior.';
+        } else {
+            title = 'Export Preview';
+            headline = 'Capture the final pass.';
+            copy = 'Record a live pass or grab a still frame once the timing feels right.';
+            pills.push('Ready');
+        }
+
+        return { title: title, headline: headline, copy: copy, pills: pills };
+    }
+
+    function renderCanvasOverlay() {
+        var stageEl = document.getElementById('canvas-stage');
+        // Hide the entire overlay when a source is active — don't distract from the content
+        if (stageEl) {
+            stageEl.style.display = videoLoaded ? 'none' : '';
+        }
+        if (videoLoaded) return;
+
+        var model = _getCanvasModel();
+        if (_stageTitle) _stageTitle.textContent = model.title;
+        if (_stageHeadline) _stageHeadline.textContent = model.headline;
+        if (_stageCopy) _stageCopy.textContent = model.copy;
+        if (_stagePills) {
+            _stagePills.innerHTML = model.pills.map(function(p) {
+                return '<span class="stage-pill">' + _escHtml(p) + '</span>';
+            }).join('');
+        }
+
+        // Audio meter
+        var audioActive = typeof audioSyncEnabled !== 'undefined' && audioSyncEnabled;
+        var meterVal = audioActive ? 42 : 18;
+        if (_meterFill) _meterFill.style.setProperty('--meter-fill', meterVal + '%');
+        if (_meterStatus) _meterStatus.textContent = audioActive ? 'live' : 'idle';
+        if (_audioRings) _audioRings.classList.toggle('is-live', audioActive);
+    }
+    window.renderCanvasOverlay = renderCanvasOverlay;
 
     // Update slim effects list for Timeline section
     function updateSlimEffectsList() {
@@ -3388,6 +3944,10 @@ function setupCoreUIListeners() {
     });
     if (exportSaveBtn) exportSaveBtn.addEventListener('click', () => {
         if (typeof saveRecording === 'function') saveRecording();
+    });
+    const exportProjBtn = document.getElementById('export-projection-btn');
+    if (exportProjBtn) exportProjBtn.addEventListener('click', () => {
+        if (typeof toggleProjection === 'function') toggleProjection();
     });
 
     // Default section set via HTML (body data-section="create" + section-active classes)
@@ -3799,44 +4359,72 @@ function setupCoreUIListeners() {
         });
     });
 
-    // Line color picker
-    const lineColorPicker = document.getElementById('line-color-picker');
-    const lineColorHex = document.getElementById('line-color-hex');
-    lineColorPicker.addEventListener('input', (e) => { lineColor = e.target.value; lineColorHex.value = e.target.value; });
-    lineColorHex.addEventListener('input', (e) => {
-        let v = e.target.value;
-        if (/^#[0-9a-fA-F]{6}$/.test(v)) { lineColor = v; lineColorPicker.value = v; }
-    });
-    lineColorHex.addEventListener('keydown', (e) => e.stopPropagation());
+    // (Line color/weight/style/dashed/connection controls moved to Blob Tracking right panel)
 
+    // ── Right panel Track section: connection line controls ──
+    document.querySelectorAll('#track-line-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showLines = (btn.dataset.value === 'on');
+            document.querySelectorAll('#track-line-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            let optGroup = document.getElementById('track-line-options');
+            if (optGroup) optGroup.style.display = showLines ? '' : 'none';
+        });
+    });
+    document.querySelectorAll('#track-linemode-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            connectionMode = btn.dataset.value;
+            document.querySelectorAll('#track-linemode-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    document.querySelectorAll('#track-linestyle-buttons .selector-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            lineStraight = (btn.dataset.value === 'straight');
+            document.querySelectorAll('#track-linestyle-buttons .selector-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+    // Line color
+    const trackLineColor = document.getElementById('track-line-color-picker');
+    const trackLineColorHex = document.getElementById('track-line-color-hex');
+    if (trackLineColor) {
+        trackLineColor.addEventListener('input', () => {
+            if (typeof lineColor !== 'undefined') lineColor = trackLineColor.value;
+            // Also update settings modal picker if it exists
+            let sp = document.getElementById('line-color-picker');
+            if (sp) sp.value = trackLineColor.value;
+            if (trackLineColorHex) trackLineColorHex.value = trackLineColor.value;
+        });
+    }
+    if (trackLineColorHex) {
+        trackLineColorHex.addEventListener('change', () => {
+            let v = trackLineColorHex.value;
+            if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+                if (typeof lineColor !== 'undefined') lineColor = v;
+                if (trackLineColor) trackLineColor.value = v;
+            }
+        });
+    }
     // Line weight
-    const lineWeightSlider = document.getElementById('slider-line-weight');
-    const lineWeightInput = document.getElementById('val-line-weight');
-    lineWeightSlider.addEventListener('input', (e) => { lineWeight = parseFloat(e.target.value); lineWeightInput.value = e.target.value; });
-    lineWeightInput.addEventListener('input', (e) => { lineWeight = parseFloat(e.target.value) || 1; lineWeightSlider.value = lineWeight; });
-    lineWeightInput.addEventListener('keydown', (e) => e.stopPropagation());
-
-    // Line style (curved/straight)
-    document.querySelectorAll('#line-style-buttons .selector-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            lineStraight = (e.target.dataset.value === 'straight');
-            document.querySelectorAll('#line-style-buttons .selector-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+    const trackLineWeight = document.getElementById('slider-track-line-weight');
+    const trackLineWeightVal = document.getElementById('val-track-line-weight');
+    if (trackLineWeight && trackLineWeightVal) {
+        trackLineWeight.addEventListener('input', () => {
+            if (typeof lineWeight !== 'undefined') lineWeight = parseFloat(trackLineWeight.value);
+            trackLineWeightVal.value = trackLineWeight.value;
         });
-    });
-
-    // Line dashed toggle
-    const lineDashedCb = document.getElementById('line-dashed');
-    if (lineDashedCb) lineDashedCb.addEventListener('change', (e) => { lineDashed = e.target.checked; });
-
-    // Connection mode (chain/hub/web)
-    document.querySelectorAll('#connection-buttons .selector-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            connectionMode = e.target.dataset.value;
-            document.querySelectorAll('#connection-buttons .selector-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+        trackLineWeightVal.addEventListener('change', () => {
+            let v = parseFloat(trackLineWeightVal.value) || 1;
+            trackLineWeight.value = v;
+            if (typeof lineWeight !== 'undefined') lineWeight = v;
         });
-    });
+    }
+    // Line dashed
+    const trackLineDashed = document.getElementById('track-line-dashed');
+    if (trackLineDashed) {
+        trackLineDashed.addEventListener('change', () => { lineDashed = trackLineDashed.checked; });
+    }
 
     // Blob style selector (in Visualize tab of left panel)
     document.querySelectorAll('#blob-style-buttons-main .selector-btn').forEach(btn => {
@@ -3964,6 +4552,8 @@ function setupCoreUIListeners() {
     if (tbRecord) tbRecord.addEventListener('click', toggleRecording);
     if (tbSave) tbSave.addEventListener('click', saveRecording);
     if (tbPhoto) tbPhoto.addEventListener('click', saveScreenshot);
+    const tbProjection = document.getElementById('tb-projection');
+    if (tbProjection) tbProjection.addEventListener('click', toggleProjection);
 
     // Cross-link navigation between panels
     let linkToCamera = document.getElementById('link-to-camera');
@@ -4303,7 +4893,7 @@ function updateButtonStates() {
 function saveLayerState() {
     try {
         localStorage.setItem('blobfx-layers', JSON.stringify({
-            blobsVisible, blobsOpacity, fxMasterOpacity,
+            blobsVisible, fxMasterOpacity,
             maskOverlayVisible, beatFlashVisible
         }));
     } catch(e) {}
@@ -4313,7 +4903,7 @@ function restoreLayerState() {
         const s = JSON.parse(localStorage.getItem('blobfx-layers'));
         if (s) {
             if (typeof s.blobsVisible === 'boolean') blobsVisible = s.blobsVisible;
-            if (typeof s.blobsOpacity === 'number') blobsOpacity = s.blobsOpacity;
+            // blobsOpacity always 1.0 — no user-facing control for this anymore
             if (typeof s.fxMasterOpacity === 'number') fxMasterOpacity = s.fxMasterOpacity;
             if (typeof s.maskOverlayVisible === 'boolean') maskOverlayVisible = s.maskOverlayVisible;
             if (typeof s.beatFlashVisible === 'boolean') beatFlashVisible = s.beatFlashVisible;
@@ -4669,11 +5259,13 @@ function startWebcam(deviceId, facingMode) {
     const savedDevice = deviceId || localStorage.getItem('hod-camera-device') || undefined;
     let constraints;
     if (savedDevice) {
-        constraints = { video: { deviceId: { exact: savedDevice } } };
+        // Use 'ideal' instead of 'exact' — 'exact' fails hard if device is temporarily unavailable
+        // (common with Continuity Camera / iPhone which can disconnect between sessions)
+        constraints = { video: { deviceId: { ideal: savedDevice } } };
     } else if (facingMode) {
         constraints = { video: { facingMode: facingMode } }; // loose, not exact (iOS compat)
     } else {
-        constraints = VIDEO;
+        constraints = { video: true };
     }
 
     videoEl = createCapture(constraints, () => {
@@ -4686,9 +5278,13 @@ function startWebcam(deviceId, facingMode) {
         if (videoEl.elt && videoEl.elt.srcObject) {
             let track = videoEl.elt.srcObject.getVideoTracks()[0];
             if (track) {
-                let facing = track.getSettings().facingMode;
+                let settings = track.getSettings();
+                let facing = settings.facingMode;
                 if (facing === 'user' || facing === 'environment') _currentFacingMode = facing;
-                else if (!deviceId && !facingMode) _currentFacingMode = 'user'; // default built-in
+                else if (!deviceId && !facingMode) _currentFacingMode = 'user';
+                // Log which device actually connected
+                console.log('[Camera] Connected:', track.label);
+                ui.fileName.innerText = track.label || 'webcam active';
             }
         }
         // Populate device selector after permission is granted
@@ -4808,11 +5404,13 @@ function handleFile(event) {
             _dbg('createVideo callback fired — video ready');
             videoEl.volume(0); videoEl.loop(); videoEl.hide();
             videoLoaded = true; videoPlaying = true;
-            // Show first-run overlay (once per user)
-            if (!localStorage.getItem('hod-onboarded')) {
-                const fro = document.getElementById('first-run-overlay');
-                if (fro) fro.style.display = '';
-            }
+            // Onboarding is handled by the guide system on page load
+            // Refresh guide + canvas overlay when video loads (discovery state changed)
+            try {
+                if (typeof renderGuide === 'function') renderGuide();
+                if (typeof renderCanvasOverlay === 'function') renderCanvasOverlay();
+                if (typeof updatePanelBadges === 'function') updatePanelBadges();
+            } catch(e) { console.warn('Guide refresh error:', e); }
             // Enable video audio source button
             const vab = document.getElementById('audio-src-video');
             if (vab) vab.disabled = false;
@@ -5203,6 +5801,17 @@ function keyPressed(event) {
         debugVisible = !debugVisible;
         let dp = document.getElementById('debug-panel');
         if (dp) dp.classList.toggle('visible', debugVisible);
+        return false;
+    }
+
+    // Projection output window (Shift+P)
+    if (key === 'P' && e.shiftKey) {
+        toggleProjection();
+        return false;
+    }
+    // Screenshot (P without shift)
+    if (key === 'p' && !e.shiftKey) {
+        saveScreenshot();
         return false;
     }
 
@@ -5655,4 +6264,192 @@ function _showTouchContextMenu(cx, cy) {
             document.removeEventListener('touchstart', dismiss);
         }, { once: true });
     }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROJECTION OUTPUT — clean second window for live projection / VJ use
+// ═══════════════════════════════════════════════════════════════════════
+
+let _projWindow = null;
+let _projCanvas = null;
+let _projCtx = null;
+let _projActive = false;
+
+function toggleProjection() {
+    if (_projActive) {
+        closeProjectionWindow();
+    } else {
+        openProjectionWindow();
+    }
+}
+
+function openProjectionWindow() {
+    // Close stale reference if window was closed by user
+    if (_projWindow && _projWindow.closed) {
+        _projWindow = null;
+        _projCanvas = null;
+        _projCtx = null;
+        _projActive = false;
+    }
+    if (_projActive) return;
+
+    // Open a new window — user drags it to the projector display
+    let w = screen.width;
+    let h = screen.height;
+    _projWindow = window.open('', 'hod-projection',
+        'width=' + w + ',height=' + h + ',menubar=no,toolbar=no,location=no,status=no');
+
+    if (!_projWindow) {
+        console.warn('Projection: popup blocked — allow popups for this site');
+        return;
+    }
+
+    // Build the projection window document
+    let doc = _projWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head>' +
+        '<title>H.O.D. — Projection</title>' +
+        '<style>' +
+        '* { margin: 0; padding: 0; box-sizing: border-box; }' +
+        'html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: none; }' +
+        'canvas { display: block; width: 100%; height: 100%; object-fit: contain; }' +
+        '.proj-hint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); ' +
+        '  color: rgba(139,69,232,0.6); font: 12px/1 "Commit Mono", monospace; ' +
+        '  letter-spacing: 1px; pointer-events: none; transition: opacity 1.5s; }' +
+        '</style></head><body>' +
+        '<canvas id="proj-canvas"></canvas>' +
+        '<div class="proj-hint" id="proj-hint">Press F for fullscreen &middot; ESC to exit</div>' +
+        '</body></html>');
+    doc.close();
+
+    _projCanvas = doc.getElementById('proj-canvas');
+    _projCtx = _projCanvas.getContext('2d');
+
+    // Size canvas to match main p5 canvas
+    _syncProjSize();
+
+    // Fade out hint after 4 seconds
+    let hint = doc.getElementById('proj-hint');
+    if (hint) {
+        setTimeout(() => { hint.style.opacity = '0'; }, 4000);
+        setTimeout(() => { hint.style.display = 'none'; }, 5500);
+    }
+
+    // Keyboard: F = fullscreen, Escape = exit fullscreen
+    doc.addEventListener('keydown', (e) => {
+        if (e.key === 'f' || e.key === 'F') {
+            if (!doc.fullscreenElement) {
+                doc.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                doc.exitFullscreen().catch(() => {});
+            }
+        }
+        if (e.key === 'Escape' && doc.fullscreenElement) {
+            doc.exitFullscreen().catch(() => {});
+        }
+    });
+
+    // Show cursor on mouse move, hide after 2s idle
+    let cursorTimer = null;
+    doc.addEventListener('mousemove', () => {
+        doc.body.style.cursor = 'default';
+        clearTimeout(cursorTimer);
+        cursorTimer = setTimeout(() => { doc.body.style.cursor = 'none'; }, 2000);
+    });
+
+    // Resize canvas when projection window is resized
+    _projWindow.addEventListener('resize', _syncProjSize);
+
+    // Detect if user closes the projection window
+    let pollClosed = setInterval(() => {
+        if (!_projWindow || _projWindow.closed) {
+            clearInterval(pollClosed);
+            _onProjWindowClosed();
+        }
+    }, 500);
+
+    _projActive = true;
+    _updateProjUI(true);
+}
+
+function _syncProjSize() {
+    if (!_projWindow || !_projCanvas) return;
+    let dpr = _projWindow.devicePixelRatio || 1;
+    let w = _projWindow.innerWidth;
+    let h = _projWindow.innerHeight;
+    _projCanvas.width = Math.round(w * dpr);
+    _projCanvas.height = Math.round(h * dpr);
+    _projCanvas.style.width = w + 'px';
+    _projCanvas.style.height = h + 'px';
+}
+
+function closeProjectionWindow() {
+    if (_projWindow && !_projWindow.closed) {
+        _projWindow.close();
+    }
+    _onProjWindowClosed();
+}
+
+function _onProjWindowClosed() {
+    _projWindow = null;
+    _projCanvas = null;
+    _projCtx = null;
+    _projActive = false;
+    _updateProjUI(false);
+}
+
+function _updateProjUI(active) {
+    let btn = document.getElementById('tb-projection');
+    let indicator = document.getElementById('tb-proj-indicator');
+    let exportBtn = document.getElementById('export-projection-btn');
+    if (btn) btn.classList.toggle('proj-active', active);
+    if (indicator) indicator.classList.toggle('active', active);
+    if (indicator) indicator.style.display = active ? 'flex' : 'none';
+    if (exportBtn) exportBtn.textContent = active ? 'CLOSE PROJECTION' : 'PROJECTION WINDOW';
+}
+
+// Called at end of draw() — copies visible canvas to projection window
+function _syncProjectionFrame() {
+    if (!_projActive || !_projCtx || !_projCanvas) return;
+    if (_projWindow && _projWindow.closed) { _onProjWindowClosed(); return; }
+
+    let pc = _projCanvas;
+    let ctx = _projCtx;
+    let pw = pc.width;
+    let ph = pc.height;
+
+    // Clear to black
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, pw, ph);
+
+    // Calculate fit (contain) for video region
+    if (videoLoaded && videoW > 0 && videoH > 0) {
+        let srcAspect = videoW / videoH;
+        let dstAspect = pw / ph;
+        let dw, dh, dx, dy;
+        if (srcAspect > dstAspect) {
+            dw = pw;
+            dh = pw / srcAspect;
+        } else {
+            dh = ph;
+            dw = ph * srcAspect;
+        }
+        dx = (pw - dw) / 2;
+        dy = (ph - dh) / 2;
+
+        // Draw the visible video region from p5 canvas
+        let pd = pixelDensity();
+        let visLeft = Math.max(0, videoX);
+        let visTop = Math.max(0, videoY);
+        let visRight = Math.min(width, videoX + videoW);
+        let visBottom = Math.min(height, videoY + videoH);
+
+        ctx.drawImage(p5Canvas,
+            Math.round(visLeft * pd), Math.round(visTop * pd),
+            Math.round((visRight - visLeft) * pd), Math.round((visBottom - visTop) * pd),
+            dx, dy, dw, dh);
+    } else {
+        // No video — mirror entire canvas
+        ctx.drawImage(p5Canvas, 0, 0, pw, ph);
+    }
 }

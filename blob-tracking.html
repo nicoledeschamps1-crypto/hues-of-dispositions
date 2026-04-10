@@ -119,8 +119,12 @@
             --surface-subtle: rgba(255, 255, 255, 0.02);
             --border-subtle: rgba(169, 102, 255, 0.06);
 
+            /* Section color theming (updated by JS on section switch) */
+            --section-color: #8B45E8;
+            --section-rgb: 139, 69, 232;
+
             /* Layout sizing */
-            --topbar-h: 36px;
+            --topbar-h: 42px;
 
             /* Timeline sizing */
             --tl-height: 280px;
@@ -185,27 +189,43 @@
             background: rgba(139,69,232,0.3);
         }
 
-        /* Panel Base (shared by left + right) */
+        /* Panel Base (shared by left + right) — glass aesthetic */
         .panel {
             position: absolute;
             top: calc(var(--topbar-h) + 24px);
             width: 280px;
             padding: 12px;
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(169, 102, 255, 0.06);
-            border-radius: var(--panel-radius);
+            background: rgba(17, 14, 22, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(var(--section-rgb), 0.12);
+            border-radius: 22px;
             z-index: 10;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.45);
             transition: transform 0.3s ease, opacity 0.3s ease;
             max-height: calc(100vh - var(--topbar-h) - 44px);
             overflow-y: auto;
             overflow-x: hidden;
             overscroll-behavior: contain;
         }
+        /* Section-tinted gradient overlay on panels */
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: inherit;
+            background:
+                linear-gradient(135deg, rgba(var(--section-rgb), 0.06), transparent 26%),
+                linear-gradient(315deg, rgba(0, 184, 148, 0.03), transparent 20%);
+            z-index: 0;
+        }
+        .panel > .header-section,
+        .panel > .panel-close-btn,
+        .panel > [id^="ui-controls"] { position: relative; z-index: 1; }
         #left-panel { left: 24px; }
         #right-panel { right: 24px; overflow-x: hidden; }
 
@@ -291,12 +311,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: var(--font-xs);
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 3px;
-            text-transform: none;
-            letter-spacing: 0.2px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
         }
         
         /* Direct Input Styling */
@@ -325,9 +345,53 @@
         /* Control Groups */
         .control-group {
             margin-bottom: 0;
-            padding: 4px 6px;
-            border-radius: 4px;
-            transition: background-color 0.1s;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(24, 19, 33, 0.6);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .control-group.is-active {
+            border-color: rgba(var(--section-rgb), 0.25);
+            background: linear-gradient(180deg, rgba(var(--section-rgb), 0.08), rgba(24, 19, 33, 0.7));
+        }
+
+        /* ═══ PANEL BADGES + EYEBROWS ═══ */
+        .panel-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--color-text-muted);
+            font-family: 'Commit Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            text-transform: uppercase;
+        }
+        .panel-badge.is-live {
+            border-color: rgba(0, 184, 148, 0.28);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+        }
+        .eyebrow {
+            font-family: 'Commit Mono', monospace;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+        }
+        .card-topline {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
         }
 
         /* FADER STYLE SLIDERS */
@@ -393,39 +457,40 @@
             display: flex;
             flex-wrap: wrap;
             width: 100%;
-            gap: 3px;
+            gap: 5px;
             padding: 0;
-            border-radius: 6px;
         }
 
         .selector-btn {
             flex: 1;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            color: var(--btn-text);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--color-text-muted);
             font-size: 10px;
             font-weight: 600;
-            padding: 4px 6px;
-            min-height: 26px;
+            padding: 5px 8px;
+            min-height: 28px;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.15s ease;
             text-transform: uppercase;
-            letter-spacing: 0.2px;
+            letter-spacing: 0.3px;
             font-family: inherit;
-            border-radius: 4px;
+            border-radius: 999px;
             box-sizing: border-box;
         }
 
         .selector-btn:hover {
-            color: var(--btn-text-active);
-            background: var(--btn-bg-hover);
-            border-color: var(--btn-border-hover);
+            color: var(--color-text);
+            background: rgba(var(--section-rgb), 0.08);
+            border-color: rgba(var(--section-rgb), 0.2);
+            transform: translateY(-1px);
         }
 
         .selector-btn.active {
-            background: var(--btn-bg-active);
-            color: var(--btn-text-active);
-            border-color: var(--btn-border-active);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+            border-color: rgba(0, 184, 148, 0.36);
+            box-shadow: 0 0 0 1px rgba(0, 184, 148, 0.08);
         }
 
         /* ═══ BUTTON SYSTEM ═══ */
@@ -504,6 +569,62 @@
             color: var(--color-danger) !important;
         }
 
+        /* ═══ CHIP SYSTEM (unified pill buttons — mockup control language) ═══ */
+        .chip {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--color-text);
+            font-size: 10px;
+            font-weight: 600;
+            font-family: inherit;
+            min-height: 32px;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .chip:hover { transform: translateY(-1px); }
+        .chip.is-selected,
+        .chip.active {
+            border-color: rgba(0, 184, 148, 0.36);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+            box-shadow: 0 0 0 1px rgba(0, 184, 148, 0.08), 0 8px 16px rgba(0, 184, 148, 0.08);
+        }
+        .chip.is-soft,
+        .chip:not(.is-selected):not(.active) {
+            color: var(--color-text-muted);
+        }
+        .chip:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* ═══ SLIDER UPGRADE (richer track + section-tinted fill) ═══ */
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            margin-top: -5px;
+            background: #ebe6f6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+
+        /* ═══ REDUCED MOTION ═══ */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
         /* Panel Tabs */
         /* Visually hidden — accessible to screen readers */
         .visually-hidden {
@@ -528,7 +649,7 @@
         /* File Upload */
         .source-row {
             display: flex;
-            gap: 6px;
+            gap: 8px;
         }
 
         .source-row #file-input-container {
@@ -537,9 +658,9 @@
 
         #webcam-btn {
             flex: 1 1 0;
-            border: 1px dashed var(--slider-track);
-            border-radius: 8px;
-            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            background: rgba(24, 19, 33, 0.6);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -547,7 +668,7 @@
             gap: 4px;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: var(--text-muted);
+            color: var(--color-text-muted);
             font-size: var(--font-xs);
             font-weight: 700;
             text-transform: uppercase;
@@ -557,15 +678,16 @@
         }
 
         #webcam-btn:hover {
-            border-color: var(--text-muted);
-            background: rgba(139,69,232,0.03);
-            color: var(--text-main);
+            border-color: rgba(var(--section-rgb), 0.25);
+            background: rgba(var(--section-rgb), 0.06);
+            color: var(--color-text);
+            transform: translateY(-1px);
         }
 
         #webcam-btn.active {
-            border-color: var(--text-main);
-            background: rgba(255,255,255,0.05);
-            color: var(--text-main);
+            border-color: rgba(0, 184, 148, 0.36);
+            background: rgba(0, 184, 148, 0.1);
+            color: #d9fff6;
         }
 
         #webcam-btn svg {
@@ -609,22 +731,22 @@
 
         #file-input-container {
             display: block;
-            border: 1px dashed var(--slider-track);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 12px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            background: rgba(0,0,0,0.2);
+            background: rgba(24, 19, 33, 0.6);
             position: relative;
-            border-radius: 8px;
+            border-radius: 14px;
             overflow: hidden;
             min-width: 0;
         }
 
         #file-input-container:hover {
-            border-color: var(--text-muted);
-            background: rgba(139,69,232,0.03);
-            box-shadow: 0 0 12px rgba(108,92,231,0.1);
+            border-color: rgba(var(--section-rgb), 0.25);
+            background: rgba(var(--section-rgb), 0.06);
+            transform: translateY(-1px);
         }
 
         #file-input-container input[type="file"],
@@ -1065,56 +1187,69 @@
         /* ═══ FX EFFECT CARDS ═══ */
         .fx-card-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 2px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
             margin-bottom: var(--sp-1);
         }
         .fx-card {
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            border-radius: 3px;
-            padding: 4px 4px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
+                radial-gradient(circle at top right, rgba(var(--section-rgb), 0.12), transparent 40%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 8px 10px;
             cursor: pointer;
-            transition: all 0.15s;
-            text-align: center;
-            font-size: 9px;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            text-align: left;
+            font-size: 10px;
             font-weight: 600;
             text-transform: none;
             letter-spacing: 0.1px;
-            color: var(--btn-text);
+            color: var(--color-text);
             font-family: inherit;
             position: relative;
-            min-height: 24px;
+            min-height: 42px;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
         }
         .fx-card:hover {
-            background: var(--btn-bg-hover);
-            border-color: var(--btn-border-hover);
-            color: var(--btn-text-active);
+            border-color: rgba(var(--section-rgb), 0.28);
+            box-shadow: 0 8px 20px rgba(var(--section-rgb), 0.1);
+            transform: translateY(-1px);
         }
         .fx-card.viewing {
             border: 1px dotted var(--cat-color, var(--color-accent));
-            color: var(--btn-text-active);
+            color: var(--color-text);
             background: rgba(255,255,255,0.05);
         }
         .fx-card.active-effect {
-            background: color-mix(in srgb, var(--cat-color, var(--color-accent)) 15%, transparent);
-            border-left: 2px solid var(--cat-color, var(--color-accent));
-            box-shadow: none;
+            border-color: rgba(0, 184, 148, 0.36);
+            box-shadow: 0 12px 24px rgba(0, 184, 148, 0.1);
+            background:
+                linear-gradient(180deg, rgba(0, 184, 148, 0.12), rgba(20, 16, 27, 0.88)),
+                radial-gradient(circle at top right, rgba(0, 184, 148, 0.14), transparent 40%);
         }
         .fx-card.active-effect.viewing {
-            background: color-mix(in srgb, var(--cat-color, var(--color-accent)) 20%, transparent);
-            border: 1px dotted var(--cat-color, var(--color-accent));
-            border-left: 2px solid var(--cat-color, var(--color-accent));
+            border-color: rgba(0, 184, 148, 0.4);
+            background:
+                linear-gradient(180deg, rgba(0, 184, 148, 0.16), rgba(20, 16, 27, 0.88)),
+                radial-gradient(circle at top right, rgba(0, 184, 148, 0.18), transparent 40%);
+        }
+        /* Effect swatch preview strip — hidden to save space */
+        .fx-card-preview { display: none; }
+        .fx-card-subtitle {
+            font-size: 8px;
+            font-weight: 400;
+            color: var(--color-text-muted);
+            margin-top: 1px;
         }
         /* Audio sync indicator on fx card */
         .fx-card .fx-audio-badge {
             position: absolute;
-            bottom: 2px;
-            right: 2px;
-            font-size: 8px;
+            bottom: 6px;
+            right: 8px;
+            font-size: 9px;
             line-height: 1;
             color: var(--color-accent);
             opacity: 0.9;
@@ -1131,10 +1266,10 @@
         }
         .fx-card .fx-fav {
             position: absolute;
-            top: 2px;
-            right: 2px;
-            width: 12px;
-            height: 12px;
+            top: 6px;
+            right: 8px;
+            width: 14px;
+            height: 14px;
             font-size: var(--font-xs);
             line-height: 12px;
             color: rgba(255,255,255,0.2);
@@ -1543,26 +1678,30 @@
             font-style: italic;
         }
         /* ═══ GUIDE RAIL ═══ */
+        /* ═══ GUIDE SYSTEM (4 layers) ═══ */
+
+        /* ── Layer 1: Contextual Guide Rail ── */
         .guide-rail {
             position: absolute;
             top: calc(var(--topbar-h) + 24px);
             right: 312px;
-            width: 200px;
-            padding: 14px 16px;
-            background: rgba(17, 14, 22, 0.94);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(169, 102, 255, 0.12);
-            border-radius: var(--panel-radius, 8px);
+            width: 220px;
+            padding: 16px;
+            background: rgba(17, 14, 22, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(var(--section-rgb), 0.12);
+            border-radius: 22px;
             z-index: 9;
             max-height: calc(100vh - var(--topbar-h) - 80px);
             overflow-y: auto;
             box-shadow: 0 8px 24px rgba(0,0,0,0.35);
             font-family: inherit;
             transition: opacity 0.2s ease, transform 0.2s ease;
+            display: grid;
+            gap: 12px;
         }
-        .guide-rail.hidden {
-            display: none;
-        }
+        .guide-rail.hidden { display: none; }
         .guide-rail::-webkit-scrollbar { width: 3px; }
         .guide-rail::-webkit-scrollbar-track { background: transparent; }
         .guide-rail::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 2px; }
@@ -1571,7 +1710,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
         }
         .guide-kicker {
             font-size: 9px;
@@ -1590,6 +1728,17 @@
             margin: 0;
             flex: 1;
             line-height: 1.3;
+        }
+        .guide-badge {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 7px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 184, 148, 0.28);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .guide-close {
             background: none;
@@ -1611,56 +1760,162 @@
             border-color: rgba(255,255,255,0.25);
         }
 
+        /* Suggestion card */
+        .guide-suggestion {
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 184, 148, 0.22);
+            background: linear-gradient(180deg, rgba(0, 184, 148, 0.1), rgba(18, 15, 24, 0.9));
+        }
+        .guide-suggestion strong {
+            display: block;
+            font-size: 11px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+            color: var(--text-main, #fff);
+        }
+        .guide-suggestion p {
+            margin: 0;
+            font-size: 10px;
+            color: var(--text-muted, #888);
+            line-height: 1.4;
+        }
+        .guide-action {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 184, 148, 0.3);
+            background: rgba(0, 184, 148, 0.16);
+            color: #d8fff6;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+        .guide-action:hover { transform: translateY(-1px); background: rgba(0, 184, 148, 0.24); }
+        .guide-action.is-pulse { animation: guidePulse 2.8s ease-in-out infinite; }
+        @keyframes guidePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.2); }
+            50% { box-shadow: 0 0 0 6px rgba(0, 184, 148, 0); }
+        }
+
+        /* Steps */
         .guide-steps {
             list-style: none;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         .guide-step {
-            display: flex;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 22px 1fr 24px;
+            gap: 8px;
             align-items: flex-start;
+            padding: 6px;
+            border-radius: 8px;
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
+        .guide-step.is-current {
+            background: rgba(0, 184, 148, 0.08);
+            border: 1px solid rgba(0, 184, 148, 0.18);
+        }
+        .guide-step.is-complete { opacity: 0.6; }
         .guide-step-num {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            background: rgba(139, 69, 232, 0.18);
-            border: 1px solid rgba(139, 69, 232, 0.3);
-            color: var(--color-accent, #8B45E8);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-muted, #888);
             font-size: 10px;
             font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            margin-top: 1px;
         }
-        .guide-step-body {
-            flex: 1;
-            min-width: 0;
+        .guide-step.is-current .guide-step-num {
+            border-color: rgba(0, 184, 148, 0.34);
+            color: #d8fff6;
+            background: rgba(0, 184, 148, 0.16);
+            box-shadow: 0 0 0 4px rgba(0, 184, 148, 0.08);
         }
+        .guide-step.is-complete .guide-step-num {
+            border-color: rgba(0, 184, 148, 0.34);
+            color: #d8fff6;
+            background: rgba(0, 184, 148, 0.16);
+        }
+        .guide-step-body { flex: 1; min-width: 0; }
         .guide-step-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             color: var(--text-main, #fff);
             line-height: 1.3;
             margin-bottom: 2px;
         }
         .guide-step-desc {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-muted, #888);
             line-height: 1.4;
         }
-        .guide-empty {
-            font-size: 10px;
+        .guide-step-action {
+            width: 24px;
+            height: 24px;
+            display: grid;
+            place-items: center;
+            background: none;
+            border: none;
             color: var(--text-muted);
-            text-align: center;
-            padding: 12px 0;
-            font-style: italic;
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 0;
+            transition: color 0.15s;
+        }
+        .guide-step-action:hover { color: var(--text-main); }
+
+        /* Discovery tracker */
+        .guide-tracker {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .tracker-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            color: var(--text-muted, #888);
+            position: relative;
+        }
+        .tracker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .tracker-item.is-complete .tracker-dot {
+            width: 12px;
+            height: 12px;
+            border-color: rgba(0, 184, 148, 0.34);
+            background: rgba(0, 184, 148, 0.16);
+            color: #d9fff6;
+        }
+        .tracker-item.is-current .tracker-dot {
+            border-color: rgba(0, 184, 148, 0.34);
+            background: rgba(0, 184, 148, 0.14);
+            box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.08);
+            animation: guidePulse 2.8s ease-in-out infinite;
         }
 
         /* Guide toolbar button active state */
@@ -1700,12 +1955,407 @@
         .guide-card .guide-step-title { font-size: 10px; }
         .guide-card .guide-step-desc { font-size: 9px; }
 
-        /* ═══ RESPONSIVE GUIDE ═══ */
-        /* Medium screens: panels 240px */
-        @media (max-width: 1200px) {
-            .guide-rail { right: 272px; width: 180px; }
+        /* ── Layer 2: Onboarding Overlay ── */
+        .onboarding-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            padding: 24px;
+            background: radial-gradient(circle at 50% 22%, rgba(48, 28, 80, 0.68), transparent 34%),
+                        linear-gradient(180deg, rgba(9, 7, 12, 0.82), rgba(7, 6, 10, 0.94));
+            backdrop-filter: blur(12px) saturate(1.06);
+            -webkit-backdrop-filter: blur(12px) saturate(1.06);
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 400ms ease, visibility 400ms ease;
+            overflow: auto;
+            display: grid;
+            place-items: center;
         }
-        /* Small screens: convert guide rail to a bottom drawer */
+        .onboarding-overlay.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .onboarding-shell {
+            width: min(1100px, 100%);
+            display: grid;
+            gap: 24px;
+            text-align: center;
+        }
+        .onboarding-hero h1 {
+            margin: 0;
+            font-size: clamp(2.2rem, 6vw, 4rem);
+            letter-spacing: -0.03em;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.92);
+        }
+        .onboarding-hero p {
+            margin: 8px auto 0;
+            max-width: 480px;
+            color: rgba(243, 239, 255, 0.7);
+            font-family: "Iowan Old Style", Palatino, Georgia, serif;
+            font-size: clamp(0.95rem, 2vw, 1.2rem);
+            line-height: 1.5;
+        }
+        .onboarding-cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .onboarding-card {
+            position: relative;
+            padding: 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(139, 69, 232, 0.15);
+            background: linear-gradient(180deg, rgba(24, 19, 33, 0.92), rgba(11, 9, 15, 0.92));
+            text-align: left;
+            transition: opacity 0.32s ease, filter 0.32s ease, border-color 0.32s ease, box-shadow 0.32s ease;
+        }
+        .onboarding-card.is-locked {
+            opacity: 0.4;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+        .onboarding-card.is-active {
+            border-color: rgba(0, 184, 148, 0.32);
+            box-shadow: 0 16px 32px rgba(0, 184, 148, 0.08);
+            animation: onboardPulse 2.8s ease-in-out infinite;
+        }
+        @keyframes onboardPulse {
+            0%, 100% { box-shadow: 0 16px 32px rgba(0, 184, 148, 0.08); }
+            50% { box-shadow: 0 16px 32px rgba(0, 184, 148, 0.18); }
+        }
+        .onboarding-card.is-complete {
+            border-color: rgba(0, 184, 148, 0.28);
+            box-shadow: 0 12px 24px rgba(0, 184, 148, 0.1);
+        }
+        .onboarding-card.is-unlocking {
+            animation: unlockGlow 760ms ease;
+        }
+        @keyframes unlockGlow {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 184, 148, 0.3); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(0, 184, 148, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+        }
+        .onboarding-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .onboarding-card-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(243, 239, 255, 0.8);
+        }
+        .onboarding-card-status {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .onboarding-card.is-active .onboarding-card-status,
+        .onboarding-card.is-complete .onboarding-card-status {
+            border-color: rgba(0, 184, 148, 0.28);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+        }
+        .onboarding-card h2 {
+            margin: 0 0 8px;
+            font-size: 1.05rem;
+            line-height: 1.25;
+        }
+        .onboarding-card .ob-desc {
+            margin: 0;
+            color: var(--text-muted, #888);
+            font-size: 12px;
+            line-height: 1.5;
+            min-height: 54px;
+        }
+        .onboarding-controls {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .onboarding-card.is-locked .onboarding-controls {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .ob-btn {
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main, #fff);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        }
+        .ob-btn:hover { transform: translateY(-1px); }
+        .ob-btn.is-selected {
+            border-color: rgba(0, 184, 148, 0.36);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+        }
+        .onboarding-launch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 184, 148, 0.34);
+            background: linear-gradient(180deg, rgba(0, 184, 148, 0.2), rgba(0, 184, 148, 0.1));
+            color: #d9fff6;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(6px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            box-shadow: 0 12px 24px rgba(0, 184, 148, 0.12);
+        }
+        .onboarding-launch.is-visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .onboarding-launch:hover { transform: translateY(-1px); }
+        .onboarding-skip {
+            display: block;
+            margin: 8px auto 0;
+            background: none;
+            border: none;
+            color: var(--text-muted, #888);
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .onboarding-skip:hover { color: var(--text-main); }
+        @media (max-width: 700px) {
+            .onboarding-cards {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+        }
+
+        /* ── Layer 3: Section Intros ── */
+        .section-intro {
+            position: fixed;
+            top: calc(var(--topbar-h, 40px) + 12px);
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 16px;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            border-radius: 16px;
+            border: 1px solid transparent;
+            background: rgba(17, 14, 22, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            transition: max-height 300ms cubic-bezier(0.22, 1, 0.36, 1),
+                        opacity 220ms ease,
+                        padding 300ms cubic-bezier(0.22, 1, 0.36, 1),
+                        transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+        }
+        .section-intro.is-visible {
+            max-height: 80px;
+            opacity: 1;
+            padding: 12px 16px;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+        .section-intro__icon {
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            background: rgba(8, 8, 12, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .section-intro__copy {
+            min-width: 0;
+            flex: 1;
+        }
+        .section-intro__copy strong {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .section-intro__copy span {
+            font-size: 11px;
+            color: rgba(243, 239, 255, 0.75);
+        }
+        .section-intro__dismiss {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(9, 9, 13, 0.4);
+            color: var(--text-main, #fff);
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .section-intro__dismiss:hover { border-color: rgba(255,255,255,0.3); }
+
+        /* Section intro colors — dynamic via --section-rgb */
+        .section-intro__icon { color: var(--section-color); }
+        .section-intro.is-visible {
+            border-color: rgba(var(--section-rgb), 0.28);
+            box-shadow: inset 3px 0 0 var(--section-color), 0 8px 24px rgba(0,0,0,0.35);
+        }
+
+        /* ── Layer 4: Spotlight Tour ── */
+        .tour-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1210;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 300ms ease, visibility 300ms ease;
+            pointer-events: none;
+        }
+        .tour-overlay.is-visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .tour-card {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 1220;
+            width: min(420px, calc(100vw - 32px));
+            padding: 18px;
+            border-radius: 16px;
+            border: 1px solid rgba(139, 69, 232, 0.2);
+            background: rgba(17, 14, 22, 0.96);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 300ms ease, visibility 300ms ease, transform 300ms ease;
+        }
+        .tour-card.is-visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        .tour-step-indicator {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--color-accent, #8B45E8);
+            margin-bottom: 8px;
+        }
+        .tour-card h3 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .tour-card p {
+            margin: 0 0 14px;
+            font-size: 12px;
+            color: var(--text-muted, #888);
+            line-height: 1.5;
+        }
+        .tour-nav {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .tour-btn {
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main, #fff);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .tour-btn:hover { transform: translateY(-1px); }
+        .tour-btn:disabled { opacity: 0.3; pointer-events: none; }
+        .tour-btn-primary {
+            border-color: rgba(0, 184, 148, 0.3);
+            background: rgba(0, 184, 148, 0.16);
+            color: #d8fff6;
+        }
+        .tour-btn-end {
+            border-color: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+        }
+
+        /* Tour target highlight */
+        .is-tour-target {
+            position: relative;
+            z-index: 1215;
+            outline: 2px solid rgba(0, 184, 148, 0.5);
+            outline-offset: 4px;
+            border-radius: 8px;
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.45);
+        }
+        .is-tour-parent { position: relative; z-index: 1212; }
+
+        /* Top bar soft buttons (Tour, Replay Intro — mockup button tier) */
+        .tb-btn-text {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 9px;
+            font-weight: 700;
+            font-family: 'Commit Mono', monospace;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            min-height: 28px;
+            display: inline-flex;
+            align-items: center;
+            transition: transform 0.15s ease, color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .tb-btn-text:hover {
+            color: var(--color-text);
+            border-color: rgba(var(--section-rgb), 0.2);
+            background: rgba(var(--section-rgb), 0.08);
+            transform: translateY(-1px);
+        }
+
+        /* ═══ RESPONSIVE GUIDE ═══ */
+        @media (max-width: 1200px) {
+            .guide-rail { right: 272px; width: 190px; }
+        }
         @media (max-width: 900px) {
             .guide-rail {
                 position: fixed;
@@ -1720,8 +2370,7 @@
                 box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
                 padding: 16px 20px 20px;
             }
-            .guide-rail .guide-header { margin-bottom: 10px; }
-            .guide-rail .guide-steps { gap: 8px; }
+            .section-intro { width: calc(100% - 32px); }
         }
 
         /* Mode-specific inline controls */
@@ -1927,10 +2576,11 @@
             left: 358px;
             right: 358px;
             height: var(--tl-height);
-            background: rgba(12, 9, 16, 0.97);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(169,102,255,0.1);
-            border-radius: var(--panel-radius);
+            background: rgba(18, 15, 24, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(var(--section-rgb), 0.12);
+            border-radius: 22px;
             z-index: 8;
             display: flex;
             flex-direction: column;
@@ -2003,23 +2653,23 @@
             top: 0;
             bottom: 0;
             left: 0;
-            width: 3px;
-            border-radius: 1.5px;
-            background: #fff;
+            width: 2px;
+            border-radius: 1px;
+            background: rgba(255, 255, 255, 0.9);
             z-index: 5;
             pointer-events: none;
-            box-shadow: 0 0 6px rgba(255,255,255,0.6);
+            box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.06);
         }
         #timeline-playhead::before {
             content: '';
             position: absolute;
-            top: -1px;
-            left: -5px;
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 7px solid #fff;
+            top: -4px;
+            left: -7px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--color-teal, #00B894);
+            box-shadow: 0 0 0 4px rgba(0, 184, 148, 0.18);
         }
         .timeline-segment {
             position: absolute;
@@ -2994,7 +3644,7 @@
             border-color: rgba(255,255,255,0.35);
         }
 
-        /* ═══ TOP BAR ═══ */
+        /* ═══ TOP BAR (mockup-matched glass panel) ═══ */
         #top-bar {
             position: fixed;
             top: 0;
@@ -3002,50 +3652,116 @@
             right: 0;
             height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
             padding-top: env(safe-area-inset-top, 0px);
-            background: linear-gradient(to right in oklch, oklch(40% 0.28 15) 0%, oklch(40% 0.27 5) 18%, oklch(38% 0.24 340) 40%, oklch(35% 0.22 310) 65%, oklch(30% 0.20 285) 100%);
-            border-bottom: 1px solid rgba(169,102,255,0.15);
+            background:
+                linear-gradient(180deg, rgba(37, 26, 56, 0.54), rgba(16, 13, 22, 0.84)),
+                linear-gradient(90deg, rgba(var(--section-rgb), 0.12), rgba(0, 184, 148, 0.02));
+            border-bottom: 1px solid rgba(var(--section-rgb), 0.15);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             z-index: 1000;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            padding-left: max(12px, env(safe-area-inset-left, 0px));
+            padding-right: max(12px, env(safe-area-inset-right, 0px));
+            gap: 14px;
+            font-family: inherit;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            overflow: visible;
+        }
+        /* Brand lockup — Saturn mark + title */
+        .tb-brand {
             display: flex;
             align-items: center;
-            padding-left: max(var(--sp-4), env(safe-area-inset-left, 0px));
-            padding-right: max(var(--sp-4), env(safe-area-inset-right, 0px));
-            gap: var(--sp-2);
-            font-family: inherit;
+            gap: 10px;
+            min-width: 0;
+        }
+        .tb-brand-mark {
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            border: 1px solid rgba(var(--section-rgb), 0.42);
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.14), transparent 42%),
+                linear-gradient(145deg, rgba(var(--section-rgb), 0.9), rgba(37, 24, 58, 0.98));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 8px 20px rgba(var(--section-rgb), 0.2);
+            flex-shrink: 0;
+            transition: background 0.32s ease, border-color 0.32s ease, box-shadow 0.32s ease;
+        }
+        .tb-brand-mark svg {
+            width: 16px;
+            height: 16px;
+            stroke: rgba(255, 255, 255, 0.9);
+            fill: none;
+        }
+        .tb-brand-copy {
+            display: grid;
+            gap: 1px;
+            min-width: 0;
+        }
+        .tb-brand-copy strong {
+            font-family: 'Commit Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            color: var(--color-text);
+        }
+        .tb-brand-copy span {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 9px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Hide old Saturn SVG — replaced by brand mark */
+        #top-bar > .tb-saturn { display: none; }
+
+        .tb-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-width: 0;
         }
         #top-bar .tb-zone {
             display: flex;
             align-items: center;
-            gap: var(--sp-2);
+            gap: 6px;
         }
         #top-bar .tb-zone-right {
-            margin-left: auto;
-            gap: var(--sp-4);
+            gap: 6px;
         }
         #top-bar .tb-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            border-radius: var(--radius-md);
-            color: var(--color-text);
-            padding: 4px 8px;
-            min-height: 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            color: rgba(255, 255, 255, 0.55);
+            padding: 6px 8px;
+            min-height: 28px;
+            min-width: 28px;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.15s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: var(--sp-1);
+            gap: 4px;
             font-family: inherit;
-            font-size: var(--font-xs);
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
         }
         #top-bar .tb-btn:hover {
-            background: rgba(169,102,255,0.08);
-            border-color: var(--btn-border);
+            background: rgba(var(--section-rgb), 0.12);
+            border-color: rgba(var(--section-rgb), 0.25);
+            color: var(--color-text);
+            transform: translateY(-1px);
         }
         #top-bar .tb-btn svg {
-            width: 12px;
-            height: 12px;
+            width: 13px;
+            height: 13px;
             fill: currentColor;
         }
         #top-bar .tb-btn.recording {
@@ -3060,17 +3776,23 @@
         #top-bar .tb-divider {
             width: 1px;
             height: 16px;
-            background: rgba(169,102,255,0.1);
+            background: rgba(var(--section-rgb), 0.1);
         }
         #top-bar .tb-status {
-            font-size: var(--font-xs);
+            font-size: 9px;
             font-weight: 600;
-            color: var(--color-text-muted);
+            color: rgba(255, 255, 255, 0.4);
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-family: 'Commit Mono', 'Roboto Mono', monospace;
+            letter-spacing: 0.5px;
+            font-family: 'Commit Mono', monospace;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.03);
         }
-        #top-bar .tb-status.active { color: var(--color-text); }
+        #top-bar .tb-status.active {
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(var(--section-rgb), 0.08);
+        }
         /* Recording indicator pill — hidden when not recording, prominent red pill when active */
         .tb-rec-indicator {
             display: none;
@@ -3101,6 +3823,45 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+        /* Projection indicator */
+        .tb-proj-indicator {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            background: rgba(139, 69, 232, 0.15);
+            border: 1px solid rgba(139, 69, 232, 0.3);
+            border-radius: 20px;
+            padding: 2px 10px 2px 8px;
+            flex-shrink: 0;
+        }
+        .tb-proj-indicator.active {
+            display: flex;
+        }
+        .tb-proj-indicator .tb-proj-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #8B45E8;
+            animation: pulse-proj-dot 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        .tb-proj-indicator .tb-status {
+            color: #8B45E8;
+            font-weight: 700;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+        @keyframes pulse-proj-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        #tb-projection.proj-active {
+            background: rgba(139, 69, 232, 0.3);
+            border-color: rgba(139, 69, 232, 0.6);
+        }
+        #tb-projection.proj-active svg {
+            fill: #8B45E8;
+        }
         /* App title in top bar */
         .tb-title-zone { gap: 5px !important; }
         .tb-saturn { opacity: 0.85; flex-shrink: 0; }
@@ -3115,28 +3876,59 @@
         /* Transport + Record pill grouping */
         .tb-transport-group,
         .tb-record-group {
-            background: rgba(139,69,232,0.1);
+            background: rgba(var(--section-rgb), 0.1);
             border-radius: var(--radius-md);
             padding: 2px 4px;
-            border: 1px solid rgba(139,69,232,0.12);
+            border: 1px solid rgba(var(--section-rgb), 0.12);
         }
-        /* FX count badge */
+        /* Record group — more prominent (mockup button tier) */
+        .tb-record-group {
+            background: linear-gradient(180deg, rgba(var(--section-rgb), 0.18), rgba(var(--section-rgb), 0.08));
+            border-color: rgba(var(--section-rgb), 0.22);
+            box-shadow: 0 4px 12px rgba(var(--section-rgb), 0.1);
+        }
+        /* Record button — prominent gradient (mockup .record-button) */
+        #tb-record {
+            background: linear-gradient(180deg, rgba(var(--section-rgb), 0.92), rgba(var(--section-rgb), 0.6)) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: var(--color-text) !important;
+            box-shadow: 0 12px 24px rgba(var(--section-rgb), 0.25);
+            font-weight: 700;
+        }
+        #tb-record:hover {
+            box-shadow: 0 16px 32px rgba(var(--section-rgb), 0.35) !important;
+            transform: translateY(-1px);
+        }
+        #tb-record svg {
+            fill: #ff7878 !important;
+            filter: drop-shadow(0 0 3px rgba(255, 120, 120, 0.4));
+        }
+        /* FX count badge — section-colored pill */
         .tb-fx-badge {
             font-size: 10px;
             font-weight: 700;
-            color: var(--color-accent-light);
+            color: rgba(255, 255, 255, 0.85);
             letter-spacing: 0.3px;
             font-family: 'Commit Mono', monospace;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(var(--section-rgb), 0.3);
+            background: rgba(var(--section-rgb), 0.12);
         }
         .tb-fx-badge:empty { display: none; }
         .tb-fx-badge:empty + .tb-divider { display: none; }
-        /* Audio sync count badge */
+        /* Audio sync count badge — teal pill */
         .tb-audio-badge {
             font-size: 10px;
             font-weight: 700;
-            color: var(--color-teal);
+            color: #cbfff2;
             letter-spacing: 0.3px;
             font-family: 'Commit Mono', monospace;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 184, 148, 0.3);
+            background: rgba(0, 184, 148, 0.12);
+            box-shadow: 0 0 0 1px rgba(0, 184, 148, 0.06);
         }
         .tb-audio-badge:empty { display: none; }
         .tb-audio-badge.beat-pulse { color: #fff; transition: color 0.1s; }
@@ -3171,37 +3963,36 @@
         /* ═══ SECTION NAV ═══ */
         .tb-section-nav {
             display: flex;
-            gap: 2px;
-            margin: 0 6px;
-            background: rgba(139, 69, 232, 0.08);
-            border-radius: var(--radius-md);
-            padding: 2px;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
             flex-shrink: 0;
         }
         .section-tab {
-            background: transparent;
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid transparent;
-            color: var(--color-text-muted);
+            color: rgba(255, 255, 255, 0.45);
             font-size: 10px;
             font-weight: 700;
-            padding: 3px 10px;
+            padding: 7px 14px;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: transform 0.15s ease, color 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-family: inherit;
-            border-radius: 4px;
+            letter-spacing: 0.08em;
+            font-family: 'Commit Mono', monospace;
+            border-radius: 999px;
             white-space: nowrap;
             line-height: 1.2;
         }
         .section-tab:hover {
             color: var(--color-text);
-            background: rgba(169, 102, 255, 0.1);
+            transform: translateY(-1px);
         }
         .section-tab.active {
-            background: rgba(108, 92, 231, 0.28);
-            color: #c4b8ff;
-            border-color: rgba(108, 92, 231, 0.4);
+            color: var(--color-text);
+            border-color: rgba(var(--section-rgb), 0.4);
+            background: linear-gradient(180deg, rgba(var(--section-rgb), 0.28), rgba(var(--section-rgb), 0.12));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(var(--section-rgb), 0.1);
         }
         /* Tab icon + label switching */
         .section-tab { display: flex; align-items: center; gap: 4px; }
@@ -3454,10 +4245,15 @@
             .section-tab .tab-label-full { display: none; }
             .section-tab .tab-label-short { display: inline; }
             .section-tab .tab-icon { display: inline-block; }
-            .section-tab { padding: 3px 6px; font-size: 9px; }
-            .tb-section-nav { margin: 0 2px; padding: 2px; }
+            .section-tab { padding: 5px 8px; font-size: 9px; }
+            .tb-section-nav { gap: 4px; }
+            /* Collapse topbar from grid to flex on mobile */
+            #top-bar { display: flex; gap: 6px; }
+            .tb-brand-copy { display: none; }
+            .tb-brand-mark { width: 26px; height: 26px; border-radius: 8px; }
+            .tb-brand { gap: 0; }
             /* Off-canvas drawer mode */
-            .drawer-toggle { display: flex; background: rgba(139,69,232,0.15); border-color: rgba(255,255,255,0.15); touch-action: manipulation; }
+            .drawer-toggle { display: flex; background: rgba(var(--section-rgb),0.15); border-color: rgba(255,255,255,0.15); touch-action: manipulation; }
             .panel-close-btn { display: flex; align-items: center; justify-content: center; }
 
             .panel {
@@ -3549,7 +4345,10 @@
             #top-bar #tb-save,
             #top-bar #tb-photo,
             #top-bar #tb-restart,
-            #top-bar .tb-fx-badge {
+            #top-bar #tb-tour-btn,
+            #top-bar #tb-replay-intro-btn,
+            #top-bar .tb-fx-badge,
+            #top-bar .tb-audio-badge {
                 display: none;
             }
 
@@ -4237,66 +5036,236 @@
             font-style: italic;
         }
 
-        /* ═══ FIRST-RUN OVERLAY ═══ */
-        .first-run-overlay {
-            position: fixed;
-            top: var(--topbar-h, 40px);
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.55);
-            z-index: 900;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 60px;
-            animation: firstRunFadeIn 0.3s ease;
+        /* First-run overlay replaced by onboarding system — see .onboarding-overlay */
+
+        /* ═══ CANVAS STAGE (Phase 7) — hidden for now, too distracting over live video ═══ */
+        #canvas-stage {
+            display: none;
         }
-        @keyframes firstRunFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .first-run-hint {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            padding: 14px 20px;
-            border-radius: 8px;
-            background: rgba(139,69,232,0.25);
-            border: 1px solid rgba(139,69,232,0.4);
-            backdrop-filter: blur(4px);
-        }
-        .first-run-hint strong {
-            color: var(--color-accent, #8B45E8);
-        }
-        .first-run-hint svg {
-            opacity: 0.7;
-            flex-shrink: 0;
-        }
-        .first-run-dismiss {
+
+        /* Stage topline — viewport label + pills */
+        .stage-topline {
             position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--color-accent, #8B45E8);
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 24px;
-            font-family: inherit;
+            top: 12px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 1;
+        }
+        .stage-topline .eyebrow { color: rgba(255,255,255,0.4); margin: 0; }
+        .stage-topline h2 {
+            margin: 2px 0 0;
             font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+        }
+        .stage-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .stage-pill {
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255,255,255,0.5);
+            font-family: 'Commit Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-        .first-run-dismiss:hover {
-            filter: brightness(1.15);
+
+        /* Stage overlay — bottom caption + meter */
+        .stage-caption {
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            z-index: 1;
         }
+        .stage-caption__copy {
+            max-width: 440px;
+        }
+        .stage-caption__copy strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+        }
+        .stage-caption__copy p {
+            margin: 0;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.5;
+        }
+
+        /* Audio pulse meter */
+        .stage-meter {
+            min-width: 120px;
+            display: grid;
+            gap: 6px;
+        }
+        .meter-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: rgba(255,255,255,0.4);
+            font-family: 'Commit Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .meter-track {
+            height: 8px;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .meter-fill {
+            height: 100%;
+            width: var(--meter-fill, 18%);
+            border-radius: inherit;
+            background: linear-gradient(90deg, rgba(var(--section-rgb), 0.9), rgba(0, 184, 148, 0.8));
+            box-shadow: 0 0 12px rgba(0, 184, 148, 0.15);
+            transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Audio rings */
+        .audio-rings {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.32s ease;
+        }
+        .audio-rings.is-live { opacity: 1; }
+        .audio-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 184, 148, 0.2);
+            animation: breatheRing 3.8s ease-in-out infinite;
+        }
+        .audio-ring.one { width: 140px; height: 140px; }
+        .audio-ring.two { width: 200px; height: 200px; animation-delay: 0.6s; }
+        .audio-ring.three { width: 260px; height: 260px; animation-delay: 1.2s; }
+        @keyframes breatheRing {
+            0%, 100% { transform: scale(0.96); opacity: 0.35; }
+            50% { transform: scale(1.04); opacity: 0.12; }
+        }
+
+        /* Responsive: hide stage frame on mobile */
+        @media (max-width: 900px) {
+            #canvas-stage { display: none; }
+        }
+        /* Panels at 1200px = 240px wide */
+        @media (max-width: 1200px) {
+            #canvas-stage { left: 276px; right: 276px; }
+        }
+        /* Timeline section: slim panels = 150px */
+        body[data-section="timeline"] #canvas-stage {
+            left: 198px;
+            right: 198px;
+        }
+
+        /* ═══ AUDIO VIZ (Phase 8) ═══ */
+
+        /* Upgrade sync ON/OFF buttons to toggle pill */
+        #sync-buttons {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            padding: 2px;
+            gap: 0;
+        }
+        #sync-buttons .selector-btn {
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            padding: 5px 14px;
+            min-height: 28px;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        #sync-buttons .selector-btn.active {
+            background: rgba(0, 184, 148, 0.22);
+            color: #d8fff6;
+            box-shadow: 0 0 0 1px rgba(0, 184, 148, 0.3);
+        }
+
+        /* Upgrade sync target buttons to chips */
+        #sync-target-buttons {
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        #sync-target-buttons .selector-btn {
+            border-radius: 999px;
+            padding: 5px 10px;
+            min-height: 28px;
+            font-size: 9px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            transition: all 0.15s ease;
+        }
+        #sync-target-buttons .selector-btn:hover {
+            transform: translateY(-1px);
+        }
+        #sync-target-buttons .selector-btn.active {
+            border-color: rgba(0, 184, 148, 0.36);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+            box-shadow: 0 0 0 1px rgba(0, 184, 148, 0.08), 0 6px 12px rgba(0, 184, 148, 0.08);
+        }
+
+        /* Audio source buttons to chips */
+        #audio-source-row .selector-btn,
+        .audio-source-row .selector-btn {
+            border-radius: 999px;
+            padding: 5px 12px;
+            min-height: 28px;
+            font-size: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        #audio-source-row .selector-btn.active,
+        .audio-source-row .selector-btn.active {
+            border-color: rgba(0, 184, 148, 0.36);
+            background: rgba(0, 184, 148, 0.14);
+            color: #d9fff6;
+        }
+
+        /* 24-bar sync meter visualization */
+        .sync-bars {
+            display: grid;
+            grid-template-columns: repeat(24, minmax(0, 1fr));
+            align-items: end;
+            gap: 3px;
+            height: 48px;
+            padding: 8px 0;
+            margin-top: 4px;
+        }
+        .sync-bars span {
+            display: block;
+            border-radius: 999px 999px 2px 2px;
+            background: linear-gradient(180deg, rgba(var(--section-rgb), 0.75), rgba(0, 184, 148, 0.65));
+            opacity: 0.6;
+            height: var(--bar-h, 30%);
+            transition: height 0.12s ease;
+        }
+        .sync-bars span:nth-child(3n) { opacity: 0.85; }
+        .sync-bars:not(.is-live) span { height: 12%; opacity: 0.25; }
     </style>
     <!-- Mobile debug console (eruda) — triple-tap Saturn icon to toggle -->
     <script>
@@ -4341,16 +5310,27 @@
     <!-- ═══ TOP BAR ═══ -->
     <header id="top-bar" role="toolbar" aria-label="Main toolbar">
         <button class="drawer-toggle" id="drawer-toggle-left" title="Open tracking panel" aria-label="Open tracking panel">&#9776;</button>
-        <!-- Saturn icon -->
-        <svg class="tb-saturn" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="11" ry="3.5" transform="rotate(-25 12 12)"/></svg>
+        <!-- Brand lockup -->
+        <div class="tb-brand">
+            <div class="tb-brand-mark">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="11" ry="3.5" transform="rotate(-25 12 12)"/></svg>
+            </div>
+            <div class="tb-brand-copy">
+                <strong>H.O.D.</strong>
+                <span>Audio sync at the center</span>
+            </div>
+        </div>
         <!-- Section Nav -->
         <nav class="tb-section-nav" id="section-nav" role="tablist" aria-label="Workspace sections">
             <button class="section-tab active" data-section="create" data-short="CRT" role="tab" aria-selected="true"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg><span class="tab-label-full">Create</span><span class="tab-label-short">CRT</span></button>
             <button class="section-tab" data-section="audio" data-short="AUD" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg><span class="tab-label-full">Audio</span><span class="tab-label-short">AUD</span></button>
-            <button class="section-tab" data-section="track" data-short="TRK" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><span class="tab-label-full">Track</span><span class="tab-label-short">TRK</span></button>
+            <button class="section-tab" data-section="track" data-short="BLB" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg><span class="tab-label-full">Blob Tracking</span><span class="tab-label-short">BLB</span></button>
+            <button class="section-tab" data-section="hands" data-short="HND" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M18 9V7c0-1.1-.9-2-2-2h-2c0-1.1-.9-2-2-2s-2 .9-2 2H8c-1.1 0-2 .9-2 2v2c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2zm-2-2v2h-2V5h2zm-6 0h2v4h-2V5zM8 7h2v4H8V7zm10 11H6v-7h2v1h2v-1h4v1h2v-1h2v7z"/></svg><span class="tab-label-full">Hand Tracking</span><span class="tab-label-short">HND</span></button>
             <button class="section-tab" data-section="timeline" data-short="TL" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M3 14h4v-4H3v4zm0 5h4v-4H3v4zM3 9h4V5H3v4zm5 5h13v-4H8v4zm0 5h13v-4H8v4zM8 5v4h13V5H8z"/></svg><span class="tab-label-full">Timeline</span><span class="tab-label-short">TL</span></button>
             <button class="section-tab" data-section="export" data-short="EXP" role="tab" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg><span class="tab-label-full">Export</span><span class="tab-label-short">EXP</span></button>
         </nav>
+        <!-- Actions zone (single container for 3-column grid) -->
+        <div class="tb-actions">
         <!-- Transport -->
         <div class="tb-zone tb-transport-group">
             <button class="tb-btn" id="tb-play" title="Play or pause video playback (Space)" aria-label="Play or Pause" data-tooltip="Play/Pause (Space)">
@@ -4371,11 +5351,19 @@
             <button class="tb-btn" id="tb-photo" title="Capture a still frame with effects (P)" aria-label="Take Screenshot" data-tooltip="Screenshot (P)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg>
             </button>
+            <button class="tb-btn" id="tb-projection" title="Open clean output window for projection (Shift+P)" aria-label="Toggle Projection" data-tooltip="Projection (Shift+P)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+            </button>
         </div>
         <!-- Recording indicator — always visible when recording -->
         <div class="tb-rec-indicator" id="tb-rec-indicator">
             <span class="tb-rec-dot" id="tb-rec-dot"></span>
             <span class="tb-status" id="tb-rec-time"></span>
+        </div>
+        <!-- Projection indicator -->
+        <div class="tb-proj-indicator" id="tb-proj-indicator" style="display:none">
+            <span class="tb-proj-dot"></span>
+            <span class="tb-status">PROJ</span>
         </div>
         <!-- Right zone -->
         <div class="tb-zone tb-zone-right">
@@ -4385,6 +5373,8 @@
             <span class="tb-status no-source" id="tb-source">NO SOURCE</span>
             <span class="tb-status" id="tb-mode">OFF</span>
             <div class="tb-divider"></div>
+            <button class="tb-btn-text" id="tb-tour-btn" title="Take a guided tour">Tour</button>
+            <button class="tb-btn-text" id="tb-replay-intro-btn" title="Replay onboarding intro">Replay Intro</button>
             <button class="tb-btn" id="tb-guide-btn" title="Guide" aria-label="Toggle Guide">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.65 1 5.5v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.15 5.05 19.5 6.5 19.5c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>
             </button>
@@ -4395,6 +5385,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
             </button>
         </div>
+        </div><!-- /.tb-actions -->
         <button class="drawer-toggle" id="drawer-toggle-right" title="Open effects panel" aria-label="Open effects panel">FX</button>
     </header>
 
@@ -4416,17 +5407,113 @@
         <div class="empty-tip">Tip: Click &#x26A1; SYNC to auto-generate beat-synced effects</div>
     </div>
 
-    <!-- First-run hint overlay (shown once after first video load) -->
-    <div id="first-run-overlay" class="first-run-overlay" style="display:none">
-        <div class="first-run-hint first-run-left">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
-            <span>Enable <strong>Tracking</strong> for blobs</span>
+    <!-- ═══ CANVAS STAGE (Phase 7) ═══ -->
+    <div id="canvas-stage">
+        <div class="stage-topline">
+            <div>
+                <div class="eyebrow">Viewport</div>
+                <h2 id="stage-title">Create Preview</h2>
+            </div>
+            <div class="stage-pills" id="stage-pills"></div>
         </div>
-        <div class="first-run-hint first-run-right">
-            <span>Try an <strong>Effect</strong></span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M19 12l-7-7M19 12l-7 7"/></svg>
+        <div class="stage-caption">
+            <div class="stage-caption__copy">
+                <strong id="stage-headline"></strong>
+                <p id="stage-copy"></p>
+            </div>
+            <div class="stage-meter">
+                <div class="meter-label">
+                    <span>Audio pulse</span>
+                    <span id="meter-status">idle</span>
+                </div>
+                <div class="meter-track">
+                    <div class="meter-fill" id="meter-fill"></div>
+                </div>
+            </div>
         </div>
-        <button class="first-run-dismiss" id="first-run-dismiss">Got it</button>
+        <div class="audio-rings" id="audio-rings">
+            <div class="audio-ring one"></div>
+            <div class="audio-ring two"></div>
+            <div class="audio-ring three"></div>
+        </div>
+    </div>
+
+    <!-- ═══ ONBOARDING OVERLAY (Layer 2: SEE/FEEL/HEAR) ═══ -->
+    <div id="onboarding-overlay" class="onboarding-overlay is-hidden">
+        <div class="onboarding-shell">
+            <div class="onboarding-hero">
+                <h1>Hues of Dispositions</h1>
+                <p>Audio-reactive video effects. Three steps to your first scene.</p>
+            </div>
+            <div class="onboarding-cards">
+                <!-- SEE -->
+                <div class="onboarding-card is-active" data-card="see">
+                    <div class="onboarding-card-top">
+                        <span class="onboarding-card-label">SEE</span>
+                        <span class="onboarding-card-status" data-status>Live</span>
+                    </div>
+                    <h2>Bring in footage</h2>
+                    <p class="ob-desc" id="ob-see-desc">Start with motion. Once there is footage in the system, the effects shelf wakes up.</p>
+                    <div class="onboarding-controls">
+                        <button class="ob-btn" data-ob-source="upload" type="button">Upload Video</button>
+                        <button class="ob-btn" data-ob-source="camera" type="button">Use Camera</button>
+                    </div>
+                </div>
+                <!-- FEEL -->
+                <div class="onboarding-card is-locked" data-card="feel">
+                    <div class="onboarding-card-top">
+                        <span class="onboarding-card-label">FEEL</span>
+                        <span class="onboarding-card-status" data-status>Locked</span>
+                    </div>
+                    <h2>Choose a look</h2>
+                    <p class="ob-desc" id="ob-feel-desc">Choose the first look. A single effect is enough to open the door to audio-driven motion.</p>
+                    <div class="onboarding-controls">
+                        <button class="ob-btn" data-ob-effect="Thermal" type="button">Thermal</button>
+                        <button class="ob-btn" data-ob-effect="Glitch" type="button">Glitch</button>
+                        <button class="ob-btn" data-ob-effect="Duotone" type="button">Duotone</button>
+                    </div>
+                </div>
+                <!-- HEAR -->
+                <div class="onboarding-card is-locked" data-card="hear">
+                    <div class="onboarding-card-top">
+                        <span class="onboarding-card-label">HEAR</span>
+                        <span class="onboarding-card-status" data-status>Locked</span>
+                    </div>
+                    <h2>Connect audio</h2>
+                    <p class="ob-desc" id="ob-hear-desc">Audio sync is the heart of H.O.D. Connect it and the scene starts breathing with sound.</p>
+                    <div class="onboarding-controls">
+                        <button class="ob-btn" data-ob-audio type="button">Connect Audio</button>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:center">
+                <button class="onboarding-launch" id="ob-launch">Launch H.O.D. &rarr;</button>
+                <button class="onboarding-skip" id="ob-skip">Skip intro</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ SECTION INTRO (Layer 3) ═══ -->
+    <div id="section-intro" class="section-intro" data-intro-section="create">
+        <div class="section-intro__icon" id="section-intro-icon"></div>
+        <div class="section-intro__copy">
+            <strong id="section-intro-title"></strong>
+            <span id="section-intro-text"></span>
+        </div>
+        <button class="section-intro__dismiss" id="section-intro-dismiss">Got it</button>
+    </div>
+
+    <!-- ═══ SPOTLIGHT TOUR (Layer 4) ═══ -->
+    <div id="tour-overlay" class="tour-overlay"></div>
+    <div id="tour-card" class="tour-card">
+        <div class="tour-step-indicator" id="tour-step-indicator"></div>
+        <h3 id="tour-title"></h3>
+        <p id="tour-body"></p>
+        <div class="tour-nav">
+            <button class="tour-btn tour-btn-end" id="tour-end">End Tour</button>
+            <button class="tour-btn" id="tour-back" disabled>&larr; Back</button>
+            <button class="tour-btn tour-btn-primary" id="tour-next">Next &rarr;</button>
+        </div>
     </div>
 
     <!-- LEFT PANEL -->
@@ -4441,6 +5528,7 @@
             <div class="title-row">
                 <h1><svg class="saturn-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="vertical-align:-2px;margin-right:5px;opacity:0.8"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="11" ry="3.5" transform="rotate(-25 12 12)"/></svg>Hues of Dispositions</h1>
                 <div style="display:flex;align-items:center;gap:6px">
+                    <span class="panel-badge" id="panel-badge-left"></span>
                     <button class="settings-btn" id="settings-btn" title="Settings" aria-label="Appearance settings">&#9881;</button>
                     <button class="hints-btn active" id="hints-btn" title="Toggle helper hints" aria-label="Toggle inline hints">HINTS</button>
                     <button class="help-btn" id="help-btn" title="Help (?)" aria-label="Help and keyboard shortcuts">?</button>
@@ -4703,6 +5791,7 @@
                             Point camera or video at a face. Blobs track facial landmarks.
                         </div>
                     </div>
+
                 </div>
                 </div><!-- /tracking-body -->
             </div>
@@ -5062,6 +6151,181 @@
 
             </div><!-- /tab-content audio -->
 
+            <!-- ═══ HAND TRACKING SECTION: Left panel ═══ -->
+            <div data-section-content="hands" class="section-content">
+
+                <!-- Quick Start Guide -->
+                <div class="control-group" style="background:rgba(232,67,147,0.06);border:1px solid rgba(232,67,147,0.15);border-radius:6px;padding:10px 12px">
+                    <div style="font-size:9px;font-weight:700;letter-spacing:0.5px;color:#E84393;text-transform:uppercase;margin-bottom:6px">How to use</div>
+                    <ol style="font-size:var(--font-xs);color:var(--text-muted);margin:0;padding-left:18px;line-height:1.7">
+                        <li><strong style="color:var(--color-text)">Turn on detection</strong> — flip the toggle below</li>
+                        <li><strong style="color:var(--color-text)">Show your hands</strong> to the webcam or use a video with hands</li>
+                        <li><strong style="color:var(--color-text)">Go to Create</strong> and pick an effect (e.g. Sepia, Blur, Glitch)</li>
+                        <li>In the effect card, scroll to <strong style="color:#E84393">HAND SYNC</strong> and toggle it on</li>
+                        <li>Choose a source: <strong style="color:var(--color-text)">Pinch</strong> your fingers to control the effect</li>
+                    </ol>
+                </div>
+
+                <!-- Step 1: Detection Toggle -->
+                <div class="control-group">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                        <label style="margin:0;font-weight:600">
+                            <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">1</span>
+                            Hand Detection
+                        </label>
+                        <label class="fx-toggle-switch" style="margin:0"><input type="checkbox" id="hand-toggle"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div id="hand-loading" style="display:none;font-size:var(--font-xs);color:var(--text-muted);margin-bottom:6px">
+                        Loading hand model (first time may take a few seconds)...
+                    </div>
+                    <span id="hand-status" style="font-size:var(--font-xs);font-weight:600;color:var(--text-muted)">OFF</span>
+                    <div id="hand-hint" style="font-size:var(--font-xs);color:var(--text-muted);margin-bottom:4px">
+                        Needs a webcam or video with hands visible. Works alongside blob tracking.
+                    </div>
+                </div>
+
+                <!-- Step 2: Display Style -->
+                <div class="control-group">
+                    <label id="label-hand-viz" style="margin-bottom:4px">
+                        <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">2</span>
+                        Display Style
+                    </label>
+                    <div class="selector-row" id="hand-viz-buttons" aria-labelledby="label-hand-viz" style="flex-wrap:wrap;gap:4px">
+                        <button class="selector-btn active" data-value="skeleton">SKEL</button>
+                        <button class="selector-btn" data-value="glow">GLOW</button>
+                        <button class="selector-btn" data-value="neon">NEON</button>
+                        <button class="selector-btn" data-value="rainbow">RAINBOW</button>
+                        <button class="selector-btn" data-value="particle">PARTICLE</button>
+                        <button class="selector-btn" data-value="fire">FIRE</button>
+                        <button class="selector-btn" data-value="tips">TIPS</button>
+                        <button class="selector-btn" data-value="dots">DOTS</button>
+                        <button class="selector-btn" data-value="minimal">MINIMAL</button>
+                        <button class="selector-btn" data-value="off">OFF</button>
+                    </div>
+                    <span class="hint-text">10 display styles from bold to subtle. OFF = invisible controller only.</span>
+                </div>
+
+                <!-- Pinch Meter -->
+                <div class="control-group">
+                    <label style="margin-bottom:4px;font-size:var(--font-xs)">Pinch Strength</label>
+                    <div style="height:8px;background:var(--color-elevated);border-radius:4px;overflow:hidden">
+                        <div id="hand-pinch-meter-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#E84393,#00CEC9);border-radius:4px;transition:width 0.1s"></div>
+                    </div>
+                </div>
+
+                <!-- Gesture Triggers -->
+                <div class="control-group">
+                    <div class="slider-card-label" style="margin-bottom:6px">
+                        <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">!</span>
+                        Gesture Triggers
+                    </div>
+                    <span class="hint-text" style="margin-bottom:8px">Dance-friendly hand poses that trigger actions. Toggle each on/off.</span>
+
+                    <div id="gesture-triggers-list" style="display:flex;flex-direction:column;gap:6px">
+                        <!-- Open Palm -->
+                        <div class="gesture-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-gesture="open_palm">
+                            <span style="font-size:16px" title="Open Palm">&#x1F590;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Open Palm</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Spread fingers — release &amp; reveal</div>
+                            </div>
+                            <select class="gesture-action-select" data-gesture="open_palm" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="reset_fx">Reset FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="boost">Boost</option>
+                                <option value="toggle_viz">Toggle Viz</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable this gesture"><input type="checkbox" class="gesture-toggle" data-gesture="open_palm"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <!-- Fist -->
+                        <div class="gesture-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-gesture="fist">
+                            <span style="font-size:16px" title="Fist">&#x270A;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Fist</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Grab the moment — freeze &amp; hold</div>
+                            </div>
+                            <select class="gesture-action-select" data-gesture="fist" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="freeze">Freeze</option>
+                                <option value="reset_fx">Reset FX</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="boost">Boost</option>
+                                <option value="toggle_viz">Toggle Viz</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable this gesture"><input type="checkbox" class="gesture-toggle" data-gesture="fist"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <!-- Peace -->
+                        <div class="gesture-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-gesture="peace">
+                            <span style="font-size:16px" title="Peace">&#x270C;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Peace</div>
+                                <div style="font-size:8px;color:var(--text-muted)">V sign — switch it up, play</div>
+                            </div>
+                            <select class="gesture-action-select" data-gesture="peace" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="reset_fx">Reset FX</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="boost">Boost</option>
+                                <option value="toggle_viz">Toggle Viz</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable this gesture"><input type="checkbox" class="gesture-toggle" data-gesture="peace"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <!-- Point -->
+                        <div class="gesture-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-gesture="point">
+                            <span style="font-size:16px" title="Point">&#x1F446;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Point</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Direct — aim, spotlight, surprise</div>
+                            </div>
+                            <select class="gesture-action-select" data-gesture="point" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="random_fx">Random FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="reset_fx">Reset FX</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="boost">Boost</option>
+                                <option value="toggle_viz">Toggle Viz</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable this gesture"><input type="checkbox" class="gesture-toggle" data-gesture="point"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <!-- Thumbs Up -->
+                        <div class="gesture-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-gesture="thumbs_up">
+                            <span style="font-size:16px" title="Thumbs Up">&#x1F44D;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Thumbs Up</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Boost — max it out for a beat</div>
+                            </div>
+                            <select class="gesture-action-select" data-gesture="thumbs_up" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="boost">Boost</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="reset_fx">Reset FX</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="toggle_viz">Toggle Viz</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable this gesture"><input type="checkbox" class="gesture-toggle" data-gesture="thumbs_up"><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detected Hand Info (shown when hands found) -->
+                <div class="control-group" id="hand-info-group" style="display:none">
+                    <div class="slider-card-label">Detected Hands</div>
+                    <div id="hand-info-display" style="font-size:var(--font-xs);color:var(--text-muted)"></div>
+                </div>
+            </div><!-- /section-content hands -->
+
             <!-- ═══ TIMELINE SECTION: Slim left panel ═══ -->
             <div data-section-content="timeline" class="section-content">
                 <div class="control-group">
@@ -5110,6 +6374,7 @@
         <div class="header-section">
             <div class="title-row">
                 <h1>Effects</h1>
+                <span class="panel-badge" id="panel-badge-right"></span>
                 <div id="toggle-btn-right" class="toggle-chevron" title="Toggle Controls" role="button" aria-label="Toggle effects panel controls">
                     <svg viewBox="0 0 24 24">
                         <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
@@ -5199,8 +6464,6 @@
                     <input type="color" id="track-box-color" value="#00CEC9" style="width:100%;height:28px;border:none;background:transparent;cursor:pointer;">
                     <label>Box Weight <input type="number" class="value-input" id="val-track-weight" value="2"></label>
                     <div class="slider-wrapper"><input type="range" id="slider-track-weight" min="1" max="8" value="2" step="0.5"></div>
-                    <label>Opacity <input type="number" class="value-input" id="val-track-opacity" value="100"></label>
-                    <div class="slider-wrapper"><input type="range" id="slider-track-opacity" min="0" max="100" value="100" step="1"></div>
                     <label>Curvature <input type="number" class="value-input" id="val-track-curve" value="0"></label>
                     <div class="slider-wrapper"><input type="range" id="slider-track-curve" min="0" max="50" value="0" step="1"></div>
                 </div>
@@ -5211,16 +6474,26 @@
                         <button class="selector-btn" data-value="on">ON</button>
                         <button class="selector-btn active" data-value="off">OFF</button>
                     </div>
-                    <label id="label-track-linemode">Mode</label>
-                    <div class="selector-row" id="track-linemode-buttons" aria-labelledby="label-track-linemode">
-                        <button class="selector-btn active" data-value="chain">CHAIN</button>
-                        <button class="selector-btn" data-value="hub">HUB</button>
-                        <button class="selector-btn" data-value="web">WEB</button>
-                    </div>
-                    <label id="label-track-linedash">Style</label>
-                    <div class="selector-row" id="track-linedash-buttons" aria-labelledby="label-track-linedash">
-                        <button class="selector-btn active" data-value="solid">SOLID</button>
-                        <button class="selector-btn" data-value="dash">DASH</button>
+                    <div id="track-line-options" style="display:none">
+                        <label for="track-line-color-picker">Line Color</label>
+                        <div class="fx-color-picker">
+                            <input type="color" class="fx-color-input" id="track-line-color-picker" value="#ffffff">
+                            <input type="text" class="fx-hex-input" id="track-line-color-hex" value="#ffffff" maxlength="7">
+                        </div>
+                        <label>Stroke Weight <input type="number" class="value-input" id="val-track-line-weight" value="1"></label>
+                        <div class="slider-wrapper"><input type="range" id="slider-track-line-weight" min="0.5" max="8" value="1" step="0.5"></div>
+                        <label id="label-track-linestyle">Style</label>
+                        <div class="selector-row" id="track-linestyle-buttons" aria-labelledby="label-track-linestyle">
+                            <button class="selector-btn active" data-value="curved">CURVED</button>
+                            <button class="selector-btn" data-value="straight">STRAIGHT</button>
+                        </div>
+                        <label class="checkbox-label"><input type="checkbox" id="track-line-dashed"> Dashed</label>
+                        <label id="label-track-linemode">Connection</label>
+                        <div class="selector-row" id="track-linemode-buttons" aria-labelledby="label-track-linemode">
+                            <button class="selector-btn active" data-value="chain" title="Sequential order">CHAIN</button>
+                            <button class="selector-btn" data-value="hub" title="Starburst through center">HUB</button>
+                            <button class="selector-btn" data-value="web" title="Constellation pattern">WEB</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5250,6 +6523,11 @@
                             <button class="selector-btn" data-value="pulse" title="Scale pulse on beat peaks">PULSE</button>
                             <button class="selector-btn" data-value="rate" title="Audio drives detection refresh rate">RATE</button>
                         </div>
+                    </div>
+                    <!-- Audio sync bars visualization -->
+                    <div class="control-group">
+                        <label style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:var(--color-text-muted)">Signal preview</label>
+                        <div class="sync-bars" id="sync-bars"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
                     </div>
                     <div class="control-group" id="sync-range-group">
                         <label>Qty Range <span id="sync-qty-readout" style="font-size:var(--font-xs);color:var(--text-muted);font-weight:400">5 – 50</span></label>
@@ -5291,6 +6569,45 @@
                 </div>
             </div>
 
+            <!-- ═══ HAND TRACKING SECTION: Right panel ═══ -->
+            <div data-section-content="hands" class="section-content">
+
+                <!-- Connect to Effects guide -->
+                <div class="control-group" style="background:rgba(232,67,147,0.06);border:1px solid rgba(232,67,147,0.15);border-radius:6px;padding:10px 12px">
+                    <div style="font-size:9px;font-weight:700;letter-spacing:0.5px;color:#E84393;text-transform:uppercase;margin-bottom:4px">
+                        <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:4px;font-weight:700">3</span>
+                        Connect to effects
+                    </div>
+                    <div style="font-size:var(--font-xs);color:var(--text-muted);line-height:1.6">
+                        Go to <strong style="color:var(--color-text)">Create</strong> tab, activate any effect, then toggle <strong style="color:#E84393">HAND SYNC</strong> inside that effect's card. Choose what controls it:
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:6px;font-size:var(--font-xs)">
+                        <div><strong style="color:var(--color-text)">Pinch</strong> <span style="color:var(--text-muted)">— squeeze to increase</span></div>
+                        <div><strong style="color:var(--color-text)">Velocity</strong> <span style="color:var(--text-muted)">— move fast to increase</span></div>
+                        <div><strong style="color:var(--color-text)">Palm X</strong> <span style="color:var(--text-muted)">— left/right position</span></div>
+                        <div><strong style="color:var(--color-text)">Palm Y</strong> <span style="color:var(--text-muted)">— up/down position</span></div>
+                    </div>
+                </div>
+
+                <!-- Live Hand Data -->
+                <div class="control-group">
+                    <div class="slider-card-label">Live Data</div>
+                    <div id="hand-data-display" style="font-size:var(--font-xs);color:var(--text-muted);font-family:var(--font-mono, monospace);line-height:1.8">
+                        <div id="hand-data-pinch">Pinch: —</div>
+                        <div id="hand-data-gesture">Gesture: —</div>
+                        <div id="hand-data-velocity">Velocity: —</div>
+                        <div id="hand-data-fingers">Fingers: —</div>
+                    </div>
+                </div>
+
+                <!-- Active Hand Syncs -->
+                <div class="control-group">
+                    <div class="slider-card-label">Active Hand Syncs</div>
+                    <span class="hint-text">Effects being controlled by your hands appear here</span>
+                    <div id="hands-sync-summary"></div>
+                </div>
+            </div><!-- /section-content hands right -->
+
             <!-- ═══ TIMELINE SECTION: Slim right panel ═══ -->
             <div data-section-content="timeline" class="section-content">
                 <div class="control-group">
@@ -5308,21 +6625,64 @@
                     <button class="selector-btn" id="export-record-btn" style="width:100%;margin:8px 0;background:rgba(139,69,232,0.3);border-color:rgba(139,69,232,0.5)">RECORD</button>
                     <button class="selector-btn" id="export-screenshot-btn" style="width:100%;margin:4px 0">SCREENSHOT</button>
                     <button class="selector-btn" id="export-save-btn" style="width:100%;margin:4px 0" disabled>SAVE RECORDING</button>
-                    <span class="hint-text">Record captures the canvas at the selected resolution and format</span>
+                    <div style="margin-top:12px;border-top:1px solid rgba(139,69,232,0.2);padding-top:12px">
+                        <div class="slider-card-label">Live Output</div>
+                        <button class="selector-btn" id="export-projection-btn" style="width:100%;margin:8px 0;background:rgba(139,69,232,0.15);border-color:rgba(139,69,232,0.4)">PROJECTION WINDOW</button>
+                        <span class="hint-text">Opens a clean second window — drag to external display, press F for fullscreen</span>
+
+                        <!-- Projection guide (collapsible) -->
+                        <details class="proj-guide" style="margin-top:10px">
+                            <summary style="cursor:pointer;color:var(--text-secondary);font-size:var(--font-xs);letter-spacing:0.5px;user-select:none">PROJECTION GUIDE</summary>
+                            <div style="margin-top:8px;padding:10px;background:rgba(139,69,232,0.06);border:1px solid rgba(139,69,232,0.15);border-radius:6px;font-size:var(--font-xs);color:var(--text-secondary);line-height:1.6">
+                                <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">Simple Setup (flat surface)</div>
+                                <div style="padding-left:8px;margin-bottom:10px">
+                                    1. Connect projector as second display<br>
+                                    2. Click <strong>PROJECTION WINDOW</strong> (or Shift+P)<br>
+                                    3. Drag the window to your projector display<br>
+                                    4. Press <strong>F</strong> in the projection window for fullscreen<br>
+                                    5. Control effects from this screen — visuals play on the projector
+                                </div>
+                                <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">With MadMapper / Resolume</div>
+                                <div style="padding-left:8px;margin-bottom:10px">
+                                    1. Open the Projection Window<br>
+                                    2. In MadMapper: <strong>Add Input → Window Capture</strong><br>
+                                    3. Select <strong>"H.O.D. — Projection"</strong> from the window list<br>
+                                    4. Map the captured feed onto your surfaces<br>
+                                    <span style="color:var(--text-muted)">For lower latency: OBS → capture window → Syphon output → MadMapper receives the feed</span>
+                                </div>
+                                <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">Audio-Reactive Projection</div>
+                                <div style="padding-left:8px;margin-bottom:10px">
+                                    1. Go to <strong>Audio</strong> tab → set source to <strong>MIC</strong><br>
+                                    2. Enable <strong>Audio Sync</strong> and choose effects to sync<br>
+                                    3. Open the Projection Window<br>
+                                    4. Your visuals now react to live sound through the projector
+                                </div>
+                                <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px">Controls</div>
+                                <div style="padding-left:8px">
+                                    <strong>Shift+P</strong> — toggle projection window<br>
+                                    <strong>F</strong> — fullscreen (in projection window)<br>
+                                    <strong>ESC</strong> — exit fullscreen
+                                </div>
+                            </div>
+                        </details>
+                    </div>
                 </div>
             </div>
 
         </div>
     </aside>
 
-    <!-- GUIDE RAIL -->
+    <!-- GUIDE RAIL (Layer 1 — upgraded) -->
     <aside id="guide-rail" class="guide-rail hidden" aria-label="Guide">
         <div class="guide-header">
             <span class="guide-kicker">GUIDE</span>
             <h3 class="guide-title" id="guide-title"></h3>
+            <span class="guide-badge" id="guide-badge"></span>
             <button class="guide-close" id="guide-close" aria-label="Close guide">&times;</button>
         </div>
-        <div id="guide-content" class="guide-content"></div>
+        <div id="guide-suggestion" class="guide-suggestion"></div>
+        <div id="guide-steps" class="guide-steps"></div>
+        <div id="guide-tracker" class="guide-tracker"></div>
     </aside>
 
     <!-- TIMELINE -->
@@ -5575,49 +6935,23 @@
                     <input type="range" id="slider-3" min="0" max="100" value="3" step="0.1">
                 </div>
             </div>
-            <div class="control-group">
-                <label id="label-lines">Lines</label>
-                <div class="selector-row" id="line-buttons" aria-labelledby="label-lines">
-                    <button class="selector-btn active" data-value="off">OFF</button>
-                    <button class="selector-btn" data-value="on">ON</button>
-                </div>
             </div>
         </div>
         </section>
-        <div class="control-group" id="line-options-group" style="display:none">
-            <label for="line-color-picker">Line Color</label>
-            <div class="fx-color-picker">
-                <input type="color" class="fx-color-input" id="line-color-picker" value="#ffffff">
-                <input type="text" class="fx-hex-input" id="line-color-hex" value="#ffffff" maxlength="7">
-            </div>
-            <label>Stroke Weight <input type="number" class="value-input" id="val-line-weight" value="1"></label>
-            <div class="slider-wrapper"><input type="range" id="slider-line-weight" min="0.5" max="8" value="1" step="0.5"></div>
-            <label id="label-style">Style</label>
-            <div class="selector-row" id="line-style-buttons" aria-labelledby="label-style">
-                <button class="selector-btn active" data-value="curved">CURVED</button>
-                <button class="selector-btn" data-value="straight">STRAIGHT</button>
-            </div>
-            <label class="checkbox-label"><input type="checkbox" id="line-dashed" title="Apply dashed stroke to connection lines"> Dashed</label>
-            <label id="label-connection">Connection</label>
-            <div class="selector-row" id="connection-buttons" aria-labelledby="label-connection">
-                <button class="selector-btn active" data-value="chain" title="Connect blobs in sequential order">CHAIN</button>
-                <button class="selector-btn" data-value="hub" title="Route all lines through canvas center — starburst pattern">HUB</button>
-                <button class="selector-btn" data-value="web" title="Connect nearby blobs with distance-faded lines — constellation pattern">WEB</button>
-            </div>
-        </div>
         <!-- Persistence controls moved to Track section Advanced accordion -->
     </div>
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="blob-core.js?v=20260405a"></script>
-<script src="blob-fx.js?v=20260405a"></script>
+<script src="blob-core.js?v=20260410"></script>
+<script src="blob-fx.js?v=20260410"></script>
 <script src="blob-shader-fx.js?v=20260405a"></script>
 <script src="blob-overlay.js?v=20260405a"></script>
-<script src="blob-audio.js?v=20260405a"></script>
+<script src="blob-audio.js?v=20260410"></script>
 <script src="blob-timeline.js?v=20260405a"></script>
 <script src="blob-mask.js?v=20260405a"></script>
 <script src="blob-tracking.js?v=20260405a"></script>
+<script src="hod-hands.js?v=20260410"></script>
 <script src="blob-region-fx.js?v=20260405a"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
@@ -5806,6 +7140,99 @@ window.disposeFaceLandmarker = function() {
     window.mpFaceLandmarkerReady = false;
     window._faceLandmarkerInitStarted = false;
     window.mpFaceInitError = null;
+};
+</script>
+
+<!-- MediaPipe Hand Landmarker (Hand / Finger tracking) -->
+<script type="module">
+import { HandLandmarker, FilesetResolver }
+    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs";
+
+window.mpHandLandmarkerReady = false;
+window.mpHandLandmarker = null;
+window.mpHandInitError = null;
+window._handInitEpoch = 0;
+
+async function initHandLandmarker() {
+    const epoch = window._handInitEpoch;
+    let statusEl = document.getElementById('hand-loading');
+    try {
+        if (statusEl) { statusEl.style.display = ''; statusEl.textContent = 'Loading vision WASM...'; }
+        console.log('[HandLandmarker] Loading FilesetResolver...');
+        const vision = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+        );
+        if (epoch !== window._handInitEpoch) return;
+        console.log('[HandLandmarker] FilesetResolver ready');
+        if (statusEl) statusEl.textContent = 'Loading hand model...';
+
+        const opts = {
+            runningMode: "VIDEO",
+            numHands: 2,
+            minHandDetectionConfidence: 0.5,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        };
+        const modelPath = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+        // Try CPU first (avoids GPU contention with ShaderFXPipeline), fall back to GPU
+        for (const delegate of ["CPU", "GPU"]) {
+            try {
+                if (epoch !== window._handInitEpoch) return;
+                console.log('[HandLandmarker] Trying delegate:', delegate);
+                if (statusEl) statusEl.textContent = 'Loading hand model (' + delegate + ')...';
+                const lm = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { modelAssetPath: modelPath, delegate },
+                    ...opts
+                });
+                if (epoch !== window._handInitEpoch) { lm.close(); return; }
+                window.mpHandLandmarker = lm;
+                window.mpHandLandmarkerReady = true;
+                window.mpHandInitError = null;
+                console.log('[HandLandmarker] Ready (delegate: ' + delegate + ')');
+                if (statusEl) statusEl.style.display = 'none';
+                return;
+            } catch (e) {
+                console.warn('[HandLandmarker] ' + delegate + ' failed:', e.message || e);
+            }
+        }
+        if (epoch !== window._handInitEpoch) return;
+        const msg = 'Hand model failed — both CPU and GPU delegates rejected';
+        console.error('[HandLandmarker]', msg);
+        window.mpHandInitError = msg;
+        window._handLandmarkerInitStarted = false;
+        if (statusEl) {
+            statusEl.style.display = '';
+            statusEl.textContent = msg;
+            statusEl.style.color = '#E17055';
+        }
+    } catch (e) {
+        if (epoch !== window._handInitEpoch) return;
+        const msg = 'Hand init error: ' + (e.message || e);
+        console.error('[HandLandmarker]', msg);
+        window.mpHandInitError = msg;
+        window._handLandmarkerInitStarted = false;
+        if (statusEl) {
+            statusEl.style.display = '';
+            statusEl.textContent = msg;
+            statusEl.style.color = '#E17055';
+        }
+    }
+}
+
+window.initHandLandmarkerLazy = function() {
+    if (window.mpHandLandmarkerReady || window._handLandmarkerInitStarted) return;
+    window._handLandmarkerInitStarted = true;
+    initHandLandmarker();
+};
+
+window.disposeHandLandmarker = function() {
+    window._handInitEpoch++;
+    if (window.mpHandLandmarker) { try { window.mpHandLandmarker.close(); } catch(_) {} }
+    window.mpHandLandmarker = null;
+    window.mpHandLandmarkerReady = false;
+    window._handLandmarkerInitStarted = false;
+    window.mpHandInitError = null;
 };
 </script>
 </body>
