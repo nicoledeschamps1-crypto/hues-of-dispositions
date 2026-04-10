@@ -21,3 +21,4 @@ harness-output/
 
 # Node
 node_modules/
+.gitnexus
