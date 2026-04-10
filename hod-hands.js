@@ -25,16 +25,16 @@ let _handTrailLength = 30;
 const GESTURE_TRIGGERS = {
     open_palm: {
         label: 'Open Palm',
-        desc: 'Spread fingers wide — release, reveal, reset',
+        desc: 'Spread fingers wide — release, reveal, restore',
         icon: '\u{1F590}',
-        defaultAction: 'reset_fx',
+        defaultAction: 'restore_fx',
         enabled: false
     },
     fist: {
         label: 'Fist',
-        desc: 'Close hand tight — freeze, grab, hold the moment',
+        desc: 'Close hand tight — stop everything, hold the moment',
         icon: '\u270A',
-        defaultAction: 'freeze',
+        defaultAction: 'reset_fx',
         enabled: false
     },
     peace: {
@@ -62,13 +62,16 @@ const GESTURE_TRIGGERS = {
 
 const GESTURE_ACTIONS = {
     freeze:       { label: 'Freeze Frame',    desc: 'Pause video on current frame' },
-    reset_fx:     { label: 'Reset Effects',    desc: 'Turn off all active effects' },
+    reset_fx:     { label: 'Stop All FX',     desc: 'Turn off all active effects (remembers them)' },
+    restore_fx:   { label: 'Restore FX',      desc: 'Bring back effects that were stopped' },
     cycle_preset: { label: 'Cycle Preset',     desc: 'Jump to next FX preset' },
     random_fx:    { label: 'Random Effect',    desc: 'Activate a random effect' },
     boost:        { label: 'Boost Intensity',  desc: 'Push active effects to max for a beat' },
     toggle_viz:   { label: 'Toggle Hand Viz',  desc: 'Cycle through hand display styles' },
     none:         { label: 'None',             desc: 'Gesture detected but no action' }
 };
+
+let _savedActiveEffects = null;  // stored by Stop All, restored by Restore
 
 let _gestureTriggerState = {};   // tracks cooldown per gesture
 let _gestureCooldownMs = 800;    // prevent rapid re-triggering
@@ -350,13 +353,20 @@ function _executeGestureAction(action, hand) {
             break;
 
         case 'reset_fx':
-            if (typeof activeEffects !== 'undefined' && typeof activeEffects.clear === 'function') {
+            if (typeof activeEffects !== 'undefined' && activeEffects.size > 0) {
+                // Save current effects so Restore can bring them back
+                _savedActiveEffects = new Set(activeEffects);
                 activeEffects.clear();
                 if (typeof hiddenEffects !== 'undefined') hiddenEffects.clear();
                 if (typeof updateCardHighlights === 'function') updateCardHighlights();
-                if (typeof syncFxControlsForEffect === 'function') {
-                    for (var fx of Object.keys(FX_UI_CONFIG)) syncFxControlsForEffect(fx);
-                }
+            }
+            break;
+
+        case 'restore_fx':
+            if (_savedActiveEffects && _savedActiveEffects.size > 0 && typeof activeEffects !== 'undefined') {
+                for (var fx of _savedActiveEffects) activeEffects.add(fx);
+                _savedActiveEffects = null;
+                if (typeof updateCardHighlights === 'function') updateCardHighlights();
             }
             break;
 
