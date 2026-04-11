@@ -6331,6 +6331,202 @@
                     </div>
                 </div>
 
+                <!-- Movement Triggers (dance-based) -->
+                <div class="control-group">
+                    <div class="slider-card-label" style="margin-bottom:6px">
+                        <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">!</span>
+                        Movement Triggers
+                    </div>
+                    <span class="hint-text" style="margin-bottom:8px">Respond to how you move — swipes, speed, stillness, circles. Natural in dance.</span>
+
+                    <div id="movement-triggers-list" style="display:flex;flex-direction:column;gap:6px">
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="swipe_left">
+                            <span style="font-size:16px" title="Swipe Left">&#x1F448;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Swipe Left</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Fast sweep left</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="swipe_left" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="cycle_preset_next">Next Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="swipe_left"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="swipe_right">
+                            <span style="font-size:16px" title="Swipe Right">&#x1F449;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Swipe Right</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Fast sweep right</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="swipe_right" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="cycle_preset_next" selected>Next Preset</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="swipe_right"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="swipe_up">
+                            <span style="font-size:16px" title="Swipe Up">&#x2B06;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Swipe Up</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Fast sweep upward</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="swipe_up" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="boost" selected>Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="cycle_preset_next">Next Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="swipe_up"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="swipe_down">
+                            <span style="font-size:16px" title="Swipe Down">&#x2B07;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Swipe Down</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Fast sweep downward</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="swipe_down" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="random_fx" selected>Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="cycle_preset_next">Next Preset</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="swipe_down"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="speed_burst">
+                            <span style="font-size:16px" title="Speed Burst">&#x26A1;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Speed Burst</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Sudden fast movement</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="speed_burst" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="flash_fx" selected>Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="cycle_preset_next">Next Preset</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="speed_burst"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="stillness">
+                            <span style="font-size:16px" title="Stillness">&#x1F9D8;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Stillness</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Hold still after moving</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="stillness" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="freeze" selected>Freeze</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="boost">Boost</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="stillness"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="hands_meet">
+                            <span style="font-size:16px" title="Hands Meet">&#x1F932;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Hands Meet</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Bring palms together</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="hands_meet" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="random_fx" selected>Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="hands_meet"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="hands_spread">
+                            <span style="font-size:16px" title="Hands Spread">&#x1F450;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Hands Spread</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Pull hands apart wide</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="hands_spread" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="restore_fx" selected>Restore FX</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="cycle_preset">Cycle Preset</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="hands_spread"><span class="toggle-slider"></span></label>
+                        </div>
+
+                        <div class="movement-trigger-row" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--color-surface);border-radius:5px;border-left:2px solid transparent" data-movement="circle">
+                            <span style="font-size:16px" title="Hand Circle">&#x1F300;</span>
+                            <div style="flex:1;min-width:0">
+                                <div style="font-size:9px;font-weight:700;color:var(--color-text)">Hand Circle</div>
+                                <div style="font-size:8px;color:var(--text-muted)">Trace a circle in the air</div>
+                            </div>
+                            <select class="movement-action-select" data-movement="circle" style="background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:2px 4px;font-size:8px;max-width:90px">
+                                <option value="cycle_preset" selected>Cycle Preset</option>
+                                <option value="cycle_preset_next">Next Preset</option>
+                                <option value="random_fx">Random FX</option>
+                                <option value="flash_fx">Flash Effect</option>
+                                <option value="boost">Boost</option>
+                                <option value="intensity_spike">Intensity Spike</option>
+                                <option value="reset_fx">Stop All FX</option>
+                                <option value="restore_fx">Restore FX</option>
+                                <option value="freeze">Freeze</option>
+                                <option value="none">None</option>
+                            </select>
+                            <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable"><input type="checkbox" class="movement-toggle" data-movement="circle"><span class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Detected Hand Info (shown when hands found) -->
                 <div class="control-group" id="hand-info-group" style="display:none">
                     <div class="slider-card-label">Detected Hands</div>
@@ -6963,7 +7159,7 @@
 <script src="hod-timeline.js?v=20260410b"></script>
 <script src="hod-mask.js?v=20260410b"></script>
 <script src="hod-tracking.js?v=20260410b"></script>
-<script src="hod-hands.js?v=20260411"></script>
+<script src="hod-hands.js?v=20260411b"></script>
 <script src="hod-region-fx.js?v=20260410b"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->

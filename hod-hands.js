@@ -61,15 +61,119 @@ const GESTURE_TRIGGERS = {
 };
 
 const GESTURE_ACTIONS = {
-    freeze:       { label: 'Freeze Frame',    desc: 'Pause video on current frame' },
-    reset_fx:     { label: 'Stop All FX',     desc: 'Turn off all active effects (remembers them)' },
-    restore_fx:   { label: 'Restore FX',      desc: 'Bring back effects that were stopped' },
-    cycle_preset: { label: 'Cycle Preset',     desc: 'Jump to next FX preset' },
-    random_fx:    { label: 'Random Effect',    desc: 'Activate a random effect' },
-    boost:        { label: 'Boost Intensity',  desc: 'Push active effects to max for a beat' },
-    toggle_viz:   { label: 'Toggle Hand Viz',  desc: 'Cycle through hand display styles' },
-    none:         { label: 'None',             desc: 'Gesture detected but no action' }
+    freeze:           { label: 'Freeze Frame',    desc: 'Pause video on current frame' },
+    reset_fx:         { label: 'Stop All FX',     desc: 'Turn off all active effects (remembers them)' },
+    restore_fx:       { label: 'Restore FX',      desc: 'Bring back effects that were stopped' },
+    cycle_preset:     { label: 'Cycle Preset',     desc: 'Jump to a random FX preset' },
+    cycle_preset_next:{ label: 'Next Preset',      desc: 'Go to the next preset in sequence' },
+    random_fx:        { label: 'Random Effect',    desc: 'Activate a random effect' },
+    flash_fx:         { label: 'Flash Effect',     desc: 'Briefly flash a random intense effect' },
+    boost:            { label: 'Boost Intensity',  desc: 'Push active effects to max for a beat' },
+    intensity_spike:  { label: 'Intensity Spike',  desc: 'Push all effects to max for a longer moment' },
+    toggle_viz:       { label: 'Toggle Hand Viz',  desc: 'Cycle through hand display styles' },
+    none:             { label: 'None',             desc: 'Gesture detected but no action' }
 };
+
+// ── Movement Triggers (dance-based) ─────────────────────────────
+// Respond to HOW you move, not what shape your hand is
+
+const MOVEMENT_TRIGGERS = {
+    swipe_left:   { label: 'Swipe Left',    desc: 'Fast sweep left',           icon: '\u{1F448}', defaultAction: 'cycle_preset',      enabled: false, cooldown: 1200 },
+    swipe_right:  { label: 'Swipe Right',   desc: 'Fast sweep right',          icon: '\u{1F449}', defaultAction: 'cycle_preset_next', enabled: false, cooldown: 1200 },
+    swipe_up:     { label: 'Swipe Up',      desc: 'Fast sweep upward',         icon: '\u2B06',    defaultAction: 'boost',              enabled: false, cooldown: 1200 },
+    swipe_down:   { label: 'Swipe Down',    desc: 'Fast sweep downward',       icon: '\u2B07',    defaultAction: 'random_fx',          enabled: false, cooldown: 1200 },
+    speed_burst:  { label: 'Speed Burst',   desc: 'Sudden fast movement',      icon: '\u26A1',    defaultAction: 'flash_fx',           enabled: false, cooldown: 1000 },
+    stillness:    { label: 'Stillness',     desc: 'Hold still after moving',   icon: '\u{1F9D8}', defaultAction: 'freeze',             enabled: false, cooldown: 1000 },
+    hands_meet:   { label: 'Hands Meet',    desc: 'Bring palms together',      icon: '\u{1F932}', defaultAction: 'random_fx',          enabled: false, cooldown: 1000 },
+    hands_spread: { label: 'Hands Spread',  desc: 'Pull hands apart wide',     icon: '\u{1F450}', defaultAction: 'restore_fx',         enabled: false, cooldown: 1000 },
+    circle:       { label: 'Hand Circle',   desc: 'Trace a circle in the air', icon: '\u{1F300}', defaultAction: 'cycle_preset',       enabled: false, cooldown: 1000 }
+};
+
+// ── Movement Detection State ─────────────────────────────────────
+
+// Palm history ring buffers (45 entries per hand, ~2.25s at 3-frame interval)
+var _PALM_HIST_SIZE = 45;
+var _palmHistory = [
+    { buf: new Array(_PALM_HIST_SIZE), head: 0, len: 0 },
+    { buf: new Array(_PALM_HIST_SIZE), head: 0, len: 0 }
+];
+
+function _palmHistPush(h, entry) {
+    var hist = _palmHistory[h];
+    hist.buf[hist.head] = entry;
+    hist.head = (hist.head + 1) % _PALM_HIST_SIZE;
+    if (hist.len < _PALM_HIST_SIZE) hist.len++;
+}
+
+function _palmHistGet(h, stepsBack) {
+    var hist = _palmHistory[h];
+    if (stepsBack >= hist.len) return null;
+    var idx = (hist.head - 1 - stepsBack + _PALM_HIST_SIZE * 2) % _PALM_HIST_SIZE;
+    return hist.buf[idx];
+}
+
+function _palmHistReset(h) {
+    _palmHistory[h].head = 0;
+    _palmHistory[h].len = 0;
+}
+
+// Acceleration
+var _handPrevVelocity = [null, null];
+var _handAcceleration = [0, 0];
+
+// Two-hand relationship
+var _twoHandDist = 0;
+var _twoHandPrevDist = 0;
+var _twoHandDistRate = 0;
+var _twoHandMaxDist = 0;  // tracks recent max for meet detection
+
+// Per-detector state
+var _stillnessCounter = [0, 0];
+var _stillnessFired = [false, false];
+var _stillnessWasMoving = [false, false];
+var _circleAngleAccum = [0, 0];
+var _circlePrevAngle = [null, null];
+var _circleStartTime = [0, 0];
+var _handsMeetFired = false;
+var _handsSpreadFired = false;
+
+// Movement trigger cooldowns
+var _moveTriggerState = {};
+
+// Sequential preset cycling index
+var _presetCycleIndex = 0;
+
+// Flash FX timer
+var _flashFxTimer = null;
+var _flashFxEffect = null;
+
+// Intensity spike timer
+var _intensitySpikeActive = false;
+var _intensitySpikeTimer = null;
+
+// ── Movement Detection Thresholds ────────────────────────────────
+var SWIPE_MIN_DISPLACEMENT = 0.15;
+var SWIPE_DIRECTION_RATIO = 2.0;
+var SWIPE_MIN_SPEED = 0.008;
+var SWIPE_WINDOW = 10;
+
+var BURST_VELOCITY = 0.025;
+var BURST_ACCELERATION = 0.012;
+
+var STILL_VELOCITY = 0.002;
+var STILL_FRAMES = 20;
+var STILL_PRIOR_MOVEMENT = 0.01;
+
+var MEET_DIST_CLOSE = 0.08;
+var MEET_DIST_FAR = 0.25;
+
+var SPREAD_DIST = 0.5;
+var SPREAD_RATE = 0.015;
+
+var CIRCLE_MIN_RADIUS = 0.04;
+var CIRCLE_ANGLE_THRESHOLD = Math.PI * 2 * 0.85;
+var CIRCLE_CENTROID_WINDOW = 15;
+var CIRCLE_TIMEOUT_MS = 3000;
 
 let _savedActiveEffects = null;  // stored by Stop All, restored by Restore
 
@@ -262,6 +366,28 @@ function computeHandDerived(handData, handIndex) {
     }
     _handPrevWrist[handIndex] = { x: wrist.x, y: wrist.y };
 
+    // Acceleration: velocity change between frames
+    var prevVel = _handPrevVelocity[handIndex];
+    if (prevVel && handData.velocity) {
+        _handAcceleration[handIndex] = Math.abs(handData.velocity.magnitude - prevVel);
+    }
+    _handPrevVelocity[handIndex] = handData.velocity ? handData.velocity.magnitude : 0;
+
+    // Push palm position to history ring buffer (discontinuity guard)
+    var pc = handData.palmCenter;
+    if (pc) {
+        var prevPalm = _palmHistGet(handIndex, 0);
+        if (prevPalm) {
+            var jumpDist = Math.sqrt((pc.x - prevPalm.x) * (pc.x - prevPalm.x) + (pc.y - prevPalm.y) * (pc.y - prevPalm.y));
+            if (jumpDist > 0.3) _palmHistReset(handIndex);  // hand swap protection
+        }
+        _palmHistPush(handIndex, {
+            x: pc.x, y: pc.y,
+            t: performance.now(),
+            velMag: handData.velocity ? handData.velocity.magnitude : 0
+        });
+    }
+
     // Finger states: compare tip Y to PIP Y (lower Y = higher on screen = extended)
     const tipIdx = [4, 8, 12, 16, 20];
     const pipIdx = [3, 6, 10, 14, 18]; // thumb uses IP (3), others use PIP
@@ -402,6 +528,54 @@ function _executeGestureAction(action, hand) {
             _gestureBoostTimer = setTimeout(function() { _gestureBoostActive = false; }, 500);
             break;
 
+        case 'cycle_preset_next':
+            if (typeof FX_PRESETS !== 'undefined' && typeof applyPreset === 'function') {
+                var pKeys = Object.keys(FX_PRESETS);
+                if (pKeys.length > 0) {
+                    _presetCycleIndex = (_presetCycleIndex + 1) % pKeys.length;
+                    applyPreset(pKeys[_presetCycleIndex]);
+                }
+            }
+            break;
+
+        case 'flash_fx':
+            // Briefly activate a random intense effect for 400ms
+            if (typeof FX_UI_CONFIG !== 'undefined' && typeof activeEffects !== 'undefined') {
+                var intenseFx = ['glitch', 'pixelate', 'datamosh_melt', 'kaleid', 'thermal', 'invert', 'edge'];
+                var available = intenseFx.filter(function(n) { return FX_UI_CONFIG[n] && !activeEffects.has(n); });
+                if (available.length === 0) available = intenseFx.filter(function(n) { return FX_UI_CONFIG[n]; });
+                if (available.length > 0) {
+                    var pick = available[Math.floor(Math.random() * available.length)];
+                    // Remove previous flash if still active
+                    if (_flashFxEffect && activeEffects.has(_flashFxEffect)) {
+                        activeEffects.delete(_flashFxEffect);
+                    }
+                    clearTimeout(_flashFxTimer);
+                    activeEffects.add(pick);
+                    _flashFxEffect = pick;
+                    if (typeof updateCardHighlights === 'function') updateCardHighlights();
+                    _flashFxTimer = setTimeout(function() {
+                        if (_flashFxEffect && typeof activeEffects !== 'undefined') {
+                            activeEffects.delete(_flashFxEffect);
+                            _flashFxEffect = null;
+                            if (typeof updateCardHighlights === 'function') updateCardHighlights();
+                        }
+                    }, 400);
+                }
+            }
+            break;
+
+        case 'intensity_spike':
+            // Push all active effects to max for 800ms (longer boost)
+            _intensitySpikeActive = true;
+            _gestureBoostActive = true;
+            clearTimeout(_intensitySpikeTimer);
+            _intensitySpikeTimer = setTimeout(function() {
+                _intensitySpikeActive = false;
+                _gestureBoostActive = false;
+            }, 800);
+            break;
+
         case 'toggle_viz':
             var modes = ['skeleton', 'dots', 'tips', 'off'];
             var curIdx = modes.indexOf(handVizMode);
@@ -416,6 +590,318 @@ function _executeGestureAction(action, hand) {
         default:
             break;
     }
+}
+
+// ── Movement Detection Functions ─────────────────────────────────
+
+function _detectSwipe(h, hand) {
+    if (_palmHistory[h].len < SWIPE_WINDOW) return null;
+    var cur = _palmHistGet(h, 0);
+    var past = _palmHistGet(h, SWIPE_WINDOW - 1);
+    if (!cur || !past) return null;
+
+    var dx = cur.x - past.x;
+    var dy = cur.y - past.y;
+    var adx = Math.abs(dx);
+    var ady = Math.abs(dy);
+    var disp = Math.sqrt(dx * dx + dy * dy);
+
+    if (disp < SWIPE_MIN_DISPLACEMENT) return null;
+
+    // Check average speed in window
+    var avgSpd = 0;
+    for (var i = 0; i < SWIPE_WINDOW; i++) {
+        var p = _palmHistGet(h, i);
+        if (p) avgSpd += p.velMag;
+    }
+    avgSpd /= SWIPE_WINDOW;
+    if (avgSpd < SWIPE_MIN_SPEED) return null;
+
+    // Direction ratio check
+    if (adx > ady * SWIPE_DIRECTION_RATIO) {
+        return dx < 0 ? 'swipe_left' : 'swipe_right';
+    } else if (ady > adx * SWIPE_DIRECTION_RATIO) {
+        return dy < 0 ? 'swipe_up' : 'swipe_down';
+    }
+    return null;
+}
+
+function _detectSpeedBurst(h, hand) {
+    if (!hand.velocity) return false;
+    return hand.velocity.magnitude > BURST_VELOCITY && _handAcceleration[h] > BURST_ACCELERATION;
+}
+
+function _detectStillness(h, hand) {
+    if (!hand.velocity) return false;
+    var vel = hand.velocity.magnitude;
+
+    if (vel > STILL_PRIOR_MOVEMENT) {
+        _stillnessWasMoving[h] = true;
+    }
+
+    if (vel < STILL_VELOCITY) {
+        _stillnessCounter[h]++;
+        if (_stillnessCounter[h] >= STILL_FRAMES && _stillnessWasMoving[h] && !_stillnessFired[h]) {
+            _stillnessFired[h] = true;
+            return true;
+        }
+    } else {
+        _stillnessCounter[h] = 0;
+        _stillnessFired[h] = false;
+    }
+    return false;
+}
+
+function _updateTwoHandState() {
+    if (_handResults.length < 2) {
+        _twoHandPrevDist = _twoHandDist;
+        _twoHandDist = 0;
+        _twoHandDistRate = 0;
+        _twoHandMaxDist = 0;
+        _handsMeetFired = false;
+        _handsSpreadFired = false;
+        return;
+    }
+    var a = _handResults[0].palmCenter;
+    var b = _handResults[1].palmCenter;
+    if (!a || !b) return;
+
+    _twoHandPrevDist = _twoHandDist;
+    var dx = a.x - b.x;
+    var dy = a.y - b.y;
+    _twoHandDist = Math.sqrt(dx * dx + dy * dy);
+    _twoHandDistRate = _twoHandDist - _twoHandPrevDist;
+
+    if (_twoHandDist > _twoHandMaxDist) _twoHandMaxDist = _twoHandDist;
+}
+
+function _detectHandsMeet() {
+    if (_handResults.length < 2 || _twoHandDist === 0) return false;
+    if (_twoHandDist < MEET_DIST_CLOSE && _twoHandMaxDist > MEET_DIST_FAR && !_handsMeetFired) {
+        _handsMeetFired = true;
+        _twoHandMaxDist = 0;
+        return true;
+    }
+    if (_twoHandDist > MEET_DIST_CLOSE * 2) {
+        _handsMeetFired = false;
+    }
+    return false;
+}
+
+function _detectHandsSpread() {
+    if (_handResults.length < 2 || _twoHandDist === 0) return false;
+    if (_twoHandDist > SPREAD_DIST && _twoHandDistRate > SPREAD_RATE && !_handsSpreadFired) {
+        _handsSpreadFired = true;
+        return true;
+    }
+    if (_twoHandDist < SPREAD_DIST * 0.7) {
+        _handsSpreadFired = false;
+    }
+    return false;
+}
+
+function _detectCircle(h) {
+    if (_palmHistory[h].len < CIRCLE_CENTROID_WINDOW) return false;
+    var now = performance.now();
+
+    // Rolling centroid of last N positions
+    var cx = 0, cy = 0, count = 0;
+    for (var i = 0; i < CIRCLE_CENTROID_WINDOW; i++) {
+        var p = _palmHistGet(h, i);
+        if (p) { cx += p.x; cy += p.y; count++; }
+    }
+    if (count < CIRCLE_CENTROID_WINDOW) return false;
+    cx /= count; cy /= count;
+
+    var cur = _palmHistGet(h, 0);
+    var dx = cur.x - cx;
+    var dy = cur.y - cy;
+    var radius = Math.sqrt(dx * dx + dy * dy);
+
+    if (radius < CIRCLE_MIN_RADIUS) {
+        _circleAngleAccum[h] = 0;
+        _circlePrevAngle[h] = null;
+        return false;
+    }
+
+    var angle = Math.atan2(dy, dx);
+
+    if (_circlePrevAngle[h] !== null) {
+        var delta = angle - _circlePrevAngle[h];
+        // Normalize to [-PI, PI]
+        if (delta > Math.PI) delta -= Math.PI * 2;
+        if (delta < -Math.PI) delta += Math.PI * 2;
+        _circleAngleAccum[h] += delta;
+
+        // Timeout: reset if taking too long
+        if (_circleStartTime[h] > 0 && now - _circleStartTime[h] > CIRCLE_TIMEOUT_MS) {
+            _circleAngleAccum[h] = 0;
+            _circleStartTime[h] = 0;
+        }
+    } else {
+        _circleStartTime[h] = now;
+    }
+    _circlePrevAngle[h] = angle;
+
+    if (Math.abs(_circleAngleAccum[h]) > CIRCLE_ANGLE_THRESHOLD) {
+        _circleAngleAccum[h] = 0;
+        _circlePrevAngle[h] = null;
+        _circleStartTime[h] = 0;
+        return true;
+    }
+    return false;
+}
+
+// ── Movement Trigger Engine ──────────────────────────────────────
+
+var _lastMovementTrigger = null;
+
+function processMovementTriggers() {
+    if (!handsEnabled || _handResults.length === 0) return;
+
+    _updateTwoHandState();
+
+    var now = Date.now();
+
+    // Two-hand triggers (hand-index independent)
+    var twoHandChecks = [
+        { key: 'hands_meet', detect: _detectHandsMeet },
+        { key: 'hands_spread', detect: _detectHandsSpread }
+    ];
+    for (var t = 0; t < twoHandChecks.length; t++) {
+        var chk = twoHandChecks[t];
+        var cfg = MOVEMENT_TRIGGERS[chk.key];
+        if (!cfg || !cfg.enabled) continue;
+        if (_moveTriggerState[chk.key] && now - _moveTriggerState[chk.key] < cfg.cooldown) continue;
+        if (chk.detect()) {
+            _moveTriggerState[chk.key] = now;
+            var action = cfg.action || cfg.defaultAction;
+            _executeGestureAction(action, _handResults[0]);
+            _showGestureToast(cfg.icon, cfg.label, GESTURE_ACTIONS[action] ? GESTURE_ACTIONS[action].label : action);
+            _lastMovementTrigger = chk.key;
+        }
+    }
+
+    // Per-hand triggers
+    for (var h = 0; h < _handResults.length; h++) {
+        var hand = _handResults[h];
+
+        // Swipe
+        var swipeDir = _detectSwipe(h, hand);
+        if (swipeDir) {
+            var swipeCfg = MOVEMENT_TRIGGERS[swipeDir];
+            if (swipeCfg && swipeCfg.enabled) {
+                var swipeKey = swipeDir + '_' + h;
+                if (!_moveTriggerState[swipeKey] || now - _moveTriggerState[swipeKey] >= swipeCfg.cooldown) {
+                    _moveTriggerState[swipeKey] = now;
+                    var sAction = swipeCfg.action || swipeCfg.defaultAction;
+                    _executeGestureAction(sAction, hand);
+                    _showGestureToast(swipeCfg.icon, swipeCfg.label, GESTURE_ACTIONS[sAction] ? GESTURE_ACTIONS[sAction].label : sAction);
+                    _lastMovementTrigger = swipeDir;
+                    // Reset palm history after swipe to prevent re-detection
+                    _palmHistReset(h);
+                }
+            }
+        }
+
+        // Speed burst
+        var burstCfg = MOVEMENT_TRIGGERS.speed_burst;
+        if (burstCfg && burstCfg.enabled && _detectSpeedBurst(h, hand)) {
+            var burstKey = 'speed_burst_' + h;
+            if (!_moveTriggerState[burstKey] || now - _moveTriggerState[burstKey] >= burstCfg.cooldown) {
+                _moveTriggerState[burstKey] = now;
+                var bAction = burstCfg.action || burstCfg.defaultAction;
+                _executeGestureAction(bAction, hand);
+                _showGestureToast(burstCfg.icon, burstCfg.label, GESTURE_ACTIONS[bAction] ? GESTURE_ACTIONS[bAction].label : bAction);
+                _lastMovementTrigger = 'speed_burst';
+            }
+        }
+
+        // Stillness
+        var stillCfg = MOVEMENT_TRIGGERS.stillness;
+        if (stillCfg && stillCfg.enabled && _detectStillness(h, hand)) {
+            var stillKey = 'stillness_' + h;
+            if (!_moveTriggerState[stillKey] || now - _moveTriggerState[stillKey] >= stillCfg.cooldown) {
+                _moveTriggerState[stillKey] = now;
+                var stAction = stillCfg.action || stillCfg.defaultAction;
+                _executeGestureAction(stAction, hand);
+                _showGestureToast(stillCfg.icon, stillCfg.label, GESTURE_ACTIONS[stAction] ? GESTURE_ACTIONS[stAction].label : stAction);
+                _lastMovementTrigger = 'stillness';
+            }
+        }
+
+        // Circle
+        var circleCfg = MOVEMENT_TRIGGERS.circle;
+        if (circleCfg && circleCfg.enabled && _detectCircle(h)) {
+            var circleKey = 'circle_' + h;
+            if (!_moveTriggerState[circleKey] || now - _moveTriggerState[circleKey] >= circleCfg.cooldown) {
+                _moveTriggerState[circleKey] = now;
+                var cAction = circleCfg.action || circleCfg.defaultAction;
+                _executeGestureAction(cAction, hand);
+                _showGestureToast(circleCfg.icon, circleCfg.label, GESTURE_ACTIONS[cAction] ? GESTURE_ACTIONS[cAction].label : cAction);
+                _lastMovementTrigger = 'circle';
+            }
+        }
+    }
+}
+
+// ── Movement Trigger Persistence ─────────────────────────────────
+
+function _saveMovementTriggers() {
+    var data = {};
+    for (var k of Object.keys(MOVEMENT_TRIGGERS)) {
+        data[k] = { enabled: MOVEMENT_TRIGGERS[k].enabled, action: MOVEMENT_TRIGGERS[k].action || MOVEMENT_TRIGGERS[k].defaultAction };
+    }
+    try { localStorage.setItem('hod-movement-triggers', JSON.stringify(data)); } catch(e) {}
+}
+
+function _loadMovementTriggers() {
+    try {
+        var raw = localStorage.getItem('hod-movement-triggers');
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        for (var k of Object.keys(data)) {
+            if (MOVEMENT_TRIGGERS[k]) {
+                MOVEMENT_TRIGGERS[k].enabled = data[k].enabled;
+                MOVEMENT_TRIGGERS[k].action = data[k].action;
+                var toggle = document.querySelector('.movement-toggle[data-movement="' + k + '"]');
+                if (toggle) {
+                    toggle.checked = data[k].enabled;
+                    var row = toggle.closest('.movement-trigger-row');
+                    if (row) row.style.borderLeftColor = data[k].enabled ? '#E84393' : 'transparent';
+                }
+                var select = document.querySelector('.movement-action-select[data-movement="' + k + '"]');
+                if (select) select.value = data[k].action;
+            }
+        }
+    } catch(e) {}
+}
+
+// ── Movement Highlight ───────────────────────────────────────────
+
+var _lastHighlightedMovement = null;
+
+function _updateMovementHighlight() {
+    if (!_lastMovementTrigger) return;
+    // Unhighlight previous
+    if (_lastHighlightedMovement && _lastHighlightedMovement !== _lastMovementTrigger) {
+        var prev = document.querySelector('.movement-trigger-row[data-movement="' + _lastHighlightedMovement + '"]');
+        if (prev) prev.style.background = 'var(--color-surface)';
+    }
+    var row = document.querySelector('.movement-trigger-row[data-movement="' + _lastMovementTrigger + '"]');
+    if (row) row.style.background = 'rgba(232,67,147,0.15)';
+    _lastHighlightedMovement = _lastMovementTrigger;
+
+    // Auto-clear after 600ms
+    clearTimeout(_updateMovementHighlight._timer);
+    _updateMovementHighlight._timer = setTimeout(function() {
+        if (_lastHighlightedMovement) {
+            var r = document.querySelector('.movement-trigger-row[data-movement="' + _lastHighlightedMovement + '"]');
+            if (r) r.style.background = 'var(--color-surface)';
+            _lastHighlightedMovement = null;
+        }
+        _lastMovementTrigger = null;
+    }, 600);
 }
 
 // ── Visualization ────────────────────────────────────────────────
@@ -465,11 +951,13 @@ function drawHandOverlay() {
 function processHandFrame() {
     if (!handsEnabled || _handResults.length === 0) return;
     processGestureTriggers();
+    processMovementTriggers();
     _updatePinchMeter();
     // Update live data + gesture highlight every 3 frames
     if (typeof frameCount !== 'undefined' && frameCount % 3 === 0) {
         _updateHandDataDisplay();
         _updateGestureHighlight();
+        _updateMovementHighlight();
     }
 }
 
@@ -2033,6 +2521,33 @@ function wireFxHandsSyncListeners() {
 
         // Load persisted gesture triggers
         _loadGestureTriggers();
+
+        // Wire movement trigger toggles
+        document.querySelectorAll('.movement-toggle').forEach(function(toggle) {
+            toggle.addEventListener('change', function() {
+                var key = this.dataset.movement;
+                if (MOVEMENT_TRIGGERS[key]) {
+                    MOVEMENT_TRIGGERS[key].enabled = this.checked;
+                    var row = this.closest('.movement-trigger-row');
+                    if (row) row.style.borderLeftColor = this.checked ? '#E84393' : 'transparent';
+                }
+                _saveMovementTriggers();
+            });
+        });
+
+        // Wire movement action selectors
+        document.querySelectorAll('.movement-action-select').forEach(function(select) {
+            select.addEventListener('change', function() {
+                var key = this.dataset.movement;
+                if (MOVEMENT_TRIGGERS[key]) {
+                    MOVEMENT_TRIGGERS[key].action = this.value;
+                }
+                _saveMovementTriggers();
+            });
+        });
+
+        // Load persisted movement triggers
+        _loadMovementTriggers();
 
         // Load persisted hand sync config
         _loadFxHandsSync();
