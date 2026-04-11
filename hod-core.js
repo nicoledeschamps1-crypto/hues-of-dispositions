@@ -5280,8 +5280,18 @@ function startWebcam(deviceId, facingMode) {
             if (track) {
                 let settings = track.getSettings();
                 let facing = settings.facingMode;
-                if (facing === 'user' || facing === 'environment') _currentFacingMode = facing;
-                else if (!deviceId && !facingMode) _currentFacingMode = 'user';
+                if (facing === 'user' || facing === 'environment') {
+                    _currentFacingMode = facing;
+                } else {
+                    // No facingMode reported (common with iPhone Continuity Camera, external cams)
+                    // Detect from label — iPhone/Continuity = front cam, Sony/external = no mirror
+                    let lbl = (track.label || '').toLowerCase();
+                    if (lbl.includes('iphone') || lbl.includes('continuity') || lbl.includes('facetime')) {
+                        _currentFacingMode = 'user';
+                    } else if (!deviceId && !facingMode) {
+                        _currentFacingMode = 'user';
+                    }
+                }
                 // Log which device actually connected
                 console.log('[Camera] Connected:', track.label);
                 ui.fileName.innerText = track.label || 'webcam active';
@@ -5339,11 +5349,14 @@ function populateCameraDevices() {
                 localStorage.setItem('hod-camera-device', cam.deviceId);
                 row.querySelectorAll('.camera-device-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                // Detect facing mode: front cameras contain 'front'/'facetime'/'user' in label,
-                // external/back cameras don't — default to 'environment' (no mirror) for safety
+                // Detect facing mode for mirror behavior:
+                // Front/selfie cameras should mirror, back/external cameras should not.
+                // iPhone Continuity Camera is a front-facing selfie cam — mirror it.
                 let label = (cam.label || '').toLowerCase();
-                _currentFacingMode = (label.includes('front') || label.includes('facetime') || label.includes('user') || (i === 0 && cams.length <= 2))
-                    ? 'user' : 'environment';
+                let isFrontCam = label.includes('front') || label.includes('facetime') ||
+                    label.includes('user') || label.includes('iphone') ||
+                    label.includes('continuity') || (i === 0 && cams.length <= 2);
+                _currentFacingMode = isFrontCam ? 'user' : 'environment';
                 if (usingWebcam) startWebcam(cam.deviceId);
             });
             row.appendChild(btn);
@@ -6312,7 +6325,7 @@ function openProjectionWindow() {
         '<style>' +
         '* { margin: 0; padding: 0; box-sizing: border-box; }' +
         'html, body { width: 100%; height: 100%; overflow: hidden; background: #000; cursor: none; }' +
-        'canvas { display: block; width: 100%; height: 100%; object-fit: contain; }' +
+        'canvas { display: block; width: 100vw; height: 100vh; }' +
         '.proj-hint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); ' +
         '  color: rgba(139,69,232,0.6); font: 12px/1 "Commit Mono", monospace; ' +
         '  letter-spacing: 1px; pointer-events: none; transition: opacity 1.5s; }' +
@@ -6327,6 +6340,26 @@ function openProjectionWindow() {
 
     // Size canvas to match main p5 canvas
     _syncProjSize();
+
+    // Auto-fullscreen the projection window (removes Chrome title bar)
+    // Try immediately — works when called from user gesture (Shift+P)
+    setTimeout(() => {
+        if (_projWindow && !_projWindow.closed) {
+            let d = _projWindow.document;
+            if (d.documentElement && !d.fullscreenElement) {
+                d.documentElement.requestFullscreen().catch(() => {
+                    // If auto-fullscreen blocked, fullscreen on first click/key
+                    let goFS = () => {
+                        d.documentElement.requestFullscreen().catch(() => {});
+                        d.removeEventListener('click', goFS);
+                        d.removeEventListener('keydown', goFS);
+                    };
+                    d.addEventListener('click', goFS, { once: true });
+                    d.addEventListener('keydown', goFS, { once: true });
+                });
+            }
+        }
+    }, 300);
 
     // Fade out hint after 4 seconds
     let hint = doc.getElementById('proj-hint');
@@ -6422,32 +6455,19 @@ function _syncProjectionFrame() {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, pw, ph);
 
-    // Calculate fit (contain) for video region
+    // Draw video region stretched to fill entire projection canvas (no black bars)
     if (videoLoaded && videoW > 0 && videoH > 0) {
-        let srcAspect = videoW / videoH;
-        let dstAspect = pw / ph;
-        let dw, dh, dx, dy;
-        if (srcAspect > dstAspect) {
-            dw = pw;
-            dh = pw / srcAspect;
-        } else {
-            dh = ph;
-            dw = ph * srcAspect;
-        }
-        dx = (pw - dw) / 2;
-        dy = (ph - dh) / 2;
-
-        // Draw the visible video region from p5 canvas
         let pd = pixelDensity();
         let visLeft = Math.max(0, videoX);
         let visTop = Math.max(0, videoY);
         let visRight = Math.min(width, videoX + videoW);
         let visBottom = Math.min(height, videoY + videoH);
 
+        // Fill entire projection canvas — MadMapper handles mapping/cropping
         ctx.drawImage(p5Canvas,
             Math.round(visLeft * pd), Math.round(visTop * pd),
             Math.round((visRight - visLeft) * pd), Math.round((visBottom - visTop) * pd),
-            dx, dy, dw, dh);
+            0, 0, pw, ph);
     } else {
         // No video — mirror entire canvas
         ctx.drawImage(p5Canvas, 0, 0, pw, ph);

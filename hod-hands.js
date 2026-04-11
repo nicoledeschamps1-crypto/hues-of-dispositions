@@ -839,10 +839,18 @@ function _drawHandParticle(ctx, landmarks) {
 // ── Fire Visualization ───────────────────────────────────────────
 
 var _fireTrails = [[], [], [], [], []];  // per-fingertip trail of screen positions
-var _fireTrailMax = 24;
+var _fireTrailMax = 44;  // longer trails for fluid feel
 var _prevFireGesture = ['unknown', 'unknown'];
 var _fireballCooldown = 0;
 var _fireballs = [];  // active fireball explosions
+var _fireEmbers = [];  // standalone ember particles
+var _fireShockwaves = [];  // expanding ring impacts
+
+// ── Charge-up state per hand ──
+var _fistChargeStart = [0, 0];  // timestamp when fist started (0 = not charging)
+var _fistChargeLevel = [0, 0];  // 0..1 smoothed charge level for rendering
+var CHARGE_MIN_MS = 200;   // minimum hold before charge registers
+var CHARGE_MAX_MS = 1800;  // full charge duration
 
 function _checkFireball(landmarks, handIdx) {
     var handData = _handResults[handIdx];
@@ -850,11 +858,32 @@ function _checkFireball(landmarks, handIdx) {
     var cur = handData.gesture;
     var prev = _prevFireGesture[handIdx] || 'unknown';
     _prevFireGesture[handIdx] = cur;
+    var now = Date.now();
 
+    // ── Track fist hold for charge-up ──
+    if (cur === 'fist') {
+        if (_fistChargeStart[handIdx] === 0) {
+            _fistChargeStart[handIdx] = now;
+        }
+        var held = now - _fistChargeStart[handIdx];
+        var rawCharge = Math.max(0, Math.min(1, (held - CHARGE_MIN_MS) / (CHARGE_MAX_MS - CHARGE_MIN_MS)));
+        // Smooth toward target
+        _fistChargeLevel[handIdx] += (rawCharge - _fistChargeLevel[handIdx]) * 0.15;
+    } else {
+        // Decay charge when not holding fist
+        _fistChargeLevel[handIdx] *= 0.85;
+        if (_fistChargeLevel[handIdx] < 0.01) _fistChargeLevel[handIdx] = 0;
+    }
+
+    // ── Release fireball on fist → open_palm ──
     if (prev === 'fist' && cur === 'open_palm') {
-        var now = Date.now();
-        if (now - _fireballCooldown < 600) return;
+        if (now - _fireballCooldown < 400) { _fistChargeStart[handIdx] = 0; return; }
         _fireballCooldown = now;
+
+        var held = _fistChargeStart[handIdx] > 0 ? now - _fistChargeStart[handIdx] : 0;
+        var charge = Math.max(0.15, Math.min(1, (held - CHARGE_MIN_MS) / (CHARGE_MAX_MS - CHARGE_MIN_MS)));
+        _fistChargeStart[handIdx] = 0;
+        _fistChargeLevel[handIdx] = 0;
 
         // Palm center
         var palmIdx = [0, 5, 9, 13, 17];
@@ -872,17 +901,27 @@ function _checkFireball(landmarks, handIdx) {
         }
         var dlen = Math.sqrt(dx * dx + dy * dy) || 1;
 
-        // Hand velocity adds momentum
-        var vx = handData.velocity.x * videoW * 0.6;
-        var vy = handData.velocity.y * videoH * 0.6;
+        // Hand velocity adds momentum — scaled by charge
+        var vx = handData.velocity.x * videoW * (0.4 + charge * 0.8);
+        var vy = handData.velocity.y * videoH * (0.4 + charge * 0.8);
 
         _fireballs.push({
             x: palm.x, y: palm.y,
-            dx: dx / dlen * 4 + vx, dy: dy / dlen * 4 + vy,
-            life: 1, age: 0
+            dx: dx / dlen * (3 + charge * 6) + vx,
+            dy: dy / dlen * (3 + charge * 6) + vy,
+            life: 1, age: 0,
+            charge: charge,  // affects size, embers, shockwave
+            maxSize: 40 + charge * 180,  // 40px minimum → 220px at full charge
+            emberRate: 0.3 + charge * 0.7  // probability per frame
         });
 
-        _showGestureToast('\uD83D\uDD25', 'Fireball', 'Released!');
+        var label = charge > 0.8 ? 'MEGA Fireball!' : charge > 0.4 ? 'Fireball!' : 'Fireball';
+        _showGestureToast('\uD83D\uDD25', label, charge > 0.8 ? 'Full power!' : 'Released!');
+    }
+
+    // Reset charge if gesture leaves fist without releasing to open_palm
+    if (prev === 'fist' && cur !== 'fist' && cur !== 'open_palm') {
+        _fistChargeStart[handIdx] = 0;
     }
 }
 
@@ -903,69 +942,72 @@ function _drawHandFire(ctx, landmarks) {
         var dip = _lmToScreen(landmarks[dipIdx[f]]);
         if (!_fireTrails[f]) _fireTrails[f] = [];
 
-        // Push current tip + direction info
         _fireTrails[f].push({
             x: tip.x, y: tip.y,
-            dx: tip.x - dip.x, dy: tip.y - dip.y
+            dx: tip.x - dip.x, dy: tip.y - dip.y,
+            t: performance.now()
         });
         if (_fireTrails[f].length > _fireTrailMax) _fireTrails[f].shift();
     }
 
-    // ── 2. Draw fire streams as billowing soft blobs along trail ──
+    // ── 2. Draw fire streams — longer, more fluid trails ──
     ctx.globalCompositeOperation = 'lighter';
 
     for (var t = 0; t < 5; t++) {
         var trail = _fireTrails[t];
-        if (trail.length < 2) continue;
-
+        if (trail.length < 3) continue;
         var len = trail.length;
 
-        // Walk along trail, place overlapping blobs
         for (var i = 0; i < len; i++) {
-            var progress = i / (len - 1);  // 0 = oldest, 1 = fingertip (newest)
+            var progress = i / (len - 1);  // 0 = oldest, 1 = tip
             var pt = trail[i];
-
-            // Direction for this segment
             var dirX = pt.dx || 0;
             var dirY = pt.dy || 0;
 
-            // Size: big at tip (newest), fades toward tail
-            var baseSize = (28 + intensity * 20) * progress;
-            // Turbulent offset — more chaotic toward the tail
-            var chaos = (1 - progress) * (18 + intensity * 14);
-            var offsetX = (Math.random() - 0.5) * chaos + dirX * 0.2;
-            var offsetY = (Math.random() - 0.5) * chaos + dirY * 0.2 - (1 - progress) * 3;  // tail drifts up (heat)
+            // Smooth progress curve — tail fades more gradually
+            var fadeProgress = progress * progress;  // quadratic for wispy tails
+
+            var baseSize = (32 + intensity * 24) * fadeProgress;
+            // More turbulence in the tail, less at the tip
+            var chaos = (1 - progress) * (22 + intensity * 18);
+            var heatRise = (1 - progress) * 5;  // older = more upward drift
+            var offsetX = (Math.random() - 0.5) * chaos + dirX * 0.25;
+            var offsetY = (Math.random() - 0.5) * chaos + dirY * 0.25 - heatRise;
 
             var bx = pt.x + offsetX;
             var by = pt.y + offsetY;
 
-            // Multiple soft blobs per trail point for volume
-            var blobCount = progress > 0.6 ? 3 : 2;
+            // More blobs near the tip for volume
+            var blobCount = progress > 0.7 ? 4 : progress > 0.4 ? 3 : 2;
             for (var b = 0; b < blobCount; b++) {
-                var blobSize = baseSize * (0.6 + Math.random() * 0.8);
-                var wobbleX = bx + (Math.random() - 0.5) * blobSize * 0.7;
-                var wobbleY = by + (Math.random() - 0.5) * blobSize * 0.7;
+                var blobSize = baseSize * (0.5 + Math.random() * 0.9);
+                var wobbleX = bx + (Math.random() - 0.5) * blobSize * 0.8;
+                var wobbleY = by + (Math.random() - 0.5) * blobSize * 0.8;
 
-                if (blobSize < 2) continue;
+                if (blobSize < 1.5) continue;
 
-                // Color based on progress: tip = white-yellow, tail = deep red
                 var grad = ctx.createRadialGradient(wobbleX, wobbleY, 0, wobbleX, wobbleY, blobSize);
-                if (progress > 0.7) {
-                    // Near fingertip: white-hot core
-                    grad.addColorStop(0, 'rgba(255, 255, 220, 0.25)');
-                    grad.addColorStop(0.3, 'rgba(255, 200, 50, 0.15)');
-                    grad.addColorStop(0.7, 'rgba(255, 100, 0, 0.06)');
+                if (progress > 0.75) {
+                    // Fingertip: white-hot core
+                    grad.addColorStop(0, 'rgba(255, 255, 230, 0.28)');
+                    grad.addColorStop(0.25, 'rgba(255, 210, 60, 0.18)');
+                    grad.addColorStop(0.6, 'rgba(255, 120, 10, 0.07)');
                     grad.addColorStop(1, 'rgba(200, 30, 0, 0)');
                 } else if (progress > 0.35) {
-                    // Middle: orange flame
-                    grad.addColorStop(0, 'rgba(255, 160, 20, 0.18)');
-                    grad.addColorStop(0.4, 'rgba(255, 80, 0, 0.1)');
+                    // Middle: orange flame body
+                    grad.addColorStop(0, 'rgba(255, 170, 30, 0.2)');
+                    grad.addColorStop(0.35, 'rgba(255, 90, 0, 0.12)');
                     grad.addColorStop(1, 'rgba(180, 20, 0, 0)');
-                } else {
-                    // Tail: deep red smoke
-                    grad.addColorStop(0, 'rgba(200, 50, 0, 0.1)');
-                    grad.addColorStop(0.5, 'rgba(120, 15, 0, 0.05)');
+                } else if (progress > 0.12) {
+                    // Tail: deep red wisps
+                    grad.addColorStop(0, 'rgba(220, 60, 0, 0.1)');
+                    grad.addColorStop(0.5, 'rgba(140, 20, 0, 0.05)');
                     grad.addColorStop(1, 'rgba(60, 0, 0, 0)');
+                } else {
+                    // Very tail: faint smoke wisps
+                    grad.addColorStop(0, 'rgba(140, 30, 0, 0.06)');
+                    grad.addColorStop(0.6, 'rgba(80, 10, 0, 0.02)');
+                    grad.addColorStop(1, 'rgba(40, 0, 0, 0)');
                 }
 
                 ctx.fillStyle = grad;
@@ -975,14 +1017,15 @@ function _drawHandFire(ctx, landmarks) {
             }
         }
 
-        // Bright core dot at the fingertip itself
+        // Bright core dot at fingertip
         if (len > 0) {
             var tipPt = trail[len - 1];
-            var coreR = 10 + intensity * 8;
+            var coreR = 12 + intensity * 10;
             var coreGrad = ctx.createRadialGradient(tipPt.x, tipPt.y, 0, tipPt.x, tipPt.y, coreR);
-            coreGrad.addColorStop(0, 'rgba(255, 255, 240, 0.5)');
-            coreGrad.addColorStop(0.4, 'rgba(255, 200, 80, 0.2)');
-            coreGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.55)');
+            coreGrad.addColorStop(0.35, 'rgba(255, 210, 90, 0.25)');
+            coreGrad.addColorStop(0.7, 'rgba(255, 120, 20, 0.08)');
+            coreGrad.addColorStop(1, 'rgba(255, 60, 0, 0)');
             ctx.fillStyle = coreGrad;
             ctx.beginPath();
             ctx.arc(tipPt.x, tipPt.y, coreR, 0, Math.PI * 2);
@@ -990,7 +1033,7 @@ function _drawHandFire(ctx, landmarks) {
         }
     }
 
-    // ── 3. Heat aura around palm ──
+    // ── 3. Heat aura + charge-up glow around palm ──
     var palmPts = [0, 5, 9, 13, 17];
     var pcx = 0, pcy = 0;
     for (var pi = 0; pi < palmPts.length; pi++) {
@@ -999,6 +1042,7 @@ function _drawHandFire(ctx, landmarks) {
     }
     pcx /= 5; pcy /= 5;
 
+    // Base heat aura
     var auraSize = 80 + intensity * 50;
     var auraGrad = ctx.createRadialGradient(pcx, pcy, 0, pcx, pcy, auraSize);
     auraGrad.addColorStop(0, 'rgba(255, 200, 50, 0.08)');
@@ -1009,62 +1053,253 @@ function _drawHandFire(ctx, landmarks) {
     ctx.arc(pcx, pcy, auraSize, 0, Math.PI * 2);
     ctx.fill();
 
-    // ── 4. Draw fireballs (expanding flame bursts) ──
+    // Charge-up glow — pulsing, growing orb while fist is held
+    for (var ch = 0; ch < _handResults.length; ch++) {
+        var chargeLevel = _fistChargeLevel[ch];
+        if (chargeLevel < 0.02) continue;
+
+        var chLm = _handResults[ch].landmarks;
+        var chPcx = 0, chPcy = 0;
+        for (var cpi = 0; cpi < palmPts.length; cpi++) {
+            var cpp = _lmToScreen(chLm[palmPts[cpi]]);
+            chPcx += cpp.x; chPcy += cpp.y;
+        }
+        chPcx /= 5; chPcy /= 5;
+
+        // Pulsing size based on charge
+        var pulse = 1 + Math.sin(performance.now() * 0.008) * 0.15 * chargeLevel;
+        var chargeR = (30 + chargeLevel * 90) * pulse;
+        var chargeAlpha = 0.1 + chargeLevel * 0.4;
+
+        // Outer charge glow
+        var chGrad = ctx.createRadialGradient(chPcx, chPcy, 0, chPcx, chPcy, chargeR);
+        chGrad.addColorStop(0, 'rgba(255, 255, 200,' + (chargeAlpha * 0.8) + ')');
+        chGrad.addColorStop(0.2, 'rgba(255, 200, 50,' + (chargeAlpha * 0.6) + ')');
+        chGrad.addColorStop(0.5, 'rgba(255, 120, 0,' + (chargeAlpha * 0.3) + ')');
+        chGrad.addColorStop(0.8, 'rgba(200, 40, 0,' + (chargeAlpha * 0.1) + ')');
+        chGrad.addColorStop(1, 'rgba(120, 0, 0, 0)');
+        ctx.fillStyle = chGrad;
+        ctx.beginPath();
+        ctx.arc(chPcx, chPcy, chargeR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Spinning sparks around the charge orb at higher charges
+        if (chargeLevel > 0.3) {
+            var sparkCount = Math.floor(4 + chargeLevel * 8);
+            var sparkTime = performance.now() * 0.003;
+            for (var sp = 0; sp < sparkCount; sp++) {
+                var sa = (sp / sparkCount) * Math.PI * 2 + sparkTime;
+                var sr = chargeR * (0.6 + Math.random() * 0.5);
+                var sx = chPcx + Math.cos(sa) * sr;
+                var sy = chPcy + Math.sin(sa) * sr;
+                var sparkSize = 3 + chargeLevel * 5 * Math.random();
+                var spGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sparkSize);
+                spGrad.addColorStop(0, 'rgba(255, 240, 180,' + (chargeLevel * 0.5) + ')');
+                spGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                ctx.fillStyle = spGrad;
+                ctx.beginPath();
+                ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // ── 4. Draw fireballs — Avatar firebending style ──
+    // Elongated flame streams oriented along travel direction,
+    // organic licking edges, trailing wisps, comet-shaped
     for (var fb = _fireballs.length - 1; fb >= 0; fb--) {
         var ball = _fireballs[fb];
         ball.x += ball.dx;
         ball.y += ball.dy;
-        ball.dx *= 0.96;
-        ball.dy *= 0.96;
-        ball.dy -= 0.3; // rises
+        ball.dx *= 0.975;
+        ball.dy *= 0.975;
+        ball.dy -= 0.2 * (1 + ball.charge);
         ball.age++;
-        ball.life -= 0.02;
+        ball.life -= 0.01 + (1 - ball.charge) * 0.006;
+
+        // Track travel direction for orientation
+        var spd = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        var headAngle = Math.atan2(ball.dy, ball.dx);
+
+        // Spawn embers along the tail
+        if (Math.random() < ball.emberRate && ball.life > 0.1) {
+            var eCount = ball.charge > 0.6 ? 3 : 2;
+            for (var ei = 0; ei < eCount; ei++) {
+                // Embers shed from behind the fireball
+                var eOff = -0.5 - Math.random() * 0.5;  // behind
+                var eLat = (Math.random() - 0.5) * 0.8;  // lateral spread
+                var headW = ball.maxSize * 0.35;
+                _fireEmbers.push({
+                    x: ball.x + Math.cos(headAngle) * headW * eOff + Math.cos(headAngle + Math.PI / 2) * headW * eLat,
+                    y: ball.y + Math.sin(headAngle) * headW * eOff + Math.sin(headAngle + Math.PI / 2) * headW * eLat,
+                    dx: (Math.random() - 0.5) * 2 + ball.dx * 0.15,
+                    dy: (Math.random() - 0.5) * 2 + ball.dy * 0.15 - 0.8,
+                    life: 0.5 + Math.random() * 0.5,
+                    size: 2 + Math.random() * 4 * (1 + ball.charge),
+                    bright: Math.random()
+                });
+            }
+        }
 
         if (ball.life <= 0) {
+            // ── Shockwave on death — directional burst ──
+            _fireShockwaves.push({
+                x: ball.x, y: ball.y,
+                maxR: ball.maxSize * (1.0 + ball.charge * 0.8),
+                r: ball.maxSize * 0.15,
+                life: 1,
+                charge: ball.charge
+            });
+            // Directional ember burst — biased forward
+            var burstCount = Math.floor(10 + ball.charge * 20);
+            for (var bi = 0; bi < burstCount; bi++) {
+                var bAngle = headAngle + (Math.random() - 0.5) * Math.PI * 1.2;
+                var bSpd = 2 + Math.random() * 6 * (1 + ball.charge);
+                _fireEmbers.push({
+                    x: ball.x, y: ball.y,
+                    dx: Math.cos(bAngle) * bSpd,
+                    dy: Math.sin(bAngle) * bSpd - 1,
+                    life: 0.4 + Math.random() * 0.6,
+                    size: 2 + Math.random() * 6,
+                    bright: Math.random()
+                });
+            }
             _fireballs.splice(fb, 1);
             continue;
         }
 
-        var ballSize = (1 - ball.life) * 80 + 20;
-        var coreSize = ballSize * 0.5;
+        // ── Flame body — same soft blob fire as fingertips, scaled up ──
+        var ballR = ball.maxSize * 0.5 * (0.4 + ball.life * 0.6);
+        var blobCount = 12 + Math.floor(ball.charge * 12);
 
-        // Outer fire glow
-        var outerGrad = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, ballSize);
-        outerGrad.addColorStop(0, 'rgba(255, 200, 50,' + (ball.life * 0.3) + ')');
-        outerGrad.addColorStop(0.3, 'rgba(255, 100, 0,' + (ball.life * 0.2) + ')');
-        outerGrad.addColorStop(0.6, 'rgba(200, 30, 0,' + (ball.life * 0.1) + ')');
-        outerGrad.addColorStop(1, 'rgba(100, 0, 0, 0)');
-        ctx.fillStyle = outerGrad;
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ballSize, 0, Math.PI * 2);
-        ctx.fill();
+        for (var bi2 = 0; bi2 < blobCount; bi2++) {
+            var progress = bi2 / (blobCount - 1);  // 0=outer, 1=center
+            var spread = (1 - progress) * ballR * 1.2;
+            var blobSize = ballR * (0.3 + progress * 0.7) * (0.6 + Math.random() * 0.8);
 
-        // Hot core
-        if (ball.life > 0.3) {
-            var coreAlpha = (ball.life - 0.3) / 0.7;
-            var coreGrad = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, coreSize);
-            coreGrad.addColorStop(0, 'rgba(255, 255, 220,' + (coreAlpha * 0.6) + ')');
-            coreGrad.addColorStop(0.5, 'rgba(255, 180, 50,' + (coreAlpha * 0.3) + ')');
-            coreGrad.addColorStop(1, 'rgba(255, 80, 0, 0)');
-            ctx.fillStyle = coreGrad;
+            // Scatter blobs, denser near center
+            var bx = ball.x + (Math.random() - 0.5) * spread * 2;
+            var by = ball.y + (Math.random() - 0.5) * spread * 2;
+            // Drift upward (heat rise) for outer blobs
+            by -= (1 - progress) * ballR * 0.3;
+
+            if (blobSize < 2) continue;
+
+            var grad = ctx.createRadialGradient(bx, by, 0, bx, by, blobSize);
+            if (progress > 0.7) {
+                // Center: white-hot core
+                grad.addColorStop(0, 'rgba(255, 255, 220,' + (ball.life * 0.3) + ')');
+                grad.addColorStop(0.3, 'rgba(255, 200, 50,' + (ball.life * 0.18) + ')');
+                grad.addColorStop(0.7, 'rgba(255, 100, 0,' + (ball.life * 0.07) + ')');
+                grad.addColorStop(1, 'rgba(200, 30, 0, 0)');
+            } else if (progress > 0.35) {
+                // Mid: orange flame
+                grad.addColorStop(0, 'rgba(255, 160, 20,' + (ball.life * 0.22) + ')');
+                grad.addColorStop(0.4, 'rgba(255, 80, 0,' + (ball.life * 0.12) + ')');
+                grad.addColorStop(1, 'rgba(180, 20, 0, 0)');
+            } else {
+                // Outer: deep red wisps
+                grad.addColorStop(0, 'rgba(200, 50, 0,' + (ball.life * 0.12) + ')');
+                grad.addColorStop(0.5, 'rgba(120, 15, 0,' + (ball.life * 0.05) + ')');
+                grad.addColorStop(1, 'rgba(60, 0, 0, 0)');
+            }
+
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(ball.x, ball.y, coreSize, 0, Math.PI * 2);
+            ctx.arc(bx, by, blobSize, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Flickering edge flames around the fireball
-        for (var ef = 0; ef < 8; ef++) {
-            var a = (ef / 8) * Math.PI * 2 + ball.age * 0.15;
-            var edgeR = ballSize * (0.7 + Math.random() * 0.5);
-            var ex = ball.x + Math.cos(a) * edgeR;
-            var ey = ball.y + Math.sin(a) * edgeR;
-            var tongueSize = 8 + Math.random() * 12;
-            var tongueGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, tongueSize);
-            tongueGrad.addColorStop(0, 'rgba(255, 160, 0,' + (ball.life * 0.25) + ')');
-            tongueGrad.addColorStop(1, 'rgba(200, 30, 0, 0)');
-            ctx.fillStyle = tongueGrad;
+        // Bright core glow at center
+        if (ball.life > 0.2) {
+            var coreR2 = ballR * 0.4;
+            var cAlpha = (ball.life - 0.2) / 0.8 * (0.5 + ball.charge * 0.3);
+            var cGrad = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, coreR2);
+            cGrad.addColorStop(0, 'rgba(255, 255, 240,' + cAlpha + ')');
+            cGrad.addColorStop(0.4, 'rgba(255, 200, 80,' + (cAlpha * 0.4) + ')');
+            cGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = cGrad;
             ctx.beginPath();
-            ctx.arc(ex, ey, tongueSize, 0, Math.PI * 2);
+            ctx.arc(ball.x, ball.y, coreR2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // ── 5. Draw ember particles ──
+    for (var em = _fireEmbers.length - 1; em >= 0; em--) {
+        var e = _fireEmbers[em];
+        e.x += e.dx;
+        e.y += e.dy;
+        e.dy -= 0.08;  // embers float up
+        e.dx *= 0.98;
+        e.dy *= 0.98;
+        e.life -= 0.02;
+        e.size *= 0.985;  // shrink gently
+
+        if (e.life <= 0 || e.size < 0.5) {
+            _fireEmbers.splice(em, 1);
+            continue;
+        }
+
+        var eAlpha = e.life * 0.7;
+        // Color: bright ones are yellow, dim ones are red-orange
+        var r = 255;
+        var g = Math.floor(100 + e.bright * 155);
+        var bv = Math.floor(e.bright * 50);
+
+        var emGrad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size);
+        emGrad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + bv + ',' + eAlpha + ')');
+        emGrad.addColorStop(0.6, 'rgba(' + r + ',' + Math.floor(g * 0.5) + ',0,' + (eAlpha * 0.4) + ')');
+        emGrad.addColorStop(1, 'rgba(120, 0, 0, 0)');
+        ctx.fillStyle = emGrad;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Cap embers to prevent runaway
+    if (_fireEmbers.length > 200) _fireEmbers.splice(0, _fireEmbers.length - 200);
+
+    // ── 6. Draw shockwave rings ──
+    for (var sw = _fireShockwaves.length - 1; sw >= 0; sw--) {
+        var wave = _fireShockwaves[sw];
+        wave.r += (wave.maxR - wave.r) * 0.15;  // ease out expansion
+        wave.life -= 0.035;
+
+        if (wave.life <= 0) {
+            _fireShockwaves.splice(sw, 1);
+            continue;
+        }
+
+        // Bright expanding ring
+        var ringWidth = 4 + wave.charge * 8;
+        ctx.strokeStyle = 'rgba(255, 200, 60,' + (wave.life * 0.5) + ')';
+        ctx.lineWidth = ringWidth * wave.life;
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner glow fill
+        var swGrad = ctx.createRadialGradient(wave.x, wave.y, wave.r * 0.6, wave.x, wave.y, wave.r);
+        swGrad.addColorStop(0, 'rgba(255, 180, 40,' + (wave.life * 0.08) + ')');
+        swGrad.addColorStop(0.5, 'rgba(255, 80, 0,' + (wave.life * 0.04) + ')');
+        swGrad.addColorStop(1, 'rgba(200, 20, 0, 0)');
+        ctx.fillStyle = swGrad;
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flash on first few frames
+        if (wave.life > 0.85) {
+            var flashAlpha = (wave.life - 0.85) / 0.15 * 0.25 * (1 + wave.charge);
+            var flashR = wave.r * 0.4;
+            var flashGrad = ctx.createRadialGradient(wave.x, wave.y, 0, wave.x, wave.y, flashR);
+            flashGrad.addColorStop(0, 'rgba(255, 255, 220,' + flashAlpha + ')');
+            flashGrad.addColorStop(0.5, 'rgba(255, 200, 80,' + (flashAlpha * 0.4) + ')');
+            flashGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            ctx.fillStyle = flashGrad;
+            ctx.beginPath();
+            ctx.arc(wave.x, wave.y, flashR, 0, Math.PI * 2);
             ctx.fill();
         }
     }
