@@ -3043,7 +3043,7 @@ function buildPresetGrid() {
     for (let [key, preset] of Object.entries(FX_PRESETS)) {
         if (currentPresetCat !== 'all' && preset.category !== currentPresetCat) continue;
         let card = createPresetCard(key, preset, false);
-        grid.appendChild(card);
+        if (card) grid.appendChild(card);
     }
     updatePresetCardHighlights();
 }
@@ -3055,13 +3055,29 @@ function buildPresetCustomGrid() {
 
     let customs = getCustomPresets();
     for (let [key, preset] of Object.entries(customs)) {
+        if (!_isValidPreset(preset)) {
+            console.warn('[presets] Skipping malformed custom preset:', key);
+            continue;
+        }
         let card = createPresetCard(key, preset, true);
-        grid.appendChild(card);
+        if (card) grid.appendChild(card);
     }
     updatePresetCardHighlights();
 }
 
+// Shape validator for preset entries — guards against localStorage poisoning
+function _isValidPreset(p) {
+    return p && typeof p === 'object' && !Array.isArray(p) &&
+        typeof p.name === 'string' &&
+        p.effects && typeof p.effects === 'object' && !Array.isArray(p.effects);
+}
+
 function createPresetCard(key, preset, isCustom) {
+    // Defensive guard — also called with trusted FX_PRESETS but bails safely on bad data
+    if (!preset || typeof preset !== 'object' || !preset.effects || typeof preset.effects !== 'object') {
+        return null;
+    }
+
     let card = document.createElement('div');
     card.className = 'fx-preset-card' + (isCustom ? ' custom-preset' : '');
     card.dataset.preset = key;
