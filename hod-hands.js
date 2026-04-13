@@ -2158,9 +2158,14 @@ function buildHandsSyncSummaryPanel() {
 
         var info = document.createElement('div');
         info.style.cssText = 'flex:1;min-width:0';
-        info.innerHTML =
-            '<div style="font-size:9px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + uiCfg.label + '</div>' +
-            '<div style="font-size:8px;color:var(--text-muted)">' + paramLabel + ' \u00B7 ' + srcInfo.label + '</div>';
+        var labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-size:9px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+        labelDiv.textContent = uiCfg.label;
+        var paramDiv = document.createElement('div');
+        paramDiv.style.cssText = 'font-size:8px;color:var(--text-muted)';
+        paramDiv.textContent = paramLabel + ' \u00B7 ' + String(srcInfo.label || '');
+        info.appendChild(labelDiv);
+        info.appendChild(paramDiv);
 
         var meter = document.createElement('div');
         meter.style.cssText = 'width:40px;height:8px;background:var(--color-elevated);border-radius:2px;overflow:hidden;flex-shrink:0';

@@ -9,6 +9,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Content Security Policy: defense-in-depth against CDN compromise + XSS -->
+    <!-- 'unsafe-inline' scripts required for existing inline onclick handlers (tech debt) -->
+    <!-- 'unsafe-eval' required by MediaPipe WASM bootstrap -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://storage.googleapis.com;
+        script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://storage.googleapis.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: blob:;
+        media-src 'self' data: blob:;
+        connect-src 'self' https://storage.googleapis.com https://cdn.jsdelivr.net blob: data:;
+        worker-src 'self' blob:;
+        child-src 'self' blob:;
+        frame-ancestors 'none';
+        form-action 'none';
+        base-uri 'self';
+        object-src 'none';
+    ">
     <title>Hues of Dispositions</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7151,16 +7170,16 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="hod-core.js?v=20260410b"></script>
-<script src="hod-fx.js?v=20260410b"></script>
-<script src="hod-shader-fx.js?v=20260410b"></script>
-<script src="hod-overlay.js?v=20260410b"></script>
-<script src="hod-audio.js?v=20260410b"></script>
-<script src="hod-timeline.js?v=20260410b"></script>
-<script src="hod-mask.js?v=20260410b"></script>
-<script src="hod-tracking.js?v=20260410b"></script>
-<script src="hod-hands.js?v=20260411b"></script>
-<script src="hod-region-fx.js?v=20260410b"></script>
+<script src="hod-core.js?v=20260413"></script>
+<script src="hod-fx.js?v=20260413"></script>
+<script src="hod-shader-fx.js?v=20260413"></script>
+<script src="hod-overlay.js?v=20260413"></script>
+<script src="hod-audio.js?v=20260413"></script>
+<script src="hod-timeline.js?v=20260413"></script>
+<script src="hod-mask.js?v=20260413"></script>
+<script src="hod-tracking.js?v=20260413"></script>
+<script src="hod-hands.js?v=20260413"></script>
+<script src="hod-region-fx.js?v=20260413"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">

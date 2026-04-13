@@ -6310,12 +6310,16 @@ function openProjectionWindow() {
     let w = screen.width;
     let h = screen.height;
     _projWindow = window.open('', 'hod-projection',
-        'width=' + w + ',height=' + h + ',menubar=no,toolbar=no,location=no,status=no');
+        'width=' + w + ',height=' + h + ',menubar=no,toolbar=no,location=no,status=no,noopener=no');
 
     if (!_projWindow) {
         console.warn('Projection: popup blocked — allow popups for this site');
         return;
     }
+
+    // Drop opener reference on the child window — projection is same-origin so
+    // we still have access via _projWindow, but the child can't navigate us back.
+    try { _projWindow.opener = null; } catch (e) {}
 
     // Build the projection window document
     let doc = _projWindow.document;

@@ -2985,7 +2985,17 @@ function deleteCustomPreset(key) {
 }
 
 function getCustomPresets() {
-    return JSON.parse(localStorage.getItem('blobfx-presets') || '{}');
+    try {
+        let raw = localStorage.getItem('blobfx-presets');
+        if (!raw) return {};
+        let parsed = JSON.parse(raw);
+        // Guard against non-object values that could crash preset UI
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+        return parsed;
+    } catch (e) {
+        console.warn('[presets] Failed to parse custom presets from localStorage, resetting:', e);
+        return {};
+    }
 }
 
 // ── Preset UI builders ──
@@ -3369,12 +3379,17 @@ function buildAudioSyncSummaryPanel() {
         let row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--color-surface);border-radius:4px;border-left:2px solid var(--color-teal)';
 
-        // Effect name + param
+        // Effect name + param (use textContent — never innerHTML with any cfg/label data)
         let info = document.createElement('div');
         info.style.cssText = 'flex:1;min-width:0';
-        info.innerHTML =
-            '<div style="font-size:9px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + uiCfg.label + '</div>' +
-            '<div style="font-size:8px;color:var(--text-muted)">' + paramLabel + ' · ' + cfg.band.toUpperCase() + '</div>';
+        let labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-size:9px;font-weight:700;color:var(--color-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+        labelDiv.textContent = uiCfg.label;
+        let paramDiv = document.createElement('div');
+        paramDiv.style.cssText = 'font-size:8px;color:var(--text-muted)';
+        paramDiv.textContent = paramLabel + ' · ' + String(cfg.band || '').toUpperCase();
+        info.appendChild(labelDiv);
+        info.appendChild(paramDiv);
 
         // Live energy meter
         let meter = document.createElement('div');
