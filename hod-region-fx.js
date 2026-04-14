@@ -427,7 +427,6 @@ function initRegionFX() {
 
 function applyRegionFX(blob, canvasEl) {
     if (!_regionGL || !canvasEl) return;
-    let gl = _regionGL;
 
     // Determine which mode to apply for this blob
     let mode = regionFXMode;
@@ -436,55 +435,75 @@ function applyRegionFX(blob, canvasEl) {
         let hash = Math.abs(Math.round(blob.posicao.x * 7 + blob.posicao.y * 13)) % _REGION_MODES.length;
         mode = _REGION_MODES[hash];
     }
-    let entry = _regionPrograms[mode];
-    if (!entry) return;
 
-    // Upload p5 canvas as texture once per frame
-    if (_regionFrameUploaded !== frameCount) {
-        gl.bindTexture(gl.TEXTURE_2D, _regionSrcTex);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); // canvas top = V=1 (matches UV calc)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvasEl);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); // restore default
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        _regionFrameUploaded = frameCount;
-    }
-
-    // Calculate blob rect in screen pixels
+    // Compute blob rect (preserving original clamping semantics)
     let px = blob.posicao.x;
     let py = blob.posicao.y;
     let bw = blob.width || 80;
     let bh = blob.height || 80;
-    let x1 = px - bw / 2;
-    let y1 = py - bh / 2;
-
-    // Clamp to canvas bounds
     let cw = canvasEl.width;
     let ch = canvasEl.height;
-    x1 = Math.max(0, Math.min(x1, cw - 1));
-    y1 = Math.max(0, Math.min(y1, ch - 1));
+    let x1 = Math.max(0, Math.min(px - bw / 2, cw - 1));
+    let y1 = Math.max(0, Math.min(py - bh / 2, ch - 1));
     let x2 = Math.min(px + bw / 2, cw);
     let y2 = Math.min(py + bh / 2, ch);
     let rw = x2 - x1;
     let rh = y2 - y1;
     if (rw < 2 || rh < 2) return;
 
+    let intensity = regionFXIntensity / 100;
+    _applyRegionFXCore(x1, y1, rw, rh, mode, intensity, canvasEl, regionFXInvert, regionFXFusion);
+}
+
+// Apply a region effect to an arbitrary rectangle (e.g. hand-drawn frame)
+// x, y, w, h in screen-pixel coords. mode: one of _REGION_MODES. intensity: 0..1
+function applyRegionFXToRect(x, y, w, h, mode, intensity, canvasEl, inverted, fusion) {
+    if (!_regionGL || !canvasEl) return;
+
+    // Clamp rect to canvas bounds
+    let cw = canvasEl.width;
+    let ch = canvasEl.height;
+    let x1 = Math.max(0, Math.min(x, cw - 1));
+    let y1 = Math.max(0, Math.min(y, ch - 1));
+    let x2 = Math.min(x + w, cw);
+    let y2 = Math.min(y + h, ch);
+    let rw = x2 - x1;
+    let rh = y2 - y1;
+    if (rw < 2 || rh < 2) return;
+
+    _applyRegionFXCore(x1, y1, rw, rh, mode, intensity, canvasEl, inverted || false, fusion || 'normal');
+}
+
+// Shared core — takes already-clamped rect. Handles texture upload, render pass, composite.
+function _applyRegionFXCore(x1, y1, rw, rh, mode, intensity, canvasEl, inverted, fusion) {
+    let gl = _regionGL;
+    let entry = _regionPrograms[mode];
+    if (!entry) return;
+
+    // Upload p5 canvas as texture once per frame (cached across calls)
+    if (_regionFrameUploaded !== frameCount) {
+        gl.bindTexture(gl.TEXTURE_2D, _regionSrcTex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvasEl);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        _regionFrameUploaded = frameCount;
+    }
+
+    let cw = canvasEl.width;
+    let ch = canvasEl.height;
+
     // Normalized UV rect for the vertex shader
     let uvX = x1 / cw;
-    let uvY = 1.0 - (y1 + rh) / ch;  // WebGL Y is flipped
+    let uvY = 1.0 - (y1 + rh) / ch;
     let uvW = rw / cw;
     let uvH = rh / ch;
 
-    // Intensity normalised 0–1
-    let intensity = regionFXIntensity / 100;
-
-    // Render to screen buffer
     _regionRenderPass(gl, entry, uvX, uvY, uvW, uvH, cw, ch, intensity);
-
-    // Composite result back onto p5 canvas
     _compositeRegion(
         drawingContext, _regionGLCanvas,
         x1, y1, rw, rh,
-        regionFXInvert, regionFXFusion, intensity
+        inverted, fusion, intensity
     );
 }
 

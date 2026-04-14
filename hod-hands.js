@@ -409,6 +409,8 @@ function computeHandDerived(handData, handIndex) {
         handData.gesture = 'open_palm';
     } else if (!thumb && !idx && !mid && !ring && !pinky) {
         handData.gesture = 'fist';
+    } else if (thumb && idx && !mid && !ring && !pinky) {
+        handData.gesture = 'l_shape';  // director's framing gesture
     } else if (idx && !mid && !ring && !pinky) {
         handData.gesture = 'point';
     } else if (idx && mid && !ring && !pinky) {
@@ -845,6 +847,190 @@ function processMovementTriggers() {
     }
 }
 
+// ── Hand Frame (L-shape region effect) ──────────────────────────
+// Both hands form L-shapes (thumb + index extended) to define a rectangle.
+// An effect plays inside the rect only. Live-follow, no hold-to-lock.
+
+var _handFrameMode = 'off';  // 'off' | 'cycle' | 'inv' | 'pixel' | ...
+var _handFrameIntensity = 60;
+var _handFrameActive = false;
+var _handFrameRect = null;
+var _handFrameCorner1 = null;  // { x, y } — left hand index tip screen coord
+var _handFrameCorner2 = null;  // { x, y } — right hand index tip screen coord
+var _handFrameCycleEffect = 'glitch';
+var _handFrameCycleStart = 0;
+var _HAND_FRAME_CYCLE_MS = 3000;
+var _HAND_FRAME_MIN_SIZE = 20;
+var _HAND_FRAME_DEACTIVATE_GRACE = 8;  // extra frames before deactivating (flicker protection)
+var _handFrameGraceCounter = 0;
+var _REGION_FX_MODE_LIST = ['inv','pixel','thermal','blur','glitch','tone','dither','crt','edge','zoom','water','fill'];
+var _REGION_FX_MODE_LABELS = {
+    off: 'Off', cycle: 'Cycle',
+    inv: 'Invert', pixel: 'Pixelate', thermal: 'Thermal', blur: 'Blur',
+    glitch: 'Glitch', tone: 'Halftone', dither: 'Dither', crt: 'CRT',
+    edge: 'Edge', zoom: 'Zoom', water: 'Water', fill: 'Fill'
+};
+
+// Framing pose: index finger extended, middle/ring/pinky curled.
+// Thumb state ignored — detection of thumb is unreliable at many angles and
+// the "corner" is defined by the index fingertip anyway. This matches both
+// the 'point' and 'l_shape' gestures from the classifier.
+function _isHandFramePose(hand) {
+    if (!hand || !hand.fingerStates) return false;
+    var fs = hand.fingerStates;
+    return fs[1] && !fs[2] && !fs[3] && !fs[4];
+}
+
+function _handFrameDeactivateStep() {
+    if (_handFrameActive) {
+        _handFrameGraceCounter++;
+        if (_handFrameGraceCounter > _HAND_FRAME_DEACTIVATE_GRACE) {
+            _handFrameActive = false;
+            _handFrameRect = null;
+            _handFrameCorner1 = null;
+            _handFrameCorner2 = null;
+            _handFrameGraceCounter = 0;
+        }
+    }
+}
+
+function _updateHandFrame() {
+    if (_handFrameMode === 'off' || _handResults.length < 2) {
+        _handFrameDeactivateStep();
+        return;
+    }
+
+    // Need both hands in the framing pose (index extended, 3 others curled)
+    var h0 = _handResults[0];
+    var h1 = _handResults[1];
+    if (!_isHandFramePose(h0) || !_isHandFramePose(h1)) {
+        _handFrameDeactivateStep();
+        return;
+    }
+
+    _handFrameGraceCounter = 0;
+
+    // Compute rect from both index fingertips (landmark 8)
+    var tip0 = _lmToScreen(h0.landmarks[8]);
+    var tip1 = _lmToScreen(h1.landmarks[8]);
+    _handFrameCorner1 = tip0;
+    _handFrameCorner2 = tip1;
+
+    var x = Math.min(tip0.x, tip1.x);
+    var y = Math.min(tip0.y, tip1.y);
+    var w = Math.abs(tip0.x - tip1.x);
+    var h = Math.abs(tip0.y - tip1.y);
+
+    // Skip degenerate rects — don't artificially stretch them, just wait for the user
+    // to spread hands. This way size tracking is 1:1 with hand positions.
+    if (w < _HAND_FRAME_MIN_SIZE || h < _HAND_FRAME_MIN_SIZE) {
+        _handFrameDeactivateStep();
+        return;
+    }
+
+    _handFrameRect = { x: x, y: y, w: w, h: h };
+    _handFrameActive = true;
+
+    // Cycle mode: rotate effect every _HAND_FRAME_CYCLE_MS
+    if (_handFrameMode === 'cycle') {
+        var now = performance.now();
+        if (_handFrameCycleStart === 0 || now - _handFrameCycleStart > _HAND_FRAME_CYCLE_MS) {
+            // Pick a random effect different from the current one
+            var available = _REGION_FX_MODE_LIST.filter(function(m) { return m !== _handFrameCycleEffect; });
+            _handFrameCycleEffect = available[Math.floor(Math.random() * available.length)];
+            _handFrameCycleStart = now;
+        }
+    } else {
+        _handFrameCycleStart = 0;
+    }
+}
+
+function _getHandFrameActiveEffect() {
+    if (_handFrameMode === 'cycle') return _handFrameCycleEffect;
+    return _handFrameMode;
+}
+
+function _drawHandFrameOverlay(ctx) {
+    if (!_handFrameActive || !_handFrameRect) return;
+
+    var r = _handFrameRect;
+    var effect = _getHandFrameActiveEffect();
+    var label = _REGION_FX_MODE_LABELS[effect] || effect;
+
+    ctx.save();
+    ctx.strokeStyle = '#8B45E8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.shadowColor = 'rgba(139,69,232,0.6)';
+    ctx.shadowBlur = 8;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
+
+    // Corner markers at each L-shape fingertip
+    if (_handFrameCorner1) {
+        ctx.fillStyle = 'rgba(139,69,232,0.9)';
+        ctx.beginPath();
+        ctx.arc(_handFrameCorner1.x, _handFrameCorner1.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    if (_handFrameCorner2) {
+        ctx.fillStyle = 'rgba(139,69,232,0.9)';
+        ctx.beginPath();
+        ctx.arc(_handFrameCorner2.x, _handFrameCorner2.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Effect label at top-center
+    ctx.fillStyle = 'rgba(139,69,232,0.95)';
+    ctx.font = 'bold 11px "Commit Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(label.toUpperCase(), r.x + r.w / 2, r.y - 6);
+
+    ctx.restore();
+}
+
+function _applyHandFrameFX() {
+    if (!_handFrameActive || !_handFrameRect) return;
+    if (typeof applyRegionFXToRect !== 'function') return;
+    var canvasEl = document.getElementById('defaultCanvas0');
+    if (!canvasEl) return;
+
+    var effect = _getHandFrameActiveEffect();
+    if (!effect || effect === 'off' || effect === 'cycle') return;
+
+    var intensity = _handFrameIntensity / 100;
+    applyRegionFXToRect(_handFrameRect.x, _handFrameRect.y, _handFrameRect.w, _handFrameRect.h,
+                        effect, intensity, canvasEl);
+}
+
+// Persistence
+function _saveHandFrame() {
+    try {
+        localStorage.setItem('hod-hand-frame', JSON.stringify({
+            mode: _handFrameMode,
+            intensity: _handFrameIntensity
+        }));
+    } catch(e) {}
+}
+
+function _loadHandFrame() {
+    try {
+        var raw = localStorage.getItem('hod-hand-frame');
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data && typeof data === 'object') {
+            if (typeof data.mode === 'string') _handFrameMode = data.mode;
+            if (typeof data.intensity === 'number') _handFrameIntensity = data.intensity;
+            var sel = document.getElementById('hand-frame-mode');
+            if (sel) sel.value = _handFrameMode;
+            var slider = document.getElementById('hand-frame-intensity');
+            if (slider) slider.value = _handFrameIntensity;
+        }
+    } catch(e) {}
+}
+
 // ── Movement Trigger Persistence ─────────────────────────────────
 
 function _saveMovementTriggers() {
@@ -907,10 +1093,22 @@ function _updateMovementHighlight() {
 // ── Visualization ────────────────────────────────────────────────
 
 function drawHandOverlay() {
-    if (!handsEnabled || handVizMode === 'off' || _handResults.length === 0) return;
+    if (!handsEnabled || _handResults.length === 0) return;
     if (typeof videoX === 'undefined') return;
 
+    // Apply hand frame region effect (runs even if hand viz is off)
+    _applyHandFrameFX();
+
     const ctx = drawingContext;
+
+    // Hand frame overlay (drawn outside the video clip so it's always visible)
+    if (_handFrameActive) {
+        _drawHandFrameOverlay(ctx);
+    }
+
+    // Early exit for the per-hand viz if set to off
+    if (handVizMode === 'off') return;
+
     ctx.save();
 
     // Clip to video rect
@@ -949,9 +1147,13 @@ function drawHandOverlay() {
 
 // Called from draw loop — runs even when viz is off
 function processHandFrame() {
-    if (!handsEnabled || _handResults.length === 0) return;
+    if (!handsEnabled || _handResults.length === 0) {
+        _updateHandFrame();  // still runs so it can deactivate on empty
+        return;
+    }
     processGestureTriggers();
     processMovementTriggers();
+    _updateHandFrame();
     _updatePinchMeter();
     // Update live data + gesture highlight every 3 frames
     if (typeof frameCount !== 'undefined' && frameCount % 3 === 0) {
@@ -2553,6 +2755,31 @@ function wireFxHandsSyncListeners() {
 
         // Load persisted movement triggers
         _loadMovementTriggers();
+
+        // Wire Hand Frame controls
+        var handFrameMode = document.getElementById('hand-frame-mode');
+        if (handFrameMode) {
+            handFrameMode.value = _handFrameMode;
+            handFrameMode.addEventListener('change', function() {
+                _handFrameMode = this.value;
+                _handFrameCycleStart = 0;  // reset cycle timer
+                _saveHandFrame();
+            });
+        }
+        var handFrameInt = document.getElementById('hand-frame-intensity');
+        var handFrameIntVal = document.getElementById('hand-frame-intensity-val');
+        if (handFrameInt) {
+            handFrameInt.value = _handFrameIntensity;
+            if (handFrameIntVal) handFrameIntVal.textContent = String(_handFrameIntensity);
+            handFrameInt.addEventListener('input', function() {
+                _handFrameIntensity = parseInt(this.value, 10) || 0;
+                if (handFrameIntVal) handFrameIntVal.textContent = String(_handFrameIntensity);
+                _saveHandFrame();
+            });
+        }
+
+        // Load persisted hand frame config
+        _loadHandFrame();
 
         // Load persisted hand sync config
         _loadFxHandsSync();

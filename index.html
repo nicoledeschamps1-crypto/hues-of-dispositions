@@ -2383,10 +2383,10 @@
         }
 
         /* ═══ RESPONSIVE GUIDE ═══ */
-        @media (max-width: 1200px) {
-            .guide-rail { right: 272px; width: 190px; }
-        }
-        @media (max-width: 900px) {
+        /* Below 1280px the 3-panel layout (left/canvas/right) has no room
+           for the inline guide rail — collapse it to a bottom sheet so the
+           main panels keep breathing room and the canvas isn't squeezed. */
+        @media (max-width: 1280px) {
             .guide-rail {
                 position: fixed;
                 top: auto;
@@ -6547,6 +6547,42 @@
                     </div>
                 </div>
 
+                <!-- Hand Frame (L-shape region effect) -->
+                <div class="control-group">
+                    <div class="slider-card-label" style="margin-bottom:6px">
+                        <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">&#9645;</span>
+                        Hand Frame
+                    </div>
+                    <span class="hint-text" style="margin-bottom:8px">Make an L-shape with both hands (thumb + index) to draw a rectangle — effect plays inside only. Live follow.</span>
+
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:9px">
+                            <span style="min-width:55px;color:var(--text-muted)">Effect</span>
+                            <select id="hand-frame-mode" style="flex:1;background:var(--btn-bg);color:var(--color-text);border:1px solid var(--btn-border);border-radius:4px;padding:3px 4px;font-size:9px">
+                                <option value="off">Off</option>
+                                <option value="cycle">Random Cycle</option>
+                                <option value="inv">Invert</option>
+                                <option value="pixel">Pixelate</option>
+                                <option value="thermal">Thermal</option>
+                                <option value="blur">Blur</option>
+                                <option value="glitch">Glitch</option>
+                                <option value="tone">Halftone</option>
+                                <option value="dither">Dither</option>
+                                <option value="crt">CRT</option>
+                                <option value="edge">Edge</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="water">Water</option>
+                                <option value="fill">Fill</option>
+                            </select>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:9px">
+                            <span style="min-width:55px;color:var(--text-muted)">Intensity</span>
+                            <input type="range" id="hand-frame-intensity" min="0" max="100" value="60" style="flex:1">
+                            <span id="hand-frame-intensity-val" style="min-width:24px;text-align:right;color:var(--text-muted);font-family:var(--font-mono,monospace)">60</span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Detected Hand Info (shown when hands found) -->
                 <div class="control-group" id="hand-info-group" style="display:none">
                     <div class="slider-card-label">Detected Hands</div>
@@ -7171,16 +7207,16 @@
 </div>
 
 <!-- App modules (order matters: core → fx → audio → timeline → mask → tracking) -->
-<script src="hod-core.js?v=20260413b"></script>
-<script src="hod-fx.js?v=20260413b"></script>
-<script src="hod-shader-fx.js?v=20260413b"></script>
-<script src="hod-overlay.js?v=20260413b"></script>
-<script src="hod-audio.js?v=20260413b"></script>
-<script src="hod-timeline.js?v=20260413b"></script>
-<script src="hod-mask.js?v=20260413b"></script>
-<script src="hod-tracking.js?v=20260413b"></script>
-<script src="hod-hands.js?v=20260413b"></script>
-<script src="hod-region-fx.js?v=20260413b"></script>
+<script src="hod-core.js?v=20260414"></script>
+<script src="hod-fx.js?v=20260414"></script>
+<script src="hod-shader-fx.js?v=20260414"></script>
+<script src="hod-overlay.js?v=20260414"></script>
+<script src="hod-audio.js?v=20260414"></script>
+<script src="hod-timeline.js?v=20260414"></script>
+<script src="hod-mask.js?v=20260414"></script>
+<script src="hod-tracking.js?v=20260414"></script>
+<script src="hod-hands.js?v=20260414"></script>
+<script src="hod-region-fx.js?v=20260414"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->
 <script type="module">
