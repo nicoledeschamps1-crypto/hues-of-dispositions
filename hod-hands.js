@@ -71,6 +71,10 @@ const GESTURE_ACTIONS = {
     boost:            { label: 'Boost Intensity',  desc: 'Push active effects to max for a beat' },
     intensity_spike:  { label: 'Intensity Spike',  desc: 'Push all effects to max for a longer moment' },
     toggle_viz:       { label: 'Toggle Hand Viz',  desc: 'Cycle through hand display styles' },
+    audio_toggle:     { label: 'Play / Pause Music', desc: 'Toggle audio playback' },
+    audio_volume_up:  { label: 'Volume Up',         desc: 'Raise music volume by 10%' },
+    audio_volume_down:{ label: 'Volume Down',       desc: 'Lower music volume by 10%' },
+    audio_restart:    { label: 'Restart Music',     desc: 'Jump audio to the start' },
     none:             { label: 'None',             desc: 'Gesture detected but no action' }
 };
 
@@ -588,9 +592,83 @@ function _executeGestureAction(action, hand) {
             });
             break;
 
+        case 'audio_toggle':
+            _gestureAudioToggle();
+            break;
+
+        case 'audio_volume_up':
+            _gestureAudioVolume(0.1);
+            break;
+
+        case 'audio_volume_down':
+            _gestureAudioVolume(-0.1);
+            break;
+
+        case 'audio_restart':
+            _gestureAudioRestart();
+            break;
+
         case 'none':
         default:
             break;
+    }
+}
+
+// ── Audio control helpers ─────────────────────────────────────
+// Works across the 3 audio sources: file (audioElement), video (videoEl),
+// and mic (gain only — no play/pause concept). Silently no-ops if no
+// controllable source is available.
+
+function _gestureAudioToggle() {
+    // Prefer uploaded audio file; fall back to video audio
+    if (typeof audioElement !== 'undefined' && audioElement) {
+        if (audioElement.paused) {
+            audioElement.play().catch(function(){});
+        } else {
+            audioElement.pause();
+        }
+        return;
+    }
+    if (typeof videoEl !== 'undefined' && videoEl && videoEl.elt) {
+        if (videoEl.elt.paused) {
+            videoEl.elt.play().catch(function(){});
+        } else {
+            videoEl.elt.pause();
+        }
+    }
+}
+
+function _gestureAudioVolume(delta) {
+    // Prefer Web Audio gain node (affects all sources routed through it)
+    if (typeof audioGainNode !== 'undefined' && audioGainNode) {
+        var cur = audioGainNode.gain.value;
+        var next = Math.max(0, Math.min(1.5, cur + delta));
+        try { audioGainNode.gain.value = next; } catch(e) {}
+        // Sync UI slider if present
+        var slider = document.getElementById('audio-volume');
+        if (slider) slider.value = Math.round(next * 100);
+        var valLabel = document.getElementById('audio-volume-val');
+        if (valLabel) valLabel.textContent = Math.round(next * 100) + '%';
+        return;
+    }
+    // Fallback: set volume directly on audio/video element
+    if (typeof audioElement !== 'undefined' && audioElement) {
+        audioElement.volume = Math.max(0, Math.min(1, audioElement.volume + delta));
+        return;
+    }
+    if (typeof videoEl !== 'undefined' && videoEl && videoEl.elt) {
+        videoEl.elt.volume = Math.max(0, Math.min(1, videoEl.elt.volume + delta));
+    }
+}
+
+function _gestureAudioRestart() {
+    if (typeof audioElement !== 'undefined' && audioElement) {
+        try { audioElement.currentTime = 0; } catch(e) {}
+        audioElement.play().catch(function(){});
+        return;
+    }
+    if (typeof videoEl !== 'undefined' && videoEl && videoEl.elt) {
+        try { videoEl.elt.currentTime = 0; } catch(e) {}
     }
 }
 
@@ -847,6 +925,64 @@ function processMovementTriggers() {
     }
 }
 
+// ── Conductor Mode — hand height controls volume ────────────────
+// Raise hand = louder, lower = quieter. Like conducting an orchestra.
+
+var _conductorMode = false;
+var _conductorSmoothedVol = 0.5;
+var _conductorSmoothing = 0.12;  // EMA rate — lower = smoother, higher = more responsive
+
+function _updateConductorMode() {
+    if (!_conductorMode || _handResults.length === 0) return;
+
+    // Use first detected hand
+    var hand = _handResults[0];
+    if (!hand || !hand.palmCenter) return;
+
+    // Palm Y: 0 = top of frame, 1 = bottom.
+    // Invert so raising hand raises volume.
+    // Clamp to [0.05, 0.95] to avoid needing to hit exact edges.
+    var palmY = hand.palmCenter.y;
+    var rawVol = 1 - palmY;
+    rawVol = Math.max(0, Math.min(1, rawVol));
+
+    // EMA smoothing
+    _conductorSmoothedVol += (rawVol - _conductorSmoothedVol) * _conductorSmoothing;
+    var vol = Math.max(0, Math.min(1, _conductorSmoothedVol));
+
+    // Apply to gain node (preferred) or element volume
+    if (typeof audioGainNode !== 'undefined' && audioGainNode) {
+        try { audioGainNode.gain.value = vol; } catch(e) {}
+    } else if (typeof audioElement !== 'undefined' && audioElement) {
+        audioElement.volume = vol;
+    } else if (typeof videoEl !== 'undefined' && videoEl && videoEl.elt) {
+        videoEl.elt.volume = vol;
+    }
+
+    // Update conductor meter UI
+    var meter = document.getElementById('conductor-meter-fill');
+    if (meter) meter.style.height = Math.round(vol * 100) + '%';
+    var valLabel = document.getElementById('conductor-vol-val');
+    if (valLabel) valLabel.textContent = Math.round(vol * 100) + '%';
+}
+
+function _saveConductor() {
+    try { localStorage.setItem('hod-conductor', JSON.stringify({ enabled: _conductorMode })); } catch(e) {}
+}
+
+function _loadConductor() {
+    try {
+        var raw = localStorage.getItem('hod-conductor');
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data && typeof data.enabled === 'boolean') {
+            _conductorMode = data.enabled;
+            var toggle = document.getElementById('conductor-toggle');
+            if (toggle) toggle.checked = _conductorMode;
+        }
+    } catch(e) {}
+}
+
 // ── Hand Frame (L-shape region effect) ──────────────────────────
 // Both hands form L-shapes (thumb + index extended) to define a rectangle.
 // An effect plays inside the rect only. Live-follow, no hold-to-lock.
@@ -855,8 +991,7 @@ var _handFrameMode = 'off';  // 'off' | 'cycle' | 'inv' | 'pixel' | ...
 var _handFrameIntensity = 60;
 var _handFrameActive = false;
 var _handFrameRect = null;
-var _handFrameCorner1 = null;  // { x, y } — left hand index tip screen coord
-var _handFrameCorner2 = null;  // { x, y } — right hand index tip screen coord
+var _handFrameCorners = null;  // array of 4 { x, y } points — 2 index tips + 2 thumb tips
 var _handFrameCycleEffect = 'glitch';
 var _handFrameCycleStart = 0;
 var _HAND_FRAME_CYCLE_MS = 3000;
@@ -887,8 +1022,7 @@ function _handFrameDeactivateStep() {
         if (_handFrameGraceCounter > _HAND_FRAME_DEACTIVATE_GRACE) {
             _handFrameActive = false;
             _handFrameRect = null;
-            _handFrameCorner1 = null;
-            _handFrameCorner2 = null;
+            _handFrameCorners = null;
             _handFrameGraceCounter = 0;
         }
     }
@@ -910,16 +1044,21 @@ function _updateHandFrame() {
 
     _handFrameGraceCounter = 0;
 
-    // Compute rect from both index fingertips (landmark 8)
-    var tip0 = _lmToScreen(h0.landmarks[8]);
-    var tip1 = _lmToScreen(h1.landmarks[8]);
-    _handFrameCorner1 = tip0;
-    _handFrameCorner2 = tip1;
+    // Compute rect from 4 fingertips: both index tips (top edge) and both
+    // thumb tips (bottom edge). Director's framing gesture.
+    // landmark 8 = index tip, landmark 4 = thumb tip.
+    var h0idx = _lmToScreen(h0.landmarks[8]);
+    var h0thm = _lmToScreen(h0.landmarks[4]);
+    var h1idx = _lmToScreen(h1.landmarks[8]);
+    var h1thm = _lmToScreen(h1.landmarks[4]);
+    _handFrameCorners = [h0idx, h0thm, h1idx, h1thm];
 
-    var x = Math.min(tip0.x, tip1.x);
-    var y = Math.min(tip0.y, tip1.y);
-    var w = Math.abs(tip0.x - tip1.x);
-    var h = Math.abs(tip0.y - tip1.y);
+    var xs = [h0idx.x, h0thm.x, h1idx.x, h1thm.x];
+    var ys = [h0idx.y, h0thm.y, h1idx.y, h1thm.y];
+    var x = Math.min.apply(null, xs);
+    var y = Math.min.apply(null, ys);
+    var w = Math.max.apply(null, xs) - x;
+    var h = Math.max.apply(null, ys) - y;
 
     // Skip degenerate rects — don't artificially stretch them, just wait for the user
     // to spread hands. This way size tracking is 1:1 with hand positions.
@@ -967,18 +1106,15 @@ function _drawHandFrameOverlay(ctx) {
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
 
-    // Corner markers at each L-shape fingertip
-    if (_handFrameCorner1) {
+    // Corner markers at each of the 4 fingertips (index tips + thumb tips)
+    if (_handFrameCorners) {
         ctx.fillStyle = 'rgba(139,69,232,0.9)';
-        ctx.beginPath();
-        ctx.arc(_handFrameCorner1.x, _handFrameCorner1.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    if (_handFrameCorner2) {
-        ctx.fillStyle = 'rgba(139,69,232,0.9)';
-        ctx.beginPath();
-        ctx.arc(_handFrameCorner2.x, _handFrameCorner2.y, 6, 0, Math.PI * 2);
-        ctx.fill();
+        for (var ci = 0; ci < _handFrameCorners.length; ci++) {
+            var c = _handFrameCorners[ci];
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     // Effect label at top-center
@@ -1154,6 +1290,7 @@ function processHandFrame() {
     processGestureTriggers();
     processMovementTriggers();
     _updateHandFrame();
+    _updateConductorMode();
     _updatePinchMeter();
     // Update live data + gesture highlight every 3 frames
     if (typeof frameCount !== 'undefined' && frameCount % 3 === 0) {
@@ -2780,6 +2917,17 @@ function wireFxHandsSyncListeners() {
 
         // Load persisted hand frame config
         _loadHandFrame();
+
+        // Wire Conductor Mode
+        var conductorToggle = document.getElementById('conductor-toggle');
+        if (conductorToggle) {
+            conductorToggle.addEventListener('change', function() {
+                _conductorMode = this.checked;
+                _conductorSmoothedVol = 0.5;  // reset to mid on toggle
+                _saveConductor();
+            });
+        }
+        _loadConductor();
 
         // Load persisted hand sync config
         _loadFxHandsSync();
