@@ -383,9 +383,10 @@ function parseTimeInput(str) {
     return parseFloat(str) || 0;
 }
 
+const TL_PLACEHOLDER_DURATION = 30; // seconds — fallback so timeline is usable before a source is loaded
 function getTimelineDuration() {
     if (tlRulerMode === 'audio' && audioDuration > 0) return audioDuration;
-    return videoDuration || audioDuration;
+    return videoDuration || audioDuration || TL_PLACEHOLDER_DURATION;
 }
 
 function updateOffsetLabel() {
