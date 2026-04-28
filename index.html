@@ -6232,7 +6232,29 @@
                         <button class="selector-btn" data-value="minimal">MINIMAL</button>
                         <button class="selector-btn" data-value="off">OFF</button>
                     </div>
-                    <span class="hint-text">10 display styles from bold to subtle. OFF = invisible controller only.</span>
+                    <span class="hint-text">9 display styles from bold to subtle. OFF = invisible controller only.</span>
+                </div>
+
+                <!-- Song Between Hands -->
+                <div class="control-group">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                        <label id="label-song-hands" class="slider-card-label" style="margin:0">
+                            <span style="font-size:9px;background:rgba(232,67,147,0.2);color:#E84393;border-radius:3px;padding:1px 5px;margin-right:6px;font-weight:700">&#9835;</span>
+                            Song Between Hands
+                        </label>
+                        <label class="fx-toggle-switch" style="margin:0;flex-shrink:0" title="Enable song-between-hands viz">
+                            <input type="checkbox" id="song-hands-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <span class="hint-text" style="margin-bottom:8px">Hold both palms facing each other — audio visualizes in the gap. Works on top of Display Style.</span>
+                    <div class="selector-row" id="song-hands-mode-buttons" aria-labelledby="label-song-hands" style="flex-wrap:wrap;gap:4px">
+                        <button class="selector-btn active" data-value="orb" title="Calm mirrored sphere — reflects the scene, color follows dominant frequency">ORB</button>
+                        <button class="selector-btn" data-value="morph" title="Reactive deforming blob — shape warps to beat, sparks on peaks">MORPH</button>
+                        <button class="selector-btn" data-value="spectrum" title="Frequency bars span the gap between your hands">SPECTRUM</button>
+                        <button class="selector-btn" data-value="waveform" title="Audio waveform traced palm-to-palm">WAVEFORM</button>
+                        <button class="selector-btn" data-value="pulse" title="Bass/mid/treble rings pulse between your hands">PULSE</button>
+                    </div>
                 </div>
 
                 <!-- Pinch Meter -->
@@ -7294,7 +7316,7 @@
 <script src="hod-timeline.js?v=20260419"></script>
 <script src="hod-mask.js?v=20260419"></script>
 <script src="hod-tracking.js?v=20260419"></script>
-<script src="hod-hands.js?v=20260419"></script>
+<script src="hod-hands.js?v=20260422e"></script>
 <script src="hod-region-fx.js?v=20260419"></script>
 
 <!-- MediaPipe Interactive Segmenter (AI Magic Mask) -->

@@ -313,6 +313,8 @@ function detectHands() {
                     handedness: handed,
                     pinchDistance: 0,
                     palmCenter: { x: 0, y: 0 },
+                    palmCenterWorld: null,
+                    palmNormal: null,
                     velocity: { x: 0, y: 0, magnitude: 0 },
                     fingerStates: [false, false, false, false, false],
                     gesture: 'unknown'
@@ -339,6 +341,38 @@ function detectHands() {
     }
 }
 
+// ── Math helpers (palm geometry) ─────────────────────────────────
+
+function _smoothstep01(edge0, edge1, x) {
+    if (edge1 === edge0) return x >= edge1 ? 1 : 0;
+    var t = (x - edge0) / (edge1 - edge0);
+    if (t < 0) t = 0;
+    else if (t > 1) t = 1;
+    return t * t * (3 - 2 * t);
+}
+
+function _vec3Sub(a, b) {
+    return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function _vec3Cross(a, b) {
+    return {
+        x: a.y * b.z - a.z * b.y,
+        y: a.z * b.x - a.x * b.z,
+        z: a.x * b.y - a.y * b.x
+    };
+}
+
+function _vec3Dot(a, b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function _safeNormalize(v) {
+    var m = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (m < 1e-6 || !isFinite(m)) return null;
+    return { x: v.x / m, y: v.y / m, z: v.z / m };
+}
+
 // ── Derived Values ───────────────────────────────────────────────
 
 function computeHandDerived(handData, handIndex) {
@@ -359,6 +393,33 @@ function computeHandDerived(handData, handIndex) {
         py += lm[palmIdx[i]].y;
     }
     handData.palmCenter = { x: px / 5, y: py / 5 };
+
+    // Palm normal — cross((index_MCP - wrist), (pinky_MCP - wrist)).
+    // Prefer worldLandmarks (meters, 3D) when present; fall back to image landmarks.
+    // Sign-flip for Left hand so both hands' normals point the same way in world space.
+    // `palmNormal` may be null when the triangle degenerates — downstream must null-check.
+    const wlm = handData.worldLandmarks;
+    const normalSrc = (wlm && wlm.length >= 21) ? wlm : lm;
+    const _v1 = _vec3Sub(normalSrc[5], normalSrc[0]);
+    const _v2 = _vec3Sub(normalSrc[17], normalSrc[0]);
+    let _pn = _safeNormalize(_vec3Cross(_v1, _v2));
+    if (_pn && handData.handedness === 'Left') {
+        _pn = { x: -_pn.x, y: -_pn.y, z: -_pn.z };
+    }
+    handData.palmNormal = _pn;
+
+    // Palm center in world coords (meters), when world landmarks are available.
+    if (wlm && wlm.length >= 21) {
+        let wx = 0, wy = 0, wz = 0;
+        for (let i = 0; i < palmIdx.length; i++) {
+            wx += wlm[palmIdx[i]].x;
+            wy += wlm[palmIdx[i]].y;
+            wz += wlm[palmIdx[i]].z;
+        }
+        handData.palmCenterWorld = { x: wx / 5, y: wy / 5, z: wz / 5 };
+    } else {
+        handData.palmCenterWorld = null;
+    }
 
     // Velocity: wrist delta from previous frame
     const wrist = lm[0];
@@ -1229,8 +1290,16 @@ function _updateMovementHighlight() {
 // ── Visualization ────────────────────────────────────────────────
 
 function drawHandOverlay() {
-    if (!handsEnabled || _handResults.length === 0) return;
+    if (!handsEnabled) {
+        _resetPalmSongState();
+        return;
+    }
     if (typeof videoX === 'undefined') return;
+
+    // Envelope runs every frame so vizIntensity decays even when hands leave the frame.
+    _updatePalmSongState();
+
+    if (_handResults.length === 0) return;
 
     // Apply hand frame region effect (runs even if hand viz is off)
     _applyHandFrameFX();
@@ -1242,8 +1311,11 @@ function drawHandOverlay() {
         _drawHandFrameOverlay(ctx);
     }
 
-    // Early exit for the per-hand viz if set to off
-    if (handVizMode === 'off') return;
+    // Debug: palm-normal arrows (toggle via window.DEBUG_PALM_NORMAL).
+    _drawPalmNormalDebug(ctx);
+
+    // Skip rendering only if both per-hand viz and song viz are off.
+    if (handVizMode === 'off' && !songBetweenHandsEnabled) return;
 
     ctx.save();
 
@@ -1252,7 +1324,7 @@ function drawHandOverlay() {
     ctx.rect(videoX, videoY, videoW, videoH);
     ctx.clip();
 
-    for (let h = 0; h < _handResults.length; h++) {
+    if (handVizMode !== 'off') for (let h = 0; h < _handResults.length; h++) {
         const hand = _handResults[h];
         const lm = hand.landmarks;
         if (!lm || lm.length < 21) continue;
@@ -1276,6 +1348,11 @@ function drawHandOverlay() {
         } else if (handVizMode === 'fire') {
             _drawHandFire(ctx, lm);
         }
+    }
+
+    // Song between hands — renders on top of per-hand viz, gated by its own enable.
+    if (songBetweenHandsEnabled) {
+        _drawSongBetweenHands(ctx, songBetweenHandsMode);
     }
 
     ctx.restore();
@@ -2135,6 +2212,1012 @@ function _drawHandFire(ctx, landmarks) {
     ctx.globalAlpha = 1;
 }
 
+// ── Song-between-hands viz ────────────────────────────────────────
+// ORB / SPECTRUM / WAVEFORM / PULSE — audio rendered in the gap
+// between the two palms (falls back to one-hand anchor if only 1).
+
+var _songTimeDomain = null;
+
+// Chrome ball — two sources, tried in priority order:
+// 1. chrome-env.png (equirectangular HDRI panorama) → baked to a chrome
+//    ball via sphere-reflection sampling. True environment reflection.
+// 2. chrome-ball.png (pre-rendered chrome sphere, transparent bg) → used
+//    directly as the orb surface.
+// Neither present → falls back to procedural chrome.
+var _chromeImg = null;
+var _chromeImgReady = false;
+var _chromeTried = false;
+
+function _bakeChromeFromHDRI(hdri, size) {
+    var out = document.createElement('canvas');
+    out.width = size; out.height = size;
+    var octx = out.getContext('2d');
+
+    // Read HDRI pixels
+    var hw = hdri.naturalWidth || hdri.width;
+    var hh = hdri.naturalHeight || hdri.height;
+    var hc = document.createElement('canvas');
+    hc.width = hw; hc.height = hh;
+    var hctx = hc.getContext('2d');
+    hctx.drawImage(hdri, 0, 0);
+    var hdrPx;
+    try { hdrPx = hctx.getImageData(0, 0, hw, hh).data; }
+    catch (e) { return null; }  // cross-origin taint
+
+    var img = octx.createImageData(size, size);
+    var px = img.data;
+    var r = size / 2;
+
+    for (var py = 0; py < size; py++) {
+        for (var pxi = 0; pxi < size; pxi++) {
+            var nx = (pxi - r) / r;
+            var ny = (py - r) / r;
+            var d2 = nx * nx + ny * ny;
+            var oi = (py * size + pxi) * 4;
+            if (d2 >= 1) { px[oi + 3] = 0; continue; }
+            var nz = Math.sqrt(1 - d2);
+
+            // Reflection: V = (0,0,1), N = (nx, ny, nz) → R = V - 2(V·N)N
+            var rx = -2 * nz * nx;
+            var ry = -2 * nz * ny;
+            var rz = 1 - 2 * nz * nz;
+
+            // Equirectangular UV
+            var theta = Math.atan2(rx, rz);       // [-π, π]
+            var phi = Math.asin(-ry);             // [-π/2, π/2], up = +
+            var u = (theta + Math.PI) / (2 * Math.PI);
+            var v = 0.5 - phi / Math.PI;
+
+            var sx = Math.max(0, Math.min(hw - 1, Math.floor(u * hw)));
+            var sy = Math.max(0, Math.min(hh - 1, Math.floor(v * hh)));
+            var si = (sy * hw + sx) * 4;
+
+            // Fresnel edge darkening via distance from center
+            var fres = d2 > 0.82 ? Math.max(0, 1 - (d2 - 0.82) * 3.5) : 1;
+            px[oi + 0] = hdrPx[si + 0] * fres;
+            px[oi + 1] = hdrPx[si + 1] * fres;
+            px[oi + 2] = hdrPx[si + 2] * fres;
+            px[oi + 3] = 255;
+        }
+    }
+    octx.putImageData(img, 0, 0);
+    return out;
+}
+
+function _loadChromeImg() {
+    if (_chromeTried) return;
+    _chromeTried = true;
+
+    // Try HDRI panorama first
+    var hdri = new Image();
+    hdri.crossOrigin = 'anonymous';
+    hdri.onload = function() {
+        try {
+            var baked = _bakeChromeFromHDRI(hdri, 768);
+            if (baked) { _chromeImg = baked; _chromeImgReady = true; return; }
+        } catch (e) {}
+        _tryChromeBallPng();
+    };
+    hdri.onerror = _tryChromeBallPng;
+    hdri.src = 'chrome-env.png';
+}
+
+function _tryChromeBallPng() {
+    var img = new Image();
+    img.onload = function() { _chromeImg = img; _chromeImgReady = true; };
+    img.onerror = function() { _chromeImgReady = false; };
+    img.src = 'chrome-ball.png';
+}
+
+// ── Live-camera chrome reflection ────────────────────────────────
+// Per-frame sphere reflection mapping from the live webcam onto a small
+// offscreen canvas. A precomputed warp map (sampled-video → ball-pixel)
+// keeps per-frame cost at ~4 loads + 4 multiplies per pixel; no trig.
+// Classic light-probe warp: radial distance warped by sin(r·π/2) so ball
+// center is mirror-flat and edges wrap around the sphere.
+
+var _CHROME_LIVE_SIZE = 128;
+var _chromeLiveCanvas = null;
+var _chromeLiveCtx = null;
+var _chromeVideoSampler = null;
+var _chromeVideoSamplerCtx = null;
+var _chromeWarpU = null;
+var _chromeWarpV = null;
+var _chromeFresnel = null;
+
+function _buildChromeWarpMap() {
+    if (_chromeWarpU) return;
+    var size = _CHROME_LIVE_SIZE;
+    _chromeWarpU = new Uint8Array(size * size);
+    _chromeWarpV = new Uint8Array(size * size);
+    _chromeFresnel = new Uint8Array(size * size);
+    var r = size / 2;
+    // True mirror-ball / light-probe mapping. For each ball pixel, compute
+    // the surface normal, reflect the view direction, then project the
+    // reflection vector radially by its spherical angle φ — center = mirror-
+    // flat, edges wrap around the sphere like a real chrome ball.
+    var WARP = 0.75;  // how much of the 180° wrap fits into the ball radius
+    for (var py = 0; py < size; py++) {
+        for (var pxi = 0; pxi < size; pxi++) {
+            var nx = (pxi - r) / r;
+            var ny = (py - r) / r;
+            var d2 = nx * nx + ny * ny;
+            var idx = py * size + pxi;
+            if (d2 >= 1) { _chromeFresnel[idx] = 0; continue; }
+            var nz = Math.sqrt(1 - d2);
+            var Rx = -2 * nz * nx;
+            var Ry = -2 * nz * ny;
+            var Rz = 1 - 2 * nz * nz;
+            var phi = Math.acos(-Rz);                    // 0 at center, π at edge
+            var hlen = Math.sqrt(Rx * Rx + Ry * Ry);
+            var ct = (hlen > 1e-6) ? (Rx / hlen) : 0;
+            var st = (hlen > 1e-6) ? (Ry / hlen) : 0;
+            var rad = (phi / Math.PI) * WARP;
+            var u = 0.5 - rad * ct;                      // mirror X (webcam feel)
+            var v = 0.5 + rad * st;
+            if (u < 0) u = 0; else if (u > 1) u = 1;
+            if (v < 0) v = 0; else if (v > 1) v = 1;
+            _chromeWarpU[idx] = Math.floor(u * (size - 1));
+            _chromeWarpV[idx] = Math.floor(v * (size - 1));
+            // Chrome fresnel — bright center, dark shadow toward edge (floor at 15%).
+            var fres = d2 > 0.62 ? Math.max(0.15, 1 - (d2 - 0.62) * 2.3) : 1;
+            _chromeFresnel[idx] = Math.floor(fres * 255);
+        }
+    }
+}
+
+function _renderLiveChromeReflection() {
+    if (typeof videoEl === 'undefined' || !videoEl || !videoEl.elt ||
+        videoEl.elt.readyState < 2 || videoEl.elt.videoWidth === 0) return null;
+    var size = _CHROME_LIVE_SIZE;
+    if (!_chromeLiveCanvas) {
+        _chromeLiveCanvas = document.createElement('canvas');
+        _chromeLiveCanvas.width = size; _chromeLiveCanvas.height = size;
+        _chromeLiveCtx = _chromeLiveCanvas.getContext('2d');
+        _chromeVideoSampler = document.createElement('canvas');
+        _chromeVideoSampler.width = size; _chromeVideoSampler.height = size;
+        _chromeVideoSamplerCtx = _chromeVideoSampler.getContext('2d', { willReadFrequently: true });
+    }
+    _buildChromeWarpMap();
+    var srcPx;
+    try {
+        _chromeVideoSamplerCtx.drawImage(videoEl.elt, 0, 0, size, size);
+        srcPx = _chromeVideoSamplerCtx.getImageData(0, 0, size, size).data;
+    } catch (e) { return null; }
+    var out = _chromeLiveCtx.createImageData(size, size);
+    var dstPx = out.data;
+    var total = size * size;
+    for (var i = 0; i < total; i++) {
+        var fres = _chromeFresnel[i];
+        var oi = i * 4;
+        if (fres === 0) { dstPx[oi + 3] = 0; continue; }
+        var si = (_chromeWarpV[i] * size + _chromeWarpU[i]) * 4;
+        // Chrome look — S-curve contrast + slight desaturation toward luminance,
+        // then fresnel-darkened. Center stays clean, shadows deepen.
+        var sr = srcPx[si], sg = srcPx[si + 1], sb = srcPx[si + 2];
+        var lum = sr * 0.299 + sg * 0.587 + sb * 0.114;
+        var desatMix = 0.25;  // pull 25% toward gray — makes highlights read as metal not flesh
+        sr = sr + (lum - sr) * desatMix;
+        sg = sg + (lum - sg) * desatMix;
+        sb = sb + (lum - sb) * desatMix;
+        // S-curve: (x/255 - 0.5) * contrast + 0.5, then back to 0-255
+        var cc = 1.55;  // contrast multiplier
+        sr = ((sr / 255 - 0.5) * cc + 0.5) * 255;
+        sg = ((sg / 255 - 0.5) * cc + 0.5) * 255;
+        sb = ((sb / 255 - 0.5) * cc + 0.5) * 255;
+        var fs = fres / 255;
+        dstPx[oi]     = Math.max(0, Math.min(255, sr * fs));
+        dstPx[oi + 1] = Math.max(0, Math.min(255, sg * fs));
+        dstPx[oi + 2] = Math.max(0, Math.min(255, sb * fs));
+        dstPx[oi + 3] = 255;
+    }
+    _chromeLiveCtx.putImageData(out, 0, 0);
+    return _chromeLiveCanvas;
+}
+
+// ── Palm-to-palm song state ──────────────────────────────────────
+// Time-based envelope + cached geometry for the song-between-hands gesture.
+
+var SONG_VIZ_MODES = ['orb', 'morph', 'spectrum', 'waveform', 'pulse'];
+
+var songBetweenHandsEnabled = false;
+var songBetweenHandsMode    = 'orb';
+
+function _saveSongHands() {
+    try {
+        localStorage.setItem('hod-song-hands', JSON.stringify({
+            enabled: songBetweenHandsEnabled,
+            mode: songBetweenHandsMode
+        }));
+    } catch(e) {}
+}
+
+function _loadSongHands() {
+    try {
+        var raw = localStorage.getItem('hod-song-hands');
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (data && typeof data.enabled === 'boolean') songBetweenHandsEnabled = data.enabled;
+        if (data && SONG_VIZ_MODES.indexOf(data.mode) !== -1) songBetweenHandsMode = data.mode;
+    } catch(e) {}
+}
+
+var _PALM_SONG_ATTACK_MS       = 150;   // time to ~63% on rise
+var _PALM_SONG_RELEASE_MS      = 700;   // time to ~63% on fall
+var _PALM_SONG_HOLD_MS         = 220;   // how long gate must pass before viz activates
+var _PALM_SONG_HOLD_GRACE_MS   = 60;    // how long a transient drop is forgiven
+var _PALM_SONG_STALE_MS        = 300;   // max time to reuse lastGoodGeometry after gate drops
+var _PALM_SONG_FACING_THRESH   = 0.1;   // min dot(normal, axis) per hand — roughly facing, not precise
+var _PALM_SONG_DT_CAP_MS       = 100;   // dt clamp — prevents huge jumps after tab blur
+
+var _palmSongState = {
+    targetIntensity: 0,       // gate output after hold filter (feeds envelope)
+    vizIntensity:    0,       // smoothed output — what draws should use
+    holdMs:          0,       // time gate has been passing
+    badMs:           0,       // time gate has been failing (reset holdMs after grace)
+    gateActive:      false,   // true once hold passed
+    lastUpdateMs:    0,
+    facing0:         0,       // diagnostic: last dot(n0, axis)
+    facing1:         0,       // diagnostic: last dot(n1, -axis)
+    lastRaw:         0,       // diagnostic: last _palmsEngaged return
+    lastGoodGeometry: null,   // { a: {x,y}, b: {x,y} } screen-space points
+    lastGoodMs:      0
+};
+
+function _resetPalmSongState() {
+    var s = _palmSongState;
+    s.targetIntensity = 0;
+    s.vizIntensity    = 0;
+    s.holdMs          = 0;
+    s.badMs           = 0;
+    s.gateActive      = false;
+    s.lastUpdateMs    = 0;
+    s.facing0         = 0;
+    s.facing1         = 0;
+    s.lastRaw         = 0;
+    s.lastGoodGeometry = null;
+    s.lastGoodMs      = 0;
+}
+
+// Returns raw 0..1 based on facing + distance, NOT hold-gated.
+// Requires both hands + both palmNormals + successful inter-palm axis.
+// Writes diagnostic facing values into state as a side effect.
+// Toggle `window.DEBUG_PALM_INVERT_FACING = true` in DevTools if sign convention is inverted.
+function _palmsEngaged() {
+    _palmSongState.facing0 = 0;
+    _palmSongState.facing1 = 0;
+    if (_handResults.length < 2) return 0;
+
+    var h0 = _handResults[0];
+    var h1 = _handResults[1];
+    var n0 = h0.palmNormal;
+    var n1 = h1.palmNormal;
+    if (!n0 || !n1) return 0;
+    var pc0 = h0.palmCenter;
+    var pc1 = h1.palmCenter;
+    if (!pc0 || !pc1) return 0;
+
+    // Inter-palm axis, preferring world coords; fall back to 2D image-space.
+    var axis;
+    if (h0.palmCenterWorld && h1.palmCenterWorld) {
+        axis = _safeNormalize(_vec3Sub(h1.palmCenterWorld, h0.palmCenterWorld));
+    } else {
+        axis = _safeNormalize({ x: pc1.x - pc0.x, y: pc1.y - pc0.y, z: 0 });
+    }
+    if (!axis) return 0;
+
+    var negAxis = { x: -axis.x, y: -axis.y, z: -axis.z };
+    var invert = (typeof window !== 'undefined' && window.DEBUG_PALM_INVERT_FACING) ? -1 : 1;
+    var f0 = _vec3Dot(n0, axis)    * invert;
+    var f1 = _vec3Dot(n1, negAxis) * invert;
+    _palmSongState.facing0 = f0;
+    _palmSongState.facing1 = f1;
+
+    var facing = Math.min(f0, f1);
+    if (facing < _PALM_SONG_FACING_THRESH) return 0;
+
+    // Distance-agnostic: hands can start apart. Intensity scales with how well palms face.
+    return Math.min(1, Math.max(0, facing));
+}
+
+// Call every frame. Time-based envelope survives variable fps and detector gaps.
+function _updatePalmSongState() {
+    var s = _palmSongState;
+    var now = performance.now();
+    var prev = s.lastUpdateMs;
+    var dt = prev > 0 ? Math.min(now - prev, _PALM_SONG_DT_CAP_MS) : 16;
+    s.lastUpdateMs = now;
+
+    var raw = _palmsEngaged();
+    s.lastRaw = raw;
+
+    // Hold-with-grace: transient drops under HOLD_GRACE_MS don't zero out holdMs.
+    if (raw > 0.01) {
+        s.holdMs += dt;
+        s.badMs = 0;
+    } else {
+        s.badMs += dt;
+        if (s.badMs > _PALM_SONG_HOLD_GRACE_MS) {
+            s.holdMs = 0;
+        }
+    }
+    s.gateActive = s.holdMs >= _PALM_SONG_HOLD_MS;
+
+    // Effective target only flows through once hold gate has latched open.
+    // Release is envelope-driven, not gate-driven — gate closing just sets target=0.
+    var target = s.gateActive ? raw : 0;
+    s.targetIntensity = target;
+
+    // Asymmetric attack/release — rise fast, fall slow.
+    var tau = (target > s.vizIntensity) ? _PALM_SONG_ATTACK_MS : _PALM_SONG_RELEASE_MS;
+    var alpha = 1 - Math.exp(-dt / tau);
+    s.vizIntensity += (target - s.vizIntensity) * alpha;
+
+    // Cache screen-space palm positions whenever both hands are present, so draw code
+    // always has fresh geometry and the release envelope can keep drawing after the gate closes.
+    // Skip before videoEl is ready — screen-space coords aren't defined yet.
+    var videoReady = (typeof videoEl !== 'undefined') && videoEl && videoEl.width;
+    if (_handResults.length >= 2 && videoReady) {
+        var pc0 = _handResults[0].palmCenter;
+        var pc1 = _handResults[1].palmCenter;
+        if (pc0 && pc1) {
+            var a = _lmToScreen(pc0);
+            var b = _lmToScreen(pc1);
+            if (a.x > b.x) { var t2 = a; a = b; b = t2; }
+            s.lastGoodGeometry = { a: a, b: b };
+            s.lastGoodMs = now;
+        }
+    } else if (s.lastGoodGeometry && (now - s.lastGoodMs) > _PALM_SONG_STALE_MS) {
+        s.lastGoodGeometry = null;
+    }
+}
+
+// Debug overlay — magenta/cyan arrow from each palm along its normal's projected xy.
+// Toggle at runtime: `window.DEBUG_PALM_NORMAL = true` in DevTools console.
+// Unclipped so it stays visible in song mode; disabled by default.
+function _drawPalmNormalDebug(ctx) {
+    if (!window.DEBUG_PALM_NORMAL) return;
+    if (!_handResults || _handResults.length === 0) return;
+
+    var mirror = (typeof usingWebcam !== 'undefined' && usingWebcam &&
+                  typeof _currentFacingMode !== 'undefined' && _currentFacingMode === 'user') ? -1 : 1;
+    var ARROW_LEN = 90;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.font = 'bold 10px "Commit Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    for (var h = 0; h < _handResults.length; h++) {
+        var hand = _handResults[h];
+        if (!hand || !hand.palmCenter || !hand.palmNormal) continue;
+
+        var start = _lmToScreen(hand.palmCenter);
+        var n = hand.palmNormal;
+        var tipX = start.x + n.x * ARROW_LEN * mirror;
+        var tipY = start.y + n.y * ARROW_LEN;  // world-y may be up or down — verify visually
+
+        var color = (hand.handedness === 'Left') ? '#00E0FF' : '#FF3B9F';
+
+        // Shaft
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // Tip dot
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Readout
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        var label = (hand.handedness || '?')[0] +
+                    ' n(' + n.x.toFixed(2) + ',' + n.y.toFixed(2) + ',' + n.z.toFixed(2) + ')';
+        ctx.fillText(label, start.x, start.y - 14);
+    }
+
+    // Envelope + gate diagnostics.
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.textAlign = 'left';
+    var lineY = 18;
+    if (_handResults.length === 2) {
+        var h0 = _handResults[0];
+        var h1 = _handResults[1];
+        if (h0.palmNormal && h1.palmNormal) {
+            var dot = _vec3Dot(h0.palmNormal, h1.palmNormal);
+            ctx.fillText('dot(n0,n1)=' + dot.toFixed(2), 12, lineY);
+            lineY += 14;
+        }
+    }
+    var s = _palmSongState;
+    ctx.fillText('facing0=' + s.facing0.toFixed(2) +
+                 '  facing1=' + s.facing1.toFixed(2) +
+                 '  raw=' + s.lastRaw.toFixed(2), 12, lineY);
+    lineY += 14;
+    ctx.fillStyle = s.gateActive ? 'rgba(120,255,160,0.95)' : 'rgba(255,220,100,0.95)';
+    ctx.fillText((s.gateActive ? 'GATE OPEN' : 'gate closed') +
+                 '  hold=' + Math.round(s.holdMs) + '/' + _PALM_SONG_HOLD_MS + 'ms' +
+                 (s.badMs > 0 ? '  bad=' + Math.round(s.badMs) + 'ms' : ''), 12, lineY);
+    lineY += 14;
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('target=' + s.targetIntensity.toFixed(2) +
+                 '  viz=' + s.vizIntensity.toFixed(2) +
+                 (s.lastGoodGeometry ? '  [cached]' : ''), 12, lineY);
+
+    ctx.restore();
+}
+
+function _getAudioSample() {
+    var has = (typeof audioLoaded !== 'undefined' && audioLoaded) &&
+              ((typeof audioPlaying !== 'undefined' && audioPlaying) ||
+               (typeof micActive !== 'undefined' && micActive) ||
+               (typeof videoAudioActive !== 'undefined' && videoAudioActive));
+    return {
+        bass: has ? smoothBass : 0,
+        mid: has ? smoothMid : 0,
+        treble: has ? smoothTreble : 0,
+        overall: has ? smoothOverall : 0,
+        beat: has ? beatIntensity : 0,
+        freq: (has && typeof frequencyData !== 'undefined') ? frequencyData : null,
+        active: has
+    };
+}
+
+// Dominant-frequency color: blends 3 anchor colors by band energy.
+// bass → magenta, mid → purple, treble → cyan.
+function _dominantFreqColor(a) {
+    var total = a.bass + a.mid + a.treble + 0.001;
+    var bW = a.bass / total, mW = a.mid / total, tW = a.treble / total;
+    var bC = [232, 67, 147], mC = [139, 69, 232], tC = [0, 206, 201];
+    var r, g, b;
+    if (!a.active || a.overall < 0.05) {
+        // Idle: brand magenta
+        r = bC[0]; g = bC[1]; b = bC[2];
+    } else {
+        r = bW * bC[0] + mW * mC[0] + tW * tC[0];
+        g = bW * bC[1] + mW * mC[1] + tW * tC[1];
+        b = bW * bC[2] + mW * mC[2] + tW * tC[2];
+    }
+    return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+}
+
+function _songRGBA(color, alpha) {
+    return 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',' + alpha + ')';
+}
+
+// ORB — reflective chrome sphere. The webcam feed IS the reflection
+// (contrast-boosted, convex-compressed, mirrored). Soft specular crescent
+// highlights on top, fresnel edge darkening. Song color only outside.
+function _drawSongOrb(ctx, g, a) {
+    var mx = g.mx, my = g.my, dist = g.dist;
+    var baseR = Math.max(26, dist * 0.27);
+    var breathe = 0.5 + 0.5 * Math.sin(performance.now() / 1400);
+    var r = baseR * (0.92 + breathe * 0.06 + a.overall * 0.08);
+
+    var color = _dominantFreqColor(a);
+
+    _loadChromeImg();  // lazy — triggers one load attempt the first time
+
+    ctx.save();
+
+    // 1. Outer colored halo
+    var halo = ctx.createRadialGradient(mx, my, r * 1.02, mx, my, r * 1.85);
+    halo.addColorStop(0, _songRGBA(color, 0.35));
+    halo.addColorStop(0.55, _songRGBA(color, 0.12));
+    halo.addColorStop(1, _songRGBA(color, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(mx - r * 1.85, my - r * 1.85, r * 3.7, r * 3.7);
+
+    // 2a. Live webcam reflection via sphere-warp map. Synthetic specular
+    //     highlights (upper-left hotspot + lower-right secondary) sell the
+    //     chrome feel without pulling in the HDRI cloud environment.
+    var liveCanvas = _renderLiveChromeReflection();
+    if (liveCanvas) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.drawImage(liveCanvas, mx - r, my - r, r * 2, r * 2);
+
+        // Chrome specular — tight hard hotspot + crescent sheen + pinpoint.
+        // Screen blend stacks bright-on-bright to push highlights toward white.
+        ctx.globalCompositeOperation = 'screen';
+
+        // Primary hotspot: sharp, small, white-hot
+        var sx = mx - r * 0.38, sy = my - r * 0.42;
+        var spec1 = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 0.45);
+        spec1.addColorStop(0,    'rgba(255,255,255,1)');
+        spec1.addColorStop(0.15, 'rgba(255,255,255,0.75)');
+        spec1.addColorStop(0.45, 'rgba(255,255,255,0.2)');
+        spec1.addColorStop(1,    'rgba(255,255,255,0)');
+        ctx.fillStyle = spec1;
+        ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+        // Crescent sheen arcing along the upper-left edge
+        var sheen = ctx.createRadialGradient(mx - r * 0.15, my - r * 0.15, r * 0.85, mx - r * 0.15, my - r * 0.15, r * 1.08);
+        sheen.addColorStop(0,   'rgba(255,255,255,0)');
+        sheen.addColorStop(0.6, 'rgba(255,255,255,0.5)');
+        sheen.addColorStop(1,   'rgba(255,255,255,0)');
+        ctx.fillStyle = sheen;
+        ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+        // Pinpoint — the glint that sells "polished metal"
+        var gx = mx - r * 0.45, gy = my - r * 0.5;
+        var glint = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.08);
+        glint.addColorStop(0, 'rgba(255,255,255,1)');
+        glint.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = glint;
+        ctx.fillRect(gx - r * 0.1, gy - r * 0.1, r * 0.2, r * 0.2);
+
+        // Bottom-rim dark fresnel — pulls focus to the top, deepens the ball
+        ctx.globalCompositeOperation = 'multiply';
+        var rim = ctx.createRadialGradient(mx, my + r * 0.25, r * 0.45, mx, my + r * 0.25, r * 1.05);
+        rim.addColorStop(0,    'rgba(255,255,255,1)');
+        rim.addColorStop(0.65, 'rgba(180,180,200,1)');
+        rim.addColorStop(1,    'rgba(20,10,40,1)');
+        ctx.fillStyle = rim;
+        ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+        ctx.restore();
+
+        // Thin bright glass rim + colored outer glow
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = _songRGBA(color, 0.35);
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = _songRGBA(color, 1);
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(mx, my, r + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+
+    // 2b. Procedural chrome body (fallback when no image provided)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(mx, my, r, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.fillStyle = '#0a0812';
+    ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+    // Webcam reflection — contrast-boosted, desaturated slightly
+    var reflected = false;
+    try {
+        if (typeof videoEl !== 'undefined' && videoEl && videoEl.elt &&
+            videoEl.elt.readyState >= 2 && videoEl.elt.videoWidth > 0) {
+            var vw = videoEl.elt.videoWidth;
+            var vh = videoEl.elt.videoHeight;
+            ctx.save();
+            ctx.filter = 'contrast(1.6) brightness(1.15) saturate(0.7)';
+            ctx.translate(mx, my);
+            ctx.scale(-1, 1);
+            var zoom = 0.55;
+            var drawW = (r * 2) / zoom;
+            var drawH = drawW * (vh / vw);
+            // (Don't reset globalAlpha here — the outer _drawSongBetweenHands sets it
+            // from vizIntensity so the viz can fade in/out cleanly.)
+            ctx.drawImage(videoEl.elt, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.filter = 'none';
+            ctx.restore();
+            reflected = true;
+        }
+    } catch (e) {}
+
+    if (!reflected) {
+        var chromeG = ctx.createLinearGradient(mx, my - r, mx, my + r);
+        chromeG.addColorStop(0.00, '#eee8f5');
+        chromeG.addColorStop(0.20, '#b4aac2');
+        chromeG.addColorStop(0.42, '#5a4f65');
+        chromeG.addColorStop(0.52, '#080510');
+        chromeG.addColorStop(0.60, '#201628');
+        chromeG.addColorStop(0.80, '#554a60');
+        chromeG.addColorStop(1.00, '#8a7ba0');
+        ctx.fillStyle = chromeG;
+        ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+    }
+
+    // Spherical falloff — fakes the round 3D ball shape
+    ctx.globalCompositeOperation = 'multiply';
+    var sphereShade = ctx.createRadialGradient(mx, my, r * 0.45, mx, my, r);
+    sphereShade.addColorStop(0, 'rgba(255,255,255,1)');
+    sphereShade.addColorStop(0.7, 'rgba(140,130,160,1)');
+    sphereShade.addColorStop(1, 'rgba(20,15,30,1)');
+    ctx.fillStyle = sphereShade;
+    ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+    // Horizon dark band
+    ctx.globalCompositeOperation = 'multiply';
+    var horizon = ctx.createLinearGradient(mx, my - r * 0.18, mx, my + r * 0.18);
+    horizon.addColorStop(0.00, 'rgba(255,255,255,1)');
+    horizon.addColorStop(0.50, 'rgba(35,28,45,1)');
+    horizon.addColorStop(1.00, 'rgba(255,255,255,1)');
+    ctx.fillStyle = horizon;
+    ctx.fillRect(mx - r, my - r * 0.18, r * 2, r * 0.36);
+
+    // Soft specular highlight crescent (top-left)
+    ctx.globalCompositeOperation = 'lighter';
+    var specX = mx - r * 0.3;
+    var specY = my - r * 0.42;
+    var specR = r * 0.44;
+    var spec = ctx.createRadialGradient(specX, specY, 0, specX, specY, specR);
+    spec.addColorStop(0.00, 'rgba(255,255,255,1)');
+    spec.addColorStop(0.22, 'rgba(255,255,255,0.85)');
+    spec.addColorStop(0.55, 'rgba(255,255,255,0.3)');
+    spec.addColorStop(1.00, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
+    ctx.fillRect(specX - specR, specY - specR, specR * 2, specR * 2);
+
+    // Hot spot
+    var hotX = mx - r * 0.22;
+    var hotY = my - r * 0.38;
+    var hotR = r * 0.1;
+    var hot = ctx.createRadialGradient(hotX, hotY, 0, hotX, hotY, hotR);
+    hot.addColorStop(0, 'rgba(255,255,255,1)');
+    hot.addColorStop(0.35, 'rgba(255,255,255,0.95)');
+    hot.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hot;
+    ctx.fillRect(hotX - hotR, hotY - hotR, hotR * 2, hotR * 2);
+
+    // Secondary highlight
+    var sec2X = mx + r * 0.3;
+    var sec2Y = my - r * 0.3;
+    var sec2R = r * 0.18;
+    var sec2 = ctx.createRadialGradient(sec2X, sec2Y, 0, sec2X, sec2Y, sec2R);
+    sec2.addColorStop(0, 'rgba(255,255,255,0.45)');
+    sec2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sec2;
+    ctx.fillRect(sec2X - sec2R, sec2Y - sec2R, sec2R * 2, sec2R * 2);
+
+    // Fresnel rim
+    ctx.globalCompositeOperation = 'source-over';
+    var fresnel = ctx.createRadialGradient(mx, my, r * 0.78, mx, my, r);
+    fresnel.addColorStop(0, 'rgba(0,0,0,0)');
+    fresnel.addColorStop(0.88, 'rgba(0,0,0,0.15)');
+    fresnel.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = fresnel;
+    ctx.fillRect(mx - r, my - r, r * 2, r * 2);
+
+    ctx.restore(); // end clip
+
+    // 3. Glass hairline
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(mx, my, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 4. Song-color outer glow
+    ctx.strokeStyle = _songRGBA(color, 0.35);
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = _songRGBA(color, 1);
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(mx, my, r + 2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// MORPH — reactive deforming blob. Radius pulses with bass, shape
+// warps with treble/beat, sparks fly on peaks. Same color mapping.
+function _drawSongMorph(ctx, g, a) {
+    var mx = g.mx, my = g.my, dist = g.dist;
+    var baseR = Math.max(28, dist * 0.28);
+    var r = baseR * (0.85 + a.bass * 0.5 + a.beat * 0.35);
+
+    var color = _dominantFreqColor(a);
+    var t = performance.now() / 1000;
+    var deform = 0.12 + a.treble * 0.35 + a.beat * 0.45;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Halo
+    var halo = ctx.createRadialGradient(mx, my, 0, mx, my, r * 1.7);
+    halo.addColorStop(0, _songRGBA(color, 0.55 + a.bass * 0.3));
+    halo.addColorStop(0.5, _songRGBA(color, 0.2));
+    halo.addColorStop(1, _songRGBA(color, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(mx - r * 1.7, my - r * 1.7, r * 3.4, r * 3.4);
+
+    // Build blob path (polar deformation)
+    var N = 72;
+    ctx.beginPath();
+    for (var i = 0; i <= N; i++) {
+        var ang = (i / N) * Math.PI * 2;
+        var wobble =
+            Math.sin(ang * 3 + t * 1.5) * 0.5 +
+            Math.sin(ang * 5 - t * 2.3) * 0.3 +
+            Math.sin(ang * 7 + t * 3.1) * 0.2;
+        var rad = r * (1 + wobble * deform);
+        var x = mx + Math.cos(ang) * rad;
+        var y = my + Math.sin(ang) * rad;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+
+    // Fill gradient
+    var fill = ctx.createRadialGradient(mx, my, 0, mx, my, r * 1.15);
+    fill.addColorStop(0, _songRGBA(color, 0.9));
+    fill.addColorStop(0.65, _songRGBA(color, 0.4));
+    fill.addColorStop(1, _songRGBA(color, 0));
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    // Glowing edge
+    ctx.strokeStyle = _songRGBA(color, 0.9);
+    ctx.lineWidth = 2;
+    ctx.shadowColor = _songRGBA(color, 1);
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+
+    // Sparks on peaks
+    if (a.beat > 0.25 || a.treble > 0.35) {
+        ctx.shadowBlur = 0;
+        var sparkCount = Math.min(20, Math.floor((a.beat + a.treble) * 14));
+        ctx.fillStyle = 'rgba(255,255,255,' + Math.min(1, 0.4 + a.beat * 0.6) + ')';
+        for (var s = 0; s < sparkCount; s++) {
+            var sAng = Math.random() * Math.PI * 2;
+            var sRad = r * (1.0 + Math.random() * 0.35);
+            var sx = mx + Math.cos(sAng) * sRad;
+            var sy = my + Math.sin(sAng) * sRad;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 1.3 + Math.random() * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Core
+    ctx.shadowBlur = 0;
+    var coreR = Math.max(4, r * 0.2 * (0.8 + a.beat * 0.5));
+    var core = ctx.createRadialGradient(mx, my, 0, mx, my, coreR);
+    core.addColorStop(0, 'rgba(255,255,255,' + (0.85 + a.beat * 0.15) + ')');
+    core.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(mx - coreR, my - coreR, coreR * 2, coreR * 2);
+
+    ctx.restore();
+}
+
+function _drawSongSpectrum(ctx, g, a) {
+    var dx = g.dx, dy = g.dy, dist = g.dist;
+    if (dist < 12) return;
+
+    var nx = -dy / dist, ny = dx / dist;
+    var BAR_COUNT = 32;
+    var maxBarH = Math.min(140, dist * 0.32);
+
+    ctx.save();
+    // Baseline guide
+    ctx.strokeStyle = 'rgba(232,67,147,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(g.a.x, g.a.y);
+    ctx.lineTo(g.b.x, g.b.y);
+    ctx.stroke();
+
+    var freq = a.freq;
+    var usefulBins = freq ? Math.floor(freq.length * 0.6) : 0;
+
+    ctx.lineCap = 'round';
+    for (var i = 0; i < BAR_COUNT; i++) {
+        var t = i / (BAR_COUNT - 1);
+        var v;
+        if (freq && usefulBins > 0) {
+            var binIdx = Math.max(1, Math.floor(Math.pow(t, 1.5) * usefulBins));
+            v = freq[binIdx] / 255;
+        } else {
+            // Idle animation when no audio
+            v = 0.06 + 0.04 * Math.sin(performance.now() / 600 + t * 8);
+        }
+
+        var cx = g.a.x + dx * t;
+        var cy = g.a.y + dy * t;
+        var bh = v * maxBarH;
+        var hue = 310 - t * 130;  // magenta → cyan
+        ctx.strokeStyle = 'hsl(' + hue + ',85%,' + (52 + v * 18) + '%)';
+        ctx.lineWidth = Math.max(2, (dist / BAR_COUNT) * 0.55);
+
+        ctx.beginPath();
+        ctx.moveTo(cx - nx * bh * 0.5, cy - ny * bh * 0.5);
+        ctx.lineTo(cx + nx * bh * 0.5, cy + ny * bh * 0.5);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// WAVEFORM — chrome/mirrored. Audacity-style symmetric wave above and
+// below the palm-to-palm axis; silvery metallic stroke with colored rim
+// glow. Color follows dominant freq.
+function _drawSongWaveform(ctx, g, a) {
+    var dx = g.dx, dy = g.dy, dist = g.dist;
+    if (dist < 12) return;
+
+    var nx = -dy / dist, ny = dx / dist;
+    var SAMPLE_COUNT = 128;
+    var amp = Math.min(95, dist * 0.23) * (0.7 + a.overall * 0.5);
+
+    var samples = null;
+    if (a.active && typeof audioAnalyser !== 'undefined' && audioAnalyser && audioAnalyser.fftSize) {
+        if (!_songTimeDomain || _songTimeDomain.length !== audioAnalyser.fftSize) {
+            _songTimeDomain = new Uint8Array(audioAnalyser.fftSize);
+        }
+        try { audioAnalyser.getByteTimeDomainData(_songTimeDomain); samples = _songTimeDomain; } catch (e) {}
+    }
+
+    var color = _dominantFreqColor(a);
+    var step = samples ? Math.floor(samples.length / SAMPLE_COUNT) : 0;
+
+    // Build |v| for symmetric mirror
+    var pts = [];
+    for (var i = 0; i < SAMPLE_COUNT; i++) {
+        var t = i / (SAMPLE_COUNT - 1);
+        var v;
+        if (samples) v = (samples[i * step] - 128) / 128;
+        else v = Math.sin(performance.now() / 300 + t * Math.PI * 6) * 0.15;
+        pts.push({ cx: g.a.x + dx * t, cy: g.a.y + dy * t, v: Math.abs(v) });
+    }
+
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Helper: build a wave path (side = +1 above axis, -1 below)
+    function buildPath(side) {
+        ctx.beginPath();
+        for (var i = 0; i < pts.length; i++) {
+            var p = pts[i];
+            var px = p.cx + nx * p.v * amp * side;
+            var py = p.cy + ny * p.v * amp * side;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+    }
+
+    // 1. Soft tinted fill between the two mirrored curves (chrome body)
+    ctx.fillStyle = _songRGBA(color, 0.14);
+    ctx.beginPath();
+    for (var i = 0; i < pts.length; i++) {
+        var p = pts[i];
+        var px = p.cx + nx * p.v * amp;
+        var py = p.cy + ny * p.v * amp;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    for (var i = pts.length - 1; i >= 0; i--) {
+        var p = pts[i];
+        var px = p.cx - nx * p.v * amp;
+        var py = p.cy - ny * p.v * amp;
+        ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Colored outer glow stroke — thick, dominant-freq color
+    ctx.strokeStyle = _songRGBA(color, 0.75);
+    ctx.lineWidth = 5;
+    ctx.shadowColor = _songRGBA(color, 1);
+    ctx.shadowBlur = 16;
+    buildPath(1); ctx.stroke();
+    buildPath(-1); ctx.stroke();
+
+    // 3. Silvery chrome body — silvery gradient along the axis
+    var chromeG = ctx.createLinearGradient(g.a.x, g.a.y, g.b.x, g.b.y);
+    chromeG.addColorStop(0.00, 'rgba(230,225,240,0.95)');
+    chromeG.addColorStop(0.25, _songRGBA(color, 0.9));
+    chromeG.addColorStop(0.50, 'rgba(245,240,255,1)');
+    chromeG.addColorStop(0.75, _songRGBA(color, 0.9));
+    chromeG.addColorStop(1.00, 'rgba(230,225,240,0.95)');
+    ctx.strokeStyle = chromeG;
+    ctx.lineWidth = 2.5;
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = 'rgba(255,255,255,0.6)';
+    buildPath(1); ctx.stroke();
+    buildPath(-1); ctx.stroke();
+
+    // 4. Bright highlight line along the crest (mirror shine)
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.7 + a.beat * 0.3) + ')';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 0;
+    buildPath(1); ctx.stroke();
+    buildPath(-1); ctx.stroke();
+
+    // 5. Center axis — faint mirror line
+    ctx.strokeStyle = _songRGBA(color, 0.25);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(g.a.x, g.a.y);
+    ctx.lineTo(g.b.x, g.b.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.restore();
+}
+
+function _drawSongPulse(ctx, g, a) {
+    var mx = g.mx, my = g.my, dist = g.dist;
+    var baseR = Math.max(32, dist * 0.45);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    var bands = [
+        { val: a.treble, radius: baseR * (0.3 + a.treble * 0.35), rgb: '0,206,201' },
+        { val: a.mid,    radius: baseR * (0.6 + a.mid * 0.35),    rgb: '139,69,232' },
+        { val: a.bass,   radius: baseR * (1.0 + a.bass * 0.45 + a.beat * 0.3), rgb: '232,67,147' }
+    ];
+
+    for (var i = 0; i < bands.length; i++) {
+        var b = bands[i];
+        var alpha = 0.25 + b.val * 0.55;
+        ctx.strokeStyle = 'rgba(' + b.rgb + ',' + alpha + ')';
+        ctx.lineWidth = 2 + b.val * 5;
+        ctx.shadowColor = 'rgba(' + b.rgb + ',0.75)';
+        ctx.shadowBlur = 6 + b.val * 14;
+        ctx.beginPath();
+        ctx.arc(mx, my, b.radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.55 + a.beat * 0.4) + ')';
+    ctx.beginPath();
+    ctx.arc(mx, my, 3 + a.beat * 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function _drawSongBetweenHands(ctx, mode) {
+    var s = _palmSongState;
+    if (s.vizIntensity < 0.01) return;
+    if (!s.lastGoodGeometry) return;
+
+    var ga = s.lastGoodGeometry.a;
+    var gb = s.lastGoodGeometry.b;
+    var dx = gb.x - ga.x;
+    var dy = gb.y - ga.y;
+    var g = {
+        a: ga,
+        b: gb,
+        dx: dx,
+        dy: dy,
+        dist: Math.sqrt(dx * dx + dy * dy),
+        mx: (ga.x + gb.x) / 2,
+        my: (ga.y + gb.y) / 2,
+        viz: Math.max(0, Math.min(1, s.vizIntensity))
+    };
+
+    var a = _getAudioSample();
+    ctx.save();
+    ctx.globalAlpha = g.viz;
+    if (mode === 'orb') _drawSongOrb(ctx, g, a);
+    else if (mode === 'morph') _drawSongMorph(ctx, g, a);
+    else if (mode === 'spectrum') _drawSongSpectrum(ctx, g, a);
+    else if (mode === 'waveform') _drawSongWaveform(ctx, g, a);
+    else if (mode === 'pulse') _drawSongPulse(ctx, g, a);
+    ctx.restore();
+}
+
 // ── Pinch Meter ──────────────────────────────────────────────────
 
 // ── Live Gesture Indicator ────────────────────────────────────────
@@ -2928,6 +4011,33 @@ function wireFxHandsSyncListeners() {
             });
         }
         _loadConductor();
+
+        // Wire Song Between Hands
+        _loadSongHands();
+        var songToggle = document.getElementById('song-hands-toggle');
+        if (songToggle) {
+            songToggle.checked = songBetweenHandsEnabled;
+            songToggle.addEventListener('change', function() {
+                songBetweenHandsEnabled = this.checked;
+                if (!songBetweenHandsEnabled) _resetPalmSongState();
+                _saveSongHands();
+            });
+        }
+        var songModeRow = document.getElementById('song-hands-mode-buttons');
+        if (songModeRow) {
+            songModeRow.querySelectorAll('.selector-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-value') === songBetweenHandsMode);
+                btn.addEventListener('click', function() {
+                    var v = this.getAttribute('data-value');
+                    if (SONG_VIZ_MODES.indexOf(v) === -1) return;
+                    songBetweenHandsMode = v;
+                    songModeRow.querySelectorAll('.selector-btn').forEach(function(b) {
+                        b.classList.toggle('active', b === btn);
+                    });
+                    _saveSongHands();
+                });
+            });
+        }
 
         // Load persisted hand sync config
         _loadFxHandsSync();
